@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { analytics } from "./analytics";
+// Matri v2.1 — build 2026-05-24
 
 /* ─── FONTS + BASE CSS ─────────────────────────────────────────────────── */
 const css = `
@@ -51,8 +53,9 @@ body{background:var(--cream);}
 .w:hover{box-shadow:0 6px 24px rgba(0,0,0,0.1);}
 .w-full{grid-column:1/-1;}.w-left{grid-column:1;}.w-right{grid-column:2;}
 .w-tall{min-height:220px;}.w-med{min-height:170px;}.w-sm{min-height:140px;}
-.w-tap{position:absolute;bottom:13px;right:15px;font-size:10px;font-weight:500;pointer-events:none;}
-.w-tap-dk{color:rgba(0,0,0,0.18);}.w-tap-lt{color:rgba(255,255,255,0.22);}
+.w-tap{position:absolute;bottom:12px;right:14px;font-size:11px;font-weight:700;pointer-events:none;display:flex;align-items:center;gap:3px;letter-spacing:0.02em;}
+.w-tap-dk{color:rgba(0,0,0,0.28);}
+.w-tap-lt{color:rgba(255,255,255,0.38);}
 .w-lbl{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:8px;}
 .w-lbl-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
 .w-bg-e{position:absolute;font-size:100px;line-height:1;opacity:0.07;pointer-events:none;bottom:-8px;right:-8px;transform:rotate(-10deg);user-select:none;}
@@ -64,7 +67,7 @@ body{background:var(--cream);}
 .wt-sm em{font-style:italic;}
 .chip{display:inline-block;border-radius:100px;padding:3px 9px;font-size:10px;font-weight:500;margin:3px 3px 0 0;}
 .win{padding:18px 18px 48px;position:relative;z-index:1;}
-.win-lg{padding:20px 20px 52px;position:relative;z-index:1;}
+.win-lg{padding:20px 20px 48px;position:relative;z-index:1;}
 
 /* WIDGET BACKGROUND COLORS — each distinctly different */
 .wc-rose   {background:var(--rose-pale)!important;   border-color:var(--rose-bdr)!important;}
@@ -260,7 +263,7 @@ body{background:var(--cream);}
 .j-crop-frame{position:absolute;inset:0;pointer-events:none;border:2px solid rgba(255,255,255,0.85);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,0.45);}
 .j-crop-zoom-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
 .j-crop-zoom{width:100%;margin-bottom:16px;accent-color:var(--teal);}
-.j-crop-actions{display:flex;gap:10px;margin-top:auto;}
+.j-crop-actions{display:flex;gap:10px;flex-shrink:0;padding:12px 18px 20px;background:var(--cream);border-top:1px solid var(--bdr);}
 .j-crop-cancel,.j-crop-save{flex:1;border-radius:100px;padding:12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--bdr);}
 .j-crop-cancel{background:#fff;color:var(--muted);}
 .j-crop-save{background:var(--teal);color:#fff;border-color:var(--teal);}
@@ -281,82 +284,73 @@ body{background:var(--cream);}
 .album-pg-label{text-align:center;font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase;flex-shrink:0;padding-bottom:6px;}
 
 /* THE BOOK PAGE */
-.book{flex:1;overflow:hidden;display:flex;align-items:stretch;padding:0 14px 4px;}
-.page{background:var(--paper);border-radius:14px;overflow:hidden;box-shadow:0 6px 40px rgba(0,0,0,0.55);display:flex;flex-direction:column;flex:1;position:relative;}
+.book{flex:1;overflow:hidden;display:flex;align-items:stretch;padding:0 14px 4px;min-height:0;height:0;}
+.page{background:var(--paper);border-radius:14px;overflow:hidden;box-shadow:0 6px 40px rgba(0,0,0,0.55);display:flex;flex-direction:column;flex:1;position:relative;min-height:0;height:100%;}
 /* spine shadow */
 .page::before{content:'';position:absolute;left:0;top:0;bottom:0;width:14px;background:linear-gradient(to right,rgba(0,0,0,0.08),transparent);z-index:3;pointer-events:none;}
 
 /* PAGE TYPES */
 
 /* ── COVER ── */
-.pg-cover{background:linear-gradient(160deg,#3a1a14,#6a2a20 45%,#9a4030 80%,#c06040 100%);}
-.pg-cover-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:20px 20px;pointer-events:none;}
-.pg-cover-photo{width:100%;height:250px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.pg-cover-photo-emoji{font-size:130px;opacity:0.5;position:relative;z-index:1;}
-.pg-cover-photo-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(120,40,20,0.3),rgba(50,15,5,0.55));}
-.pg-cover-photo-fade{position:absolute;bottom:0;left:0;right:0;height:130px;background:linear-gradient(to top,#3a1a14,transparent);}
-.pg-cover-body{padding:16px 22px 24px;position:relative;z-index:2;flex:1;display:flex;flex-direction:column;}
-.pg-cover-series{font-size:9px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:8px;}
-.pg-cover-title{font-family:'Dancing Script',cursive;font-size:36px;font-weight:700;color:#fff;line-height:1;margin-bottom:4px;}
-.pg-cover-name{font-family:'Dancing Script',cursive;font-size:21px;color:rgba(255,255,255,0.55);margin-bottom:14px;}
+.pg-cover{background:#fdf6f0;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.pg-cover-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(191,82,64,0.06) 1px,transparent 1px);background-size:22px 22px;pointer-events:none;}
+.pg-cover-photo{width:100%;height:66.7%;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;min-height:360px;}
+.pg-cover-photo-emoji{font-size:140px;opacity:0.22;position:relative;z-index:1;}
+.pg-cover-photo-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(240,200,180,0.15),rgba(200,120,100,0.1));}
+.pg-cover-photo-fade{position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to top,#fdf6f0,transparent);}
+.pg-cover-body{padding:14px 22px 22px;position:relative;z-index:2;flex:1;display:flex;flex-direction:column;}
+.pg-cover-series{font-size:9px;font-weight:600;letter-spacing:0.28em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.pg-cover-title{font-family:'Lora',serif;font-size:36px;font-weight:400;font-style:italic;color:var(--ink);line-height:1.1;margin-bottom:6px;}
+.pg-cover-name{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:12px;letter-spacing:0.08em;}
 .pg-cover-chips{display:flex;gap:6px;flex-wrap:wrap;}
-.pg-cover-chip{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:100px;padding:4px 12px;font-size:10px;color:rgba(255,255,255,0.6);}
-.pg-cover-tagline{font-family:'Lora',serif;font-size:12px;font-style:italic;color:rgba(255,255,255,0.32);margin-top:auto;line-height:1.65;}
-
-/* ── CHAPTER ── */
-.pg-chapter-top{height:190px;position:relative;overflow:hidden;display:flex;align-items:flex-end;padding:0 22px 20px;flex-shrink:0;}
-.pg-chapter-photo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:90px;opacity:0.25;}
-.pg-chapter-body{padding:18px 22px 22px;flex:1;}
-.pg-chapter-num{font-size:9px;font-weight:700;letter-spacing:0.25em;text-transform:uppercase;margin-bottom:5px;}
-.pg-chapter-title{font-family:'Dancing Script',cursive;font-size:32px;font-weight:600;}
-.pg-chapter-desc{font-family:'Lora',serif;font-size:13px;font-style:italic;line-height:1.75;color:var(--muted);margin-bottom:10px;margin-top:10px;}
-.pg-chapter-meta{font-size:11px;color:var(--muted);}
+.pg-cover-chip{background:rgba(191,82,64,0.08);border:1px solid rgba(191,82,64,0.18);border-radius:100px;padding:4px 12px;font-size:10px;color:var(--rose);}
+.pg-cover-tagline{font-family:'Lora',serif;font-size:11px;font-style:italic;color:var(--muted);margin-top:auto;line-height:1.65;opacity:0.7;}
 
 /* ── WEEK HEADER ── */
 .pg-wk-photo{height:200px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pg-wk-photo-fade{position:absolute;bottom:0;left:0;right:0;height:90px;}
 .pg-wk-body{padding:16px 22px 20px;flex:1;}
-.pg-wk-num{font-family:'Dancing Script',cursive;font-size:60px;font-weight:600;line-height:0.9;margin-bottom:4px;}
-.pg-wk-label{font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:10px;}
+.pg-wk-num{font-family:'Lora',serif;font-size:64px;font-weight:400;font-style:italic;line-height:0.9;margin-bottom:4px;}
+.pg-wk-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px;}
 .pg-wk-divider{height:1px;background:var(--cream2);margin-bottom:12px;}
 .pg-wk-baby{display:flex;align-items:center;gap:12px;background:var(--paper2);border-radius:12px;padding:12px;margin-bottom:10px;}
 .pg-wk-baby-emoji{font-size:34px;}
-.pg-wk-baby-size{font-family:'Lora',serif;font-size:16px;color:var(--ink);}
+.pg-wk-baby-size{font-family:'Lora',serif;font-size:15px;color:var(--ink);}
 .pg-wk-baby-size em{font-style:italic;color:var(--rose);}
 .pg-wk-baby-fact{font-size:11px;color:var(--muted);line-height:1.5;margin-top:2px;}
-.pg-wk-date{font-family:'Lora',serif;font-size:13px;font-style:italic;color:var(--muted);}
+.pg-wk-date{font-family:'Inter',sans-serif;font-size:12px;color:var(--muted);letter-spacing:0.04em;}
 .pg-wk-mood{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px;color:var(--muted);}
 
 /* ── ENTRY — PHOTO FIRST ── */
-.pg-entry{display:flex;flex-direction:column;}
+.pg-entry{display:flex;flex-direction:column;background:var(--paper);min-height:0;overflow:hidden;}
 
-/* big hero photo — takes most of the page */
-.pg-entry-hero{height:230px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+/* big hero photo — taller, takes most of the page */
+.pg-entry-hero{height:300px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pg-entry-hero-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.pg-entry-hero-emoji{font-size:130px;opacity:0.52;}
+.pg-entry-hero-emoji{font-size:100px;opacity:0.3;}
 .pg-entry-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.pg-entry-hero-fade{position:absolute;bottom:0;left:0;right:0;height:110px;}
-.pg-entry-hero-wk{position:absolute;top:14px;left:16px;background:rgba(255,255,255,0.85);border-radius:100px;padding:3px 11px;font-size:9px;font-weight:700;color:var(--rose);letter-spacing:0.1em;text-transform:uppercase;}
-.pg-entry-hero-mood{position:absolute;top:12px;right:16px;font-size:28px;}
+.pg-entry-hero-fade{position:absolute;bottom:0;left:0;right:0;height:120px;}
+.pg-entry-hero-wk{position:absolute;top:14px;left:16px;background:rgba(255,255,255,0.92);border-radius:100px;padding:3px 11px;font-size:9px;font-weight:700;color:var(--rose);letter-spacing:0.1em;text-transform:uppercase;backdrop-filter:blur(4px);}
+.pg-entry-hero-mood{position:absolute;top:12px;right:16px;font-size:28px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.2));}
 
 /* small photo strip — polaroids */
-.pg-entry-photos{display:flex;gap:8px;padding:10px 18px 4px;flex-shrink:0;}
-.pg-entry-polaroid{flex:1;max-width:90px;background:#fff;padding:5px 5px 14px;border-radius:4px;box-shadow:2px 3px 10px rgba(0,0,0,0.14);position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;font-size:32px;overflow:hidden;}
+.pg-entry-photos{display:flex;gap:8px;padding:12px 18px 4px;flex-shrink:0;}
+.pg-entry-polaroid{flex:1;max-width:90px;background:#fff;padding:5px 5px 14px;border-radius:4px;box-shadow:2px 3px 10px rgba(0,0,0,0.12);position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;font-size:32px;overflow:hidden;}
 .pg-entry-polaroid img{width:100%;height:100%;object-fit:cover;display:block;}
 .pg-entry-polaroid:nth-child(odd){transform:rotate(-1.5deg);}
 .pg-entry-polaroid:nth-child(even){transform:rotate(1.2deg);}
 .pg-polaroid-tape{position:absolute;top:-5px;left:50%;transform:translateX(-50%) rotate(-1.5deg);width:34px;height:12px;background:rgba(255,220,155,0.65);border-radius:2px;}
 
-/* minimal text area */
-.pg-entry-content{padding:10px 18px 14px;flex:1;display:flex;flex-direction:column;}
-.pg-entry-date{font-family:'Dancing Script',cursive;font-size:18px;color:var(--muted);margin-bottom:5px;}
-.pg-entry-text{font-family:'Lora',serif;font-size:12.5px;font-style:italic;color:var(--ink);line-height:1.75;flex:1;padding-left:11px;border-left:2px solid var(--rose-bdr);}
-.pg-entry-footer{display:flex;justify-content:space-between;border-top:1px solid var(--cream2);padding-top:8px;margin-top:8px;}
-.pg-entry-footer-wk{font-size:10px;color:var(--muted);font-style:italic;}
-.pg-entry-footer-pg{font-size:10px;color:rgba(26,18,16,0.18);font-style:italic;}
+/* text area */
+.pg-entry-content{padding:12px 20px 14px;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.pg-entry-date{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:8px;letter-spacing:0.04em;}
+.pg-entry-text{font-family:'Lora',serif;font-size:13px;font-style:italic;color:var(--ink);line-height:1.8;flex:1;padding-left:12px;border-left:2px solid var(--rose-bdr);}
+.pg-entry-footer{display:flex;justify-content:space-between;border-top:1px solid var(--cream2);padding-top:8px;margin-top:10px;}
+.pg-entry-footer-wk{font-family:'Inter',sans-serif;font-size:10px;color:var(--muted);letter-spacing:0.04em;}
+.pg-entry-footer-pg{font-size:10px;color:rgba(26,18,16,0.18);}
 
 /* ── CLOSING ── */
-.pg-closing{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 28px;text-align:center;background:linear-gradient(160deg,var(--paper2),var(--paper));flex:1;}
+.pg-closing{display:flex;flex-direction:column;min-height:0;overflow:hidden;align-items:center;justify-content:center;padding:36px 28px;text-align:center;background:linear-gradient(160deg,var(--paper2),var(--paper));flex:1;}
 .pg-closing-icon{font-size:54px;margin-bottom:18px;opacity:0.7;}
 .pg-closing-title{font-family:'Dancing Script',cursive;font-size:32px;font-weight:600;color:var(--rose);margin-bottom:12px;line-height:1.2;}
 .pg-closing-body{font-family:'Lora',serif;font-size:13px;font-style:italic;color:var(--muted);line-height:1.85;margin-bottom:18px;}
@@ -423,6 +417,40 @@ body{background:var(--cream);}
 .symptom-bar-input{flex:1;border:none;outline:none;font-size:13px;font-family:inherit;color:var(--ink);padding:13px 0;background:transparent;}
 .symptom-bar-input::placeholder{color:var(--muted);}
 .symptom-bar-btn{padding:0 18px;background:var(--rose);border:none;cursor:pointer;font-size:12px;font-weight:600;color:#fff;font-family:inherit;border-radius:0 14px 14px 0;align-self:stretch;min-height:46px;}
+
+/* ── SYMPTOM CHIP GRID ── */
+.symptom-section{padding:14px 12px 0;}
+.symptom-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.symptom-section-title{font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);}
+.symptom-chip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;}
+.symptom-chip{display:flex;flex-direction:column;align-items:center;gap:4px;border-radius:14px;padding:10px 4px 8px;cursor:pointer;transition:all 0.14s;-webkit-tap-highlight-color:transparent;font-family:inherit;border:1px solid transparent;}
+.symptom-chip:active{transform:scale(0.93);opacity:0.85;}
+.symptom-chip-emoji{font-size:22px;line-height:1;}
+.symptom-chip-lbl{font-size:9px;font-weight:600;text-align:center;line-height:1.2;}
+.symptom-search-soon{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--bdr);border-radius:14px;padding:11px 14px;opacity:0.6;}
+.symptom-search-soon-icon{font-size:15px;color:var(--muted);}
+.symptom-search-soon-txt{flex:1;font-size:13px;color:var(--muted);font-family:inherit;}
+.symptom-search-soon-badge{font-size:9px;font-weight:700;letter-spacing:0.08em;background:var(--cream2);border:1px solid var(--bdr);border-radius:100px;padding:3px 9px;color:var(--muted);white-space:nowrap;}
+.symptom-ask-link{font-size:11px;color:var(--teal);font-weight:600;cursor:pointer;text-align:right;display:block;padding:4px 0 10px;-webkit-tap-highlight-color:transparent;}
+
+/* ── SYMPTOM SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg);}}
+.symptom-spinner-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:16px;}
+.symptom-spinner{width:40px;height:40px;border:3px solid var(--rose-pale);border-top-color:var(--rose);border-radius:50%;animation:spin 0.8s linear infinite;}
+.symptom-spinner-txt{font-size:13px;color:var(--muted);font-style:italic;text-align:center;line-height:1.6;}
+
+/* ── STORYBOOK BOOK COVER ── */
+.book-open-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;background:rgba(112,200,184,0.12);border-top:1px solid rgba(112,200,184,0.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background 0.15s;}
+.book-open-bar:active{background:rgba(112,200,184,0.22);}
+.book-open-icon{font-size:18px;}
+.book-open-txt{font-family:'Lora',serif;font-size:14px;font-style:italic;color:#70c8b8;}
+.book-open-arr{font-size:12px;color:rgba(112,200,184,0.6);}
+.book-empty-cta{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 16px;gap:10px;}
+.book-empty-icon{font-size:52px;opacity:0.4;}
+.book-empty-title{font-family:'Lora',serif;font-size:20px;color:#fff;line-height:1.25;text-align:center;}
+.book-empty-title em{font-style:italic;color:#70c8b8;}
+.book-empty-btn{background:rgba(112,200,184,0.15);border:1.5px solid rgba(112,200,184,0.4);border-radius:100px;padding:11px 22px;color:#70c8b8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:all 0.15s;margin-top:4px;}
+.book-empty-btn:active{background:rgba(112,200,184,0.28);}
 
 /* SYMPTOM PANEL */
 .symptom-result{background:#fff;border:1px solid var(--bdr);border-radius:16px;padding:16px;margin-bottom:10px;}
@@ -597,6 +625,31 @@ body{background:var(--cream);}
 .friends-title{font-family:'Lora',serif;font-size:18px;color:#fff;line-height:1.2;margin-bottom:6px;}
 .friends-title em{font-style:italic;color:#b0a0f0;}
 .friends-sub{font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;margin-bottom:12px;}
+/* ── SYMPTOM DETAIL PANEL ── */
+.sdp-header{background:var(--cream2);border-bottom:1px solid var(--bdr);padding:14px 16px;}
+.sdp-topic{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.sdp-topic-emoji{font-size:28px;}
+.sdp-topic-label{font-size:18px;font-weight:700;color:var(--ink);}
+.sdp-status{font-size:11px;font-weight:600;color:var(--forest);background:var(--forest-pale);border:1px solid var(--forest-bdr);border-radius:100px;padding:3px 10px;display:inline-block;}
+.sdp-card{background:#fff;border:1px solid var(--bdr);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
+.sdp-card-lbl{font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:6px;}
+.sdp-card-txt{font-size:13px;color:var(--ink);line-height:1.7;}
+.sdp-call-card{background:var(--rose-pale);border:1px solid var(--rose-bdr);border-radius:14px;padding:14px 16px;margin-bottom:16px;}
+.sdp-divider{display:flex;align-items:center;gap:10px;margin:16px 0 12px;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);}
+.sdp-divider::before,.sdp-divider::after{content:"";flex:1;height:1px;background:var(--bdr);}
+.sdp-suggestions{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+.sdp-suggestion{background:var(--cream2);border:1px solid var(--bdr);border-radius:100px;padding:9px 14px;font-size:12px;font-weight:500;color:var(--ink);cursor:pointer;text-align:left;font-family:inherit;transition:all 0.14s;-webkit-tap-highlight-color:transparent;}
+.sdp-suggestion:active{background:var(--rose-pale);border-color:var(--rose-bdr);}
+.sdp-chat{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.sdp-msg-q{align-self:flex-end;background:var(--rose);color:#fff;border-radius:18px 18px 4px 18px;padding:10px 14px;font-size:13px;line-height:1.5;max-width:85%;}
+.sdp-msg-a{align-self:flex-start;background:#fff;border:1px solid var(--bdr);border-radius:18px 18px 18px 4px;padding:10px 14px;font-size:13px;color:var(--ink);line-height:1.6;max-width:92%;}
+.sdp-msg-scope{align-self:flex-start;background:var(--amber-pale);border:1px solid var(--amber-bdr);border-radius:14px;padding:10px 14px;font-size:12px;color:var(--amber);line-height:1.5;max-width:92%;font-style:italic;}
+.sdp-input-row{display:flex;gap:8px;align-items:flex-end;padding-top:8px;border-top:1px solid var(--bdr);}
+.sdp-input{flex:1;border:1px solid var(--bdr);border-radius:14px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--ink);background:#fff;outline:none;resize:none;line-height:1.5;}
+.sdp-input:focus{border-color:var(--rose-bdr);}
+.sdp-send{background:var(--rose);border:none;border-radius:12px;padding:10px 14px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+.sdp-send:disabled{opacity:0.4;cursor:default;}
+
 .friends-coming{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:5px 14px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.08em;}
 
 /* ── RICH TIMELINE CARDS ── */
@@ -843,7 +896,7 @@ function loadJournalEntries() {
       }
     }
   } catch { /* fall through */ }
-  return JOURNAL_ENTRIES;
+  return [];
 }
 
 function saveJournalEntry(entry) {
@@ -915,37 +968,70 @@ const BABY_SIZES = {
 function buildAlbumPages(entries) {
   const pages = [];
   pages.push({ type:"cover", id:"cover" });
-  pages.push({ type:"chapter", id:"ch1", num:1, title:"The Wait",
-    subtitle:"A pregnancy story",
-    bgColor:"#6a2418", bgAccent:"#9a4030",
-    desc:"The weeks before you arrived. The nausea, the scans, the hope, the fear. The ordinary days that were anything but.",
-    count:entries.length });
-  const byWeek = entries.reduce((a,e)=>{ if(!a[e.week])a[e.week]=[]; a[e.week].push(e); return a; },{});
-  let pg = 3;
+  const albumEntries = entries.filter(e =>
+    e.type !== "moment" &&
+    (e.text?.trim() || (e.photos && e.photos.length > 0))
+  );
+  const byWeek = albumEntries.reduce((a,e)=>{ if(!a[e.week])a[e.week]=[]; a[e.week].push(e); return a; },{});
+  let pg = 2;
   Object.entries(byWeek).sort(([a],[b])=>Number(a)-Number(b)).forEach(([week,wentries])=>{
-    const baby = BABY_SIZES[week] || {compare:"growing",cm:"",fact:"Growing beautifully.",icon:"🤰"};
-    pages.push({ type:"week-header", id:`wh-${week}`, week:Number(week), baby, mood:wentries[0]?.mood, date:wentries[0]?.date, pg:pg++ });
     wentries.forEach(entry => pages.push({ type:"entry", id:`e-${entry.id}`, entry, week:Number(week), pg:pg++ }));
   });
-  pages.push({ type:"closing", id:"closing", count:entries.length, weeks:Object.keys(byWeek).length });
+  pages.push({ type:"closing", id:"closing", count:albumEntries.length, weeks:Object.keys(byWeek).length });
   return pages;
 }
 
 /* ─── ALBUM PAGE COMPONENTS ───────────────────────────────────────────── */
+const COVER_PHOTO_KEY = "matri-cover-photo";
+
 function PgCover() {
+  const [coverPhoto, setCoverPhoto] = useState(() => {
+    try { return localStorage.getItem(COVER_PHOTO_KEY) || null; } catch { return null; }
+  });
+  const fileRef = useRef(null);
+
+  const handlePhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    compressImageFile(file, 1200, 0.82).then(url => {
+      try { localStorage.setItem(COVER_PHOTO_KEY, url); } catch {}
+      setCoverPhoto(url);
+    });
+  };
+
   return (
     <div className="page pg-cover">
       <div className="pg-cover-dots"/>
-      <div style={{position:"absolute",width:280,height:280,borderRadius:"50%",filter:"blur(80px)",background:"rgba(255,120,80,0.18)",top:-90,right:-70,pointerEvents:"none"}}/>
-      <div className="pg-cover-photo">
-        <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,rgba(160,50,20,0.35),rgba(50,12,4,0.6))"}}/>
-        <div className="pg-cover-photo-emoji">🌸</div>
+      <div className="pg-cover-photo"
+        style={{background:"linear-gradient(160deg,#faeae0,#f5d5c8 50%,#eeddd8 100%)",cursor:"pointer"}}
+        onClick={()=>fileRef.current?.click()}>
+        {coverPhoto ? (
+          <img src={coverPhoto} alt="Cover" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
+        ) : (
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:10,position:"relative",zIndex:1}}>
+            <div className="pg-cover-photo-emoji">🤰</div>
+            <div style={{fontSize:11,fontWeight:600,color:"var(--rose)",letterSpacing:"0.1em",
+              textTransform:"uppercase",background:"rgba(255,255,255,0.7)",
+              borderRadius:100,padding:"5px 14px",backdropFilter:"blur(4px)"}}>
+              + Add cover photo
+            </div>
+          </div>
+        )}
         <div className="pg-cover-photo-fade"/>
+        {/* Edit hint when photo set */}
+        {coverPhoto && (
+          <div style={{position:"absolute",bottom:16,right:16,zIndex:2,
+            background:"rgba(255,255,255,0.85)",borderRadius:100,padding:"4px 12px",
+            fontSize:10,fontWeight:600,color:"var(--rose)",backdropFilter:"blur(4px)"}}>
+            ✎ Change
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={handlePhoto}/>
       </div>
       <div className="pg-cover-body">
-        <div className="pg-cover-series">A Matri Story · Chapter One</div>
-        <div className="pg-cover-title">The Wait</div>
-        <div className="pg-cover-name">Priya's Pregnancy</div>
+        <div className="pg-cover-series">A Matri Story · Your pregnancy</div>
+        <div className="pg-cover-title">The Wait.</div>
+        <div className="pg-cover-name">Priya's pregnancy</div>
         <div className="pg-cover-chips">
           <span className="pg-cover-chip">📅 March 2025</span>
           <span className="pg-cover-chip">🏥 Due Nov 2025</span>
@@ -1015,7 +1101,7 @@ function PgEntry({ data }) {
   return (
     <div className="page pg-entry">
       {/* ── LARGE HERO PHOTO ── */}
-      <div className="pg-entry-hero" style={{background:entry.heroBg}}>
+      <div className="pg-entry-hero" style={{background:entry.heroBg, height: entry.text?.trim() ? 300 : "70%", minHeight:280}}>
         <div className="pg-entry-hero-inner">
           {heroPhoto ? (
             <img src={heroPhoto} alt="" className="pg-entry-hero-img"/>
@@ -1040,10 +1126,12 @@ function PgEntry({ data }) {
         </div>
       )}
 
-      {/* ── MINIMAL TEXT ── */}
+      {/* ── TEXT — only if written ── */}
       <div className="pg-entry-content">
         <div className="pg-entry-date">{entry.date}</div>
-        <div className="pg-entry-text">{entry.text}</div>
+        {entry.text?.trim() && (
+          <div className="pg-entry-text">{entry.text}</div>
+        )}
         <div className="pg-entry-footer">
           <div className="pg-entry-footer-wk">Pregnancy · Week {week}</div>
           <div className="pg-entry-footer-pg">{pg}</div>
@@ -1077,11 +1165,16 @@ function AlbumView({ entries, onClose }) {
   const [pg, setPg]       = useState(0);
   const [k,  setK]        = useState(0);
   const [print, setPrint] = useState(false);
+  const touchRef          = useRef(null);
   const pages = buildAlbumPages(entries);
   const total = pages.length;
   const page  = pages[pg];
 
-  const go = n => { if(n>=0&&n<total){setK(x=>x+1);setPg(n);} };
+  const go = (n) => {
+    if (n < 0 || n >= total) return;
+    setK(x => x + 1);
+    setPg(n);
+  };
 
   useEffect(()=>{
     const h=e=>{if(e.key==="ArrowRight")go(pg+1);if(e.key==="ArrowLeft")go(pg-1);};
@@ -1089,11 +1182,26 @@ function AlbumView({ entries, onClose }) {
     return()=>window.removeEventListener("keydown",h);
   },[pg]);
 
+  // Swipe detection
+  const onTouchStart = (e) => {
+    touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  };
+  const onTouchEnd = (e) => {
+    if (!touchRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchRef.current.x;
+    const dy = e.changedTouches[0].clientY - touchRef.current.y;
+    const dt = Date.now() - touchRef.current.t;
+    // Must be mostly horizontal, fast enough, and long enough
+    if (Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 40 && dt < 500) {
+      if (dx < 0) go(pg + 1, 1);   // swipe left → next page
+      else         go(pg - 1, -1);  // swipe right → prev page
+    }
+    touchRef.current = null;
+  };
+
   const pgLabel = () => {
     switch(page.type){
       case "cover":       return "Cover";
-      case "chapter":     return `Chapter ${page.num}`;
-      case "week-header": return `Week ${page.week}`;
       case "entry":       return `Week ${page.week} · Entry`;
       case "closing":     return "The end, for now";
       default: return "";
@@ -1103,8 +1211,6 @@ function AlbumView({ entries, onClose }) {
   const renderPage = () => {
     switch(page.type){
       case "cover":       return <PgCover key={k}/>;
-      case "chapter":     return <PgChapter key={k} data={page}/>;
-      case "week-header": return <PgWeekHeader key={k} data={page}/>;
       case "entry":       return <PgEntry key={k} data={page}/>;
       case "closing":     return <PgClosing key={k} data={page}/>;
       default: return null;
@@ -1128,9 +1234,15 @@ function AlbumView({ entries, onClose }) {
       {/* PAGE LABEL */}
       <div className="album-pg-label">{pgLabel()} · {pg+1}/{total}</div>
 
-      {/* BOOK — tap left/right half to navigate */}
-      <div className="book" onClick={e=>{if(e.clientX > window.innerWidth/2) go(pg+1); else go(pg-1);}}>
-        {renderPage()}
+      {/* BOOK — swipe or tap halves */}
+      <div className="book"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onClick={e=>{ if(!touchRef.current) { if(e.clientX > window.innerWidth/2) go(pg+1); else go(pg-1); } }}
+        style={{overflow:"hidden"}}>
+        <div key={k} style={{width:"100%", height:"100%", display:"flex", flexDirection:"column"}}>
+          {renderPage()}
+        </div>
       </div>
 
       {/* NAV */}
@@ -1145,7 +1257,7 @@ function AlbumView({ entries, onClose }) {
           </div>
           <div className="anav-total">{pg+1} / {total}</div>
         </div>
-        <button className={`anav-btn${pg<total-1?" next":""}`} onClick={()=>go(pg+1)} disabled={pg===total-1}>→</button>
+        <button className={"anav-btn"+(pg<total-1?" next":"")} onClick={()=>go(pg+1)} disabled={pg===total-1}>→</button>
       </div>
 
       {/* PRINT MODAL */}
@@ -1636,6 +1748,12 @@ function StoriesPanel() {
   const allStories = [...userStories, ...STORIES];
 
   const openDetail = (story) => {
+    analytics.storyOpened(
+      story.id,
+      story.title,
+      story.tags
+    );
+  
     setSelected(story);
     setScreen("detail");
   };
@@ -1962,6 +2080,8 @@ function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [savedCrops, setSavedCrops] = useState({ square: null, album: null });
+  const [showAlbumPrompt, setShowAlbumPrompt] = useState(false);
+  const [pendingSquare, setPendingSquare] = useState(null);
   const minScaleRef = useRef(1);
   const layoutRef = useRef({ square: null, album: null });
   const imgRef = useRef(null);
@@ -2062,11 +2182,32 @@ function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
 
   const confirm = () => {
     persistAspect(aspect);
-    const square = aspect === "square" ? exportCrop("square", scale, pos, cropBox) : savedCrops.square;
-    const album  = aspect === "album"  ? exportCrop("album",  scale, pos, cropBox) : savedCrops.album;
-    const finalSquare = square || savedCrops.square;
-    if (!finalSquare) return;
-    onConfirm({ square: finalSquare, album: album || savedCrops.album || null });
+    if (aspect === "square" && !savedCrops.album) {
+      // Square done — ask about album
+      const squareUrl = exportCrop("square", scale, pos, cropBox);
+      if (!squareUrl) return;
+      setPendingSquare(squareUrl);
+      setShowAlbumPrompt(true);
+    } else {
+      // Album done or skipped — finalize
+      const square = aspect === "square" ? exportCrop("square", scale, pos, cropBox) : savedCrops.square;
+      const album  = aspect === "album"  ? exportCrop("album",  scale, pos, cropBox) : savedCrops.album;
+      const finalSquare = square || savedCrops.square;
+      if (!finalSquare) return;
+      onConfirm({ square: finalSquare, album: album || savedCrops.album || null });
+    }
+  };
+
+  const skipAlbum = () => {
+    // User said No to album — finalize with square only
+    onConfirm({ square: pendingSquare, album: null });
+  };
+
+  const goToAlbum = () => {
+    // User said Yes to album — switch to album crop
+    setSavedCrops(s => ({ ...s, square: pendingSquare }));
+    setShowAlbumPrompt(false);
+    switchAspect("album");
   };
 
   // Ready as soon as square is cropped — album is optional
@@ -2086,6 +2227,36 @@ function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
       <div className="j-crop-sub">
         Memory crop is required. Album crop is optional.{remaining > 0 ? ` (${remaining} more after this)` : ""}
       </div>
+
+      {/* Album prompt — shown after square crop done */}
+      {showAlbumPrompt && (
+        <div style={{position:"absolute",inset:0,background:"rgba(253,246,240,0.97)",
+          zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",
+          justifyContent:"center",padding:28,gap:16,borderRadius:"inherit"}}>
+          <div style={{fontSize:32}}>📖</div>
+          <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--ink)",
+            textAlign:"center",lineHeight:1.4,fontWeight:400}}>
+            Add to your<br/><em style={{color:"var(--teal)"}}>pregnancy album</em> too?
+          </div>
+          <div style={{fontSize:13,color:"var(--muted)",textAlign:"center",lineHeight:1.6}}>
+            Album photos are wider format — great for the book view.
+          </div>
+          <div style={{display:"flex",gap:10,width:"100%",marginTop:8}}>
+            <button onClick={skipAlbum} style={{flex:1,background:"var(--cream2)",
+              border:"1px solid var(--bdr)",borderRadius:14,padding:"13px",
+              fontSize:13,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit"}}>
+              No, continue
+            </button>
+            <button onClick={goToAlbum} style={{flex:1,background:"var(--teal)",
+              border:"none",borderRadius:14,padding:"13px",
+              fontSize:13,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+              Yes, crop album
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{flex:1,overflowY:"auto",padding:"0 18px",display:"flex",flexDirection:"column",scrollbarWidth:"none"}}>
       <div className="j-crop-aspects">
         {Object.values(CROP_ASPECTS).map((a) => (
           <button
@@ -2127,10 +2298,11 @@ function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
         disabled={!imgSize.w}
         onChange={(e) => setScaleClamped(Number(e.target.value))}
       />
-      <div className="j-crop-actions">
+      </div>
+            <div className="j-crop-actions">
         <button type="button" className="j-crop-cancel" onClick={onCancel}>Cancel</button>
         <button type="button" className="j-crop-save" onClick={confirm} disabled={!readyBoth} style={{ opacity: readyBoth ? 1 : 0.45 }}>
-          Use photo
+          {aspect === "album" ? "Save & done" : "Use photo"}
         </button>
       </div>
     </div>
@@ -2138,10 +2310,11 @@ function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
 }
 
 function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
-  const [tab,  setTab]    = useState(initialTab || "write");
-  const [text, setText]   = useState("");
-  const [mood, setMood]   = useState(null);
-  const [isShared, setIsShared] = useState(false);
+  const [tab,       setTab]       = useState(initialTab || "write");
+  const [text,      setText]      = useState("");
+  const [mood,      setMood]      = useState(null);
+  const [isShared,  setIsShared]  = useState(false);
+  const [freeform,  setFreeform]  = useState(false);
   const [pendingPhotos, setPendingPhotos] = useState([]);
   const [albumOpen, setAlbumOpen] = useState(false);
   const [albumVis,  setAlbumVis]  = useState(false);
@@ -2207,7 +2380,7 @@ function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
   };
 
   const save = () => {
-    if (!text.trim()) return;
+    if (!text.trim() && pendingPhotos.length === 0) return;
     const photos = [...pendingPhotos];
     setEntries(p => [{id:Date.now(),week:8,date:today,mood:mood||"😊",text:text.trim(),photos,isShared,heroBg:"linear-gradient(135deg,#e8f5f5,#d0ecec)",heroEmoji:"📝",heroBgColor:"#e0f5f5"},...p]);
     setText(""); setMood(null); setPendingPhotos([]); setIsShared(false); setTab("timeline");
@@ -2271,11 +2444,44 @@ function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
               <div className="j-prompt-week">Week 8</div>
               <div className="j-prompt-date">{today}</div>
             </div>
-            <div style={{fontSize:12,color:"var(--muted)",marginBottom:10,fontStyle:"italic"}}>
-              Today's prompt: <strong style={{color:"var(--teal)",fontStyle:"normal"}}>How are you feeling right now, honestly?</strong>
-            </div>
-            <textarea className="j-textarea" rows={4} value={text} onChange={e=>setText(e.target.value)}
-              placeholder="Write anything... a fear, a hope, what the nausea feels like today, what you want to remember..."/>
+
+            {/* GUIDED PROMPT — primary */}
+            {!freeform && (
+              <div style={{marginBottom:14}}>
+                <div style={{background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",
+                  borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",
+                    textTransform:"uppercase",color:"var(--teal)",marginBottom:6}}>This week's prompt</div>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:15,fontStyle:"italic",
+                    color:"var(--ink)",lineHeight:1.65}}>
+                    {getWeekPrompt(8)}
+                  </div>
+                </div>
+                <textarea className="j-textarea" rows={5} value={text}
+                  onChange={e=>setText(e.target.value)}
+                  placeholder="Write whatever comes to mind…"/>
+                <button onClick={()=>setFreeform(true)}
+                  style={{background:"none",border:"none",fontSize:11,color:"var(--muted)",
+                    cursor:"pointer",fontFamily:"inherit",padding:"6px 0",fontStyle:"italic"}}>
+                  Write freely instead →
+                </button>
+              </div>
+            )}
+
+            {/* FREEFORM — secondary */}
+            {freeform && (
+              <div style={{marginBottom:14}}>
+                <textarea className="j-textarea" rows={5} value={text}
+                  onChange={e=>setText(e.target.value)}
+                  placeholder="Write anything… a fear, a hope, what the nausea feels like today, what you want to remember…"/>
+                <button onClick={()=>setFreeform(false)}
+                  style={{background:"none",border:"none",fontSize:11,color:"var(--teal)",
+                    cursor:"pointer",fontFamily:"inherit",padding:"6px 0",fontStyle:"italic"}}>
+                  ← Use this week's prompt
+                </button>
+              </div>
+            )}
+
             <div className="j-photo-row">
               <div className="j-photo-add" onClick={()=>fileGalleryRef.current?.click()}>
                 <div className="j-photo-add-icon">📷</div><div className="j-photo-add-lbl">Photo</div>
@@ -2295,18 +2501,17 @@ function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
               <input ref={fileSelfieRef} type="file" accept="image/*" capture="user" style={{display:"none"}} onChange={handlePhotoInput}/>
               <input ref={fileScanRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={handlePhotoInput}/>
             </div>
-            <div className="j-save-row">
-              <div>
+            <div className="j-save-row" style={{flexWrap:"wrap",gap:8}}>
+              <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:10,color:"var(--muted)",marginBottom:5,textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:600}}>Mood</div>
                 <div className="j-mood-row">{MOODS.map(m=><span key={m} className={`j-mood${mood===m?" on":""}`} onClick={()=>setMood(m)}>{m}</span>)}</div>
               </div>
-              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:7}}>
-                {/* PRIVACY TOGGLE */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
                 <div className="privacy-toggle">
                   <button className={`privacy-btn${!isShared?" on":""}`} onClick={()=>setIsShared(false)}>🔒<span className="pb-label"> Only me</span></button>
                   <button className={`privacy-btn${isShared?" on":""}`} onClick={()=>setIsShared(true)}>👭<span className="pb-label"> Friends</span></button>
                 </div>
-                <button className="j-save-btn" onClick={save} disabled={!text.trim()} style={{opacity:text.trim()?1:0.4}}>Save ✓</button>
+                <button className="j-save-btn" onClick={save} disabled={!text.trim() && pendingPhotos.length === 0} style={{opacity:(!text.trim() && pendingPhotos.length === 0)?0.4:1}}>Save ✓</button>
               </div>
             </div>
           </div>
@@ -2446,6 +2651,354 @@ function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
   );
 }
 
+
+/* ─── COMMON SYMPTOMS (pre-structured, no AI needed) ─────────────────────── */
+const COMMON_SYMPTOMS = {
+  "cramping": {
+    label: "Cramping", emoji: "😖",
+    status: "Usually normal ✅",
+    means: "Round ligament pain or uterine stretching is very common in week 8. Your uterus is growing rapidly.",
+    tryThis: "Rest, change position, warm (not hot) water bottle on lower back. Gentle walking can help.",
+    callIf: "Heavy bleeding, severe pain that doesn't ease, fever above 100.4°F, or pain on one side only.",
+    questions: ["Is cramping normal this early?","What's the difference between round ligament pain and something serious?","Does cramping mean I should rest completely?"],
+    context: "Cramping in early pregnancy. Key facts: round ligament pain is most common cause in T1, uterus growing rapidly, implantation cramping also possible. Progesterone causes uterine relaxation which can feel like cramps.",
+  },
+  "nausea": {
+    label: "Nausea", emoji: "🤢",
+    status: "Very common ✅",
+    means: "Week 8 is peak nausea for most women. HCG hormone levels are at their highest right now.",
+    tryThis: "Eat small amounts every 90 minutes. Keep crackers by the bed. Ginger biscuits, coconut water, cold foods smell less.",
+    callIf: "Unable to keep any fluids down for 24 hours, signs of dehydration (dark urine, dizziness), weight loss.",
+    questions: ["When will the nausea peak and stop?","What can I eat right now that won't make me sick?","Is my nausea worse than normal?"],
+    context: "Morning sickness / nausea in week 8 pregnancy. Key facts: HCG peaks at weeks 8-10, affects 70-80% of women, usually resolves by week 12-14. Hyperemesis gravidarum (severe) affects 1-2%. Indian context: ginger, coconut water, poha, cold foods, small frequent meals help. Vitamin B6 can reduce nausea.",
+  },
+  "spotting": {
+    label: "Spotting", emoji: "🩸",
+    status: "Often normal, monitor carefully ⚠️",
+    means: "Light spotting (pink or brown) can occur from implantation, cervical sensitivity, or subchorionic bleeding.",
+    tryThis: "Rest, avoid intercourse until you've spoken to your doctor. Note the colour and amount.",
+    callIf: "Bright red bleeding, clots, heavy flow like a period, cramping with bleeding — call doctor today.",
+    questions: ["How do I know if this is serious?","What colour spotting is okay vs worrying?","Should I go to the doctor today?"],
+    context: "Spotting / light bleeding in week 8 pregnancy. Key facts: implantation bleeding usually week 6-7, subchorionic hematoma common, cervical ectropion makes cervix more sensitive. Brown/pink = old blood, usually less urgent. Bright red + cramping = see doctor same day.",
+  },
+  "headache": {
+    label: "Headache", emoji: "🤕",
+    status: "Common in T1 ✅",
+    means: "Blood volume increases 50% during pregnancy. Hormonal shifts and dehydration both cause headaches.",
+    tryThis: "Drink 2–3 glasses of water immediately. Rest in a dark room. Paracetamol (not ibuprofen) is safe if needed.",
+    callIf: "Severe headache with vision changes, swelling in face/hands, or headache after week 20 — could be preeclampsia.",
+    questions: ["Is paracetamol safe to take?","Why are my headaches worse now than before pregnancy?","How much water should I be drinking?"],
+    context: "Headaches in week 8 pregnancy. Key facts: blood volume expanding causes vessel dilation, oestrogen fluctuation triggers migraines, dehydration major cause. Paracetamol (acetaminophen) safe. Ibuprofen/aspirin should be avoided. Caffeine withdrawal common trigger in T1.",
+  },
+  "no movement": {
+    label: "No movement felt", emoji: "👶",
+    status: "Normal before week 18 ✅",
+    means: "You won't reliably feel movement until week 18–22. At week 8 baby is only 1.6cm — too small to feel.",
+    tryThis: "Nothing to do right now. Start kick counting from week 28 when movements become regular.",
+    callIf: "If you've been feeling movement and it suddenly stops after week 24, call your doctor the same day.",
+    questions: ["When will I first feel movement?","What does movement feel like at first?","Should I be worried I don't feel anything?"],
+    context: "Fetal movement in week 8 pregnancy. Key facts: at week 8 baby is 1.6cm and movements not perceptible. First-time mothers feel movement (quickening) at 18-22 weeks, experienced mothers at 16-18 weeks. Sensation described as butterflies, bubbles, or flutters initially.",
+  },
+  "acidity": {
+    label: "Acidity", emoji: "🔥",
+    status: "Very common ✅",
+    means: "Progesterone relaxes the valve between stomach and oesophagus. Stomach acid refluxes more easily.",
+    tryThis: "Eat small meals. Don't lie down for 30 mins after eating. Cold milk, coconut water, banana can help.",
+    callIf: "Severe chest pain, difficulty swallowing, or if it's affecting your ability to eat at all.",
+    questions: ["Why is my acidity so much worse now?","What Indian foods make acidity better or worse?","Is it safe to take antacids?"],
+    context: "Acidity / heartburn / GERD in week 8 pregnancy. Key facts: progesterone relaxes lower oesophageal sphincter, uterus will press on stomach later. Indian context: spicy food, chai, coffee worsen symptoms. Coconut water, cold milk, banana, jeera water help. Antacids with calcium/magnesium generally safe — check with doctor.",
+  },
+  "constipation": {
+    label: "Constipation", emoji: "😣",
+    status: "Very common ✅",
+    means: "Progesterone slows digestion. Iron supplements (if you've started) also cause constipation.",
+    tryThis: "Increase water intake significantly. Prunes, papaya (ripe only), fibre-rich foods. Gentle walking helps.",
+    callIf: "No bowel movement for more than 5 days, severe pain, or blood in stool.",
+    questions: ["My iron tablets are making it worse — what can I do?","Which Indian foods help constipation?","Is it safe to use a laxative?"],
+    context: "Constipation in week 8 pregnancy. Key facts: progesterone slows gut motility, iron supplements worsen it, growing uterus adds pressure later. Indian context: isabgol (psyllium husk), warm water with lemon, prunes, ripe papaya, moong dal, green vegetables help. Stimulant laxatives not recommended — osmotic laxatives like lactulose generally considered safer.",
+  },
+  "swelling": {
+    label: "Swelling", emoji: "🦶",
+    status: "Mild swelling is normal ✅",
+    means: "Some swelling, especially in feet and ankles, is normal from increased blood volume.",
+    tryThis: "Elevate feet when resting. Stay hydrated. Avoid standing for long periods.",
+    callIf: "Sudden or severe swelling, swelling in face or hands, or swelling with headache — signs of preeclampsia.",
+    questions: ["Why does drinking more water actually help swelling?","When is swelling a sign of something serious?","What can I do at work when I can't elevate my feet?"],
+    context: "Oedema / swelling in pregnancy week 8. Key facts: blood volume increases 40-50%, body retains more sodium and fluid. Ankle/foot swelling common especially in T3. Facial/hand swelling with headache = preeclampsia warning sign. More water reduces retention counterintuitively. Compression socks help.",
+  },
+  "discharge": {
+    label: "Discharge", emoji: "💧",
+    status: "Usually normal ✅",
+    means: "Increased clear or white discharge (leucorrhoea) is normal and protective during pregnancy.",
+    tryThis: "Wear breathable cotton underwear. Don't douche or use scented products.",
+    callIf: "Yellow, green, grey, or foul-smelling discharge, or discharge with itching/burning — signs of infection.",
+    questions: ["How do I know if the discharge is normal?","Is it safe to use panty liners throughout pregnancy?","What does abnormal discharge look like?"],
+    context: "Vaginal discharge in week 8 pregnancy. Key facts: leucorrhoea (white/clear discharge) increases due to oestrogen and increased blood flow. Normal = white/clear, mild smell, no itching. Bacterial vaginosis and yeast infections more common in pregnancy. BV linked to preterm birth if untreated — needs antibiotics.",
+  },
+  "sleep": {
+    label: "Sleep", emoji: "🌙",
+    status: "Very common ✅",
+    means: "Progesterone causes fatigue but paradoxically disrupts deep sleep. Anxiety and frequent urination don't help.",
+    tryThis: "Sleep on your left side. Pillow between knees. Avoid screens 30 mins before bed.",
+    callIf: "Severe insomnia affecting daily functioning — speak to your doctor about safe options.",
+    questions: ["Why am I exhausted but can't sleep?","Is sleeping on my back harmful this early?","What position is best for pregnancy sleep?"],
+    context: "Sleep disturbance in week 8 pregnancy. Key facts: progesterone is sedating but reduces REM sleep quality. Frequent urination (nocturia) starts early. Left side sleeping improves blood flow to placenta and kidneys — becomes important in T2/T3. Back sleeping fine in T1. Pregnancy pillow helps alignment. Vivid dreams common due to hormones.",
+  },
+  "mood swings": {
+    label: "Mood swings", emoji: "🎭",
+    status: "Very common ✅",
+    means: "HCG and progesterone surge causes rapid emotional shifts. Week 8 is one of the most emotionally volatile periods of pregnancy.",
+    tryThis: "Name what you're feeling without judging it. Short walks help regulate mood. Tell your partner it's hormonal, not personal.",
+    callIf: "Persistent low mood lasting more than two weeks, inability to function, or thoughts of self-harm — speak to your doctor.",
+    questions: ["Is it normal to cry for no reason?","How do I explain mood swings to my partner?","When do mood swings usually settle down?"],
+    context: "Mood swings in week 8 pregnancy. Key facts: oestrogen and progesterone directly affect serotonin and dopamine. HCG peaks at weeks 8-10, heightening emotional sensitivity. Anxiety about the pregnancy, exhaustion, and nausea compound emotional instability. Usually improves significantly in T2 when hormones stabilise. Prenatal depression affects 10-15% of women — persistent low mood is not just 'hormones' and needs medical attention.",
+  },
+};
+
+/* ─── WEEKLY PROMPTS (guided journal) ────────────────────────────────────── */
+const WEEKLY_PROMPTS = {
+  6:  "You just found out. Before the world knows — what are you feeling, right now, in this moment?",
+  7:  "What's the first thing you'll tell your baby about this week?",
+  8:  "Week 8 is one of the hardest weeks to keep a secret. What's the biggest thing you're carrying alone?",
+  9:  "The nausea is real. So is the love. What's keeping you going today?",
+  10: "You're through the hardest part of the first trimester. What do you want to remember about these weeks?",
+  11: "Your baby can now make facial expressions. What face do you imagine?",
+  12: "Almost at the end of T1. What has surprised you most about yourself these past 12 weeks?",
+  16: "You might start to feel movement soon. What will you do the first moment you feel it?",
+  20: "Halfway. What are you secretly most excited about?",
+  24: "Your baby can recognise your voice now. What song or phrase do you say most that they might already know?",
+  28: "Third trimester begins. What feels different now compared to week 8?",
+  32: "You're getting closer. What's the one thing you want your baby to know about the person carrying them?",
+  36: "Almost there. Write a letter to the version of you from week 6 who had just found out.",
+  40: "Today could be the day. What do you want to remember about being pregnant?",
+};
+
+const getWeekPrompt = (week) =>
+  WEEKLY_PROMPTS[week] || `Week ${week}. What's on your mind today?`;
+
+/* ─── MATRI MOMENTS (one per week) ──────────────────────────────────────── */
+const MATRI_MOMENTS = {
+  6:  { question: "A tiny heart started beating this week. Before you knew, before any scan — it was already there. What does that feel like to sit with?", pause: "Take 10 seconds with that." },
+  7:  { question: "Your baby's brain is forming 100 new neurons every minute right now. What do you hope fills that mind someday?", pause: "Let yourself imagine it." },
+  8:  { question: "Your baby's heart has been beating for two weeks without stopping. Through your nausea, your exhaustion, your fears — it just keeps going. What do you want them to know, right now?", pause: "Take a breath. Write anything." },
+  9:  { question: "All the essential organs have begun forming. Your body is doing something extraordinary without you having to think about it. When did you last trust yourself this completely?", pause: "Sit with that for a moment." },
+  10: { question: "Your baby can now move — tiny movements you can't feel yet. They're in there, responding to their world. What would you say to them if they could hear you?", pause: "They can't yet. But soon." },
+  20: { question: "You're halfway. The person you were before pregnancy and the mother you're becoming — what's the biggest difference you notice?", pause: "Be honest with yourself." },
+  28: { question: "Your baby can recognise sounds they've heard repeatedly. What song, what phrase, what sound do you want them to carry with them into the world?", pause: "Hum it, if you want." },
+  36: { question: "Almost time. If you could whisper one thing to your baby before they arrive — just one thing — what would it be?", pause: "Write it down. They'll read it someday." },
+};
+
+const getMatriMoment = (week) =>
+  MATRI_MOMENTS[week] || MATRI_MOMENTS[8];
+
+const MOMENT_STORAGE_KEY = "matri-moments";
+
+function loadMoments() {
+  try { return JSON.parse(localStorage.getItem(MOMENT_STORAGE_KEY) || "{}"); } catch { return {}; }
+}
+function saveMoment(week, text) {
+  try {
+    const all = loadMoments();
+    all[week] = { text, date: new Date().toLocaleDateString("en-IN", { timeZone:"Asia/Kolkata", day:"numeric", month:"short", year:"numeric" }) };
+    localStorage.setItem(MOMENT_STORAGE_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+/* ─── SYMPTOM DETAIL PANEL ──────────────────────────────────────────────── */
+function SymptomDetailPanel({ symptomKey, week = 8 }) {
+  const s = COMMON_SYMPTOMS[symptomKey];
+  const [messages, setMessages] = useState([]); // {role:"user"|"assistant"|"scope", text}
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [askedQs, setAskedQs] = useState(new Set());
+  const chatRef = useRef(null);
+
+  const OUT_OF_SCOPE = `I'm focused on ${s?.label?.toLowerCase() || "this symptom"} right now. For other concerns, go back and tap the relevant symptom from the home screen.`;
+
+  const buildSystemPrompt = () => `You are Matri, a warm and knowledgeable pregnancy companion for Indian women in Week ${week}, First Trimester.
+
+The user is asking about: ${s?.label} during pregnancy.
+
+Grounding facts you must use:
+${s?.context || ""}
+
+Your rules:
+1. ONLY answer questions directly related to ${s?.label} during pregnancy. 
+2. If the question is about anything else, respond with exactly: "OUT_OF_SCOPE"
+3. Keep answers to 2-3 sentences maximum. Warm, honest, never alarming.
+4. Never diagnose. For severe symptoms, suggest consulting a doctor.
+5. Use Indian context where relevant (food, medicines, lifestyle).
+6. Do not repeat information already given in previous answers.
+7. Never say you are an AI or mention Claude/Anthropic.`;
+
+  const ask = async (question) => {
+    if (!question.trim() || loading) return;
+    analytics.aiChatStarted(s.label);
+    const userMsg = question.trim();
+    setInput("");
+    setMessages(p => [...p, { role:"user", text: userMsg }]);
+    setLoading(true);
+
+    // Scroll to bottom
+    setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior:"smooth" }), 100);
+
+    try {
+      const history = messages.map(m => ({
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.role === "scope" ? OUT_OF_SCOPE : m.text,
+      }));
+
+      const resp = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 300,
+          system: buildSystemPrompt(),
+          messages: [
+            ...history,
+            { role: "user", content: userMsg },
+          ],
+        }),
+      });
+
+      const data = await resp.json();
+      const text = data.content?.[0]?.text || "";
+
+      if (text.includes("OUT_OF_SCOPE")) {
+        setMessages(p => [...p, { role:"scope", text: OUT_OF_SCOPE }]);
+      } else {
+        setMessages(p => [...p, { role:"assistant", text }]);
+      }
+    } catch {
+      setMessages(p => [...p, { role:"scope", text: "Something didn't go through on our end. Give it a moment and try again — we're here." }]);
+    }
+
+    setLoading(false);
+    setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior:"smooth" }), 100);
+  };
+
+  if (!s) return null;
+
+  const statusColor = s.status.includes("⚠️") ? "var(--amber)" :
+    s.status.includes("✅") ? "var(--forest)" : "var(--muted)";
+  const statusBg = s.status.includes("⚠️") ? "var(--amber-pale)" :
+    s.status.includes("✅") ? "var(--forest-pale)" : "var(--cream2)";
+  const statusBdr = s.status.includes("⚠️") ? "var(--amber-bdr)" :
+    s.status.includes("✅") ? "var(--forest-bdr)" : "var(--bdr)";
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+      {/* Scrollable content */}
+      <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"16px 16px 0",scrollbarWidth:"none"}}>
+
+        {/* Topic header */}
+        <div className="sdp-topic">
+          <span className="sdp-topic-emoji">{s.emoji}</span>
+          <div>
+            <div className="sdp-topic-label">{s.label}</div>
+            <span className="sdp-status" style={{color:statusColor,background:statusBg,border:`1px solid ${statusBdr}`}}>{s.status}</span>
+          </div>
+        </div>
+
+        {/* Structured anchor cards */}
+        <div className="sdp-card">
+          <div className="sdp-card-lbl" style={{color:"var(--teal)"}}>What this usually means</div>
+          <div className="sdp-card-txt">{s.means}</div>
+        </div>
+        <div className="sdp-card">
+          <div className="sdp-card-lbl" style={{color:"var(--forest)"}}>Try this</div>
+          <div className="sdp-card-txt">{s.tryThis}</div>
+        </div>
+        <div className="sdp-call-card">
+          <div className="sdp-card-lbl" style={{color:"var(--rose)"}}>Call your doctor if</div>
+          <div className="sdp-card-txt" style={{color:"var(--rose)"}}>{s.callIf}</div>
+        </div>
+
+        {/* Suggested questions */}
+        {messages.length === 0 && (
+          <>
+            <div className="sdp-divider">Ask more about {s.label.toLowerCase()}</div>
+            <div className="sdp-suggestions">
+              {s.questions.filter((_,i) => !askedQs.has(i)).map((q,i) => {
+                const origIdx = s.questions.indexOf(q);
+                return (
+                  <button key={origIdx} className="sdp-suggestion" onClick={() => {
+                    setAskedQs(prev => new Set([...prev, origIdx]));
+                    ask(q);
+                  }}>
+                    {q} →
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Chat thread */}
+        {messages.length > 0 && (
+          <div className="sdp-chat">
+            {messages.map((m,i) => (
+              <div key={i} className={
+                m.role === "user" ? "sdp-msg-q" :
+                m.role === "scope" ? "sdp-msg-scope" : "sdp-msg-a"
+              }>{m.text}</div>
+            ))}
+            {loading && (
+              <div className="sdp-msg-a" style={{display:"flex",alignItems:"center",gap:10}}>
+                <div className="symptom-spinner" style={{width:18,height:18,borderWidth:2}}/>
+                <span style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Thinking about week {week} specifically…</span>
+              </div>
+            )}
+          </div>
+        )}
+
+          {messages.length > 0 && !loading && (
+            <div style={{marginTop:8,marginBottom:8}}>
+              {s.questions.filter((_,i) => !askedQs.has(i)).length > 0 && (
+                <>
+                  <div style={{fontSize:10,color:"var(--muted)",marginBottom:6,fontStyle:"italic"}}>More questions</div>
+                  {s.questions.filter((_,i) => !askedQs.has(i)).map((q,i) => {
+                    const origIdx = s.questions.indexOf(q);
+                    return (
+                      <button key={origIdx} className="sdp-suggestion" style={{marginBottom:6}} onClick={() => {
+                        setAskedQs(prev => new Set([...prev, origIdx]));
+                        ask(q);
+                      }}>
+                        {q} →
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+            </div>
+          )}
+
+        <div style={{height:16}}/>
+      </div>
+
+      {/* Input row — fixed at bottom */}
+      <div style={{padding:"10px 16px",background:"var(--cream)",borderTop:"1px solid var(--bdr)"}}>
+        <div className="sdp-input-row">
+          <textarea className="sdp-input" rows={1} value={input}
+            placeholder={`Ask anything about ${s.label.toLowerCase()}…`}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input); }}}
+          />
+          <button className="sdp-send" disabled={!input.trim() || loading} onClick={() => ask(input)}>
+            Send
+          </button>
+        </div>
+        <div style={{fontSize:10,color:"var(--muted)",marginTop:6,textAlign:"center",fontStyle:"italic"}}>
+          Focused on {s.label.toLowerCase()} · Week {week}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SymptomPanel({ initialQuery }) {
   const [query, setQuery] = useState(initialQuery || "");
   const [result, setResult] = useState(null);
@@ -2457,17 +3010,15 @@ function SymptomPanel({ initialQuery }) {
   const ask = async (q) => {
     const trimmed = (q || query).trim();
     if (!trimmed) return;
+    analytics.symptomAsked(trimmed);
     setQuery(trimmed);
     setLoading(true);
     setResult(null);
     try {
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/chat", {
         method:"POST",
         headers:{
           "Content-Type":"application/json",
-          "x-api-key": (typeof window !== "undefined" && window.__ANTHROPIC_KEY__) || "",
-          "anthropic-version":"2023-06-01",
-          "anthropic-dangerous-direct-browser-access":"true",
         },
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",
@@ -2488,17 +3039,41 @@ function SymptomPanel({ initialQuery }) {
       const clean = text.replace(/```json|```/g,"").trim();
       setResult(JSON.parse(clean));
     } catch {
-      setResult({symptom:"Something went wrong",likely:"Unable to fetch a response. Please try again.",watch:null,callNow:null,reassurance:"If you're worried, always call your doctor — that's always the right call."});
+      setResult({symptom:"Couldn't connect right now",likely:"We weren't able to reach our servers just now. This sometimes happens with a slow connection.",watch:"Wait a few seconds and tap your question again — it usually works on the second try.",callNow:"If you're worried about something urgent, always call your doctor directly. That's always the right call.",reassurance:"We're sorry for the trouble. Your question was heard — just try once more."});
     }
     setLoading(false);
   };
 
   useEffect(() => { if (initialQuery) ask(initialQuery); }, []);
 
+  const handleChip = (key) => {
+    analytics.quickQuestionClicked(key);
+    const s = COMMON_SYMPTOMS[key];
+    if (!s) return;
+    setQuery(s.label);
+    setResult({ symptom: s.label, likely: s.means, watch: s.tryThis, callNow: s.callIf, reassurance: "You're not alone in feeling this. Trust your instincts — if something feels wrong, always call your doctor.", _structured: true });
+    setLoading(false);
+  };
+
   return <>
-    <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:14,fontStyle:"italic"}}>
-      Describe what you're feeling. Get a clear, honest answer — not a search results page.
+    <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:12,fontStyle:"italic"}}>
+      Tap a common concern or describe what you're feeling.
     </div>
+
+    {/* Common symptom chips */}
+    {!result && (
+      <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:14}}>
+        {Object.entries(COMMON_SYMPTOMS).map(([key, s])=>(
+          <button key={key} onClick={()=>handleChip(key)}
+            style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:100,
+              padding:"6px 13px",fontSize:12,color:"var(--ink)",cursor:"pointer",
+              fontFamily:"inherit",fontWeight:500,transition:"all 0.14s",
+              WebkitTapHighlightColor:"transparent"}}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+    )}
 
     {/* Search input */}
     <div className="symptom-bar-inner" style={{marginBottom:12,borderRadius:14}}>
@@ -2515,7 +3090,15 @@ function SymptomPanel({ initialQuery }) {
       ))}
     </div>
 
-    {loading && <div className="symptom-loading">Thinking about week 8 specifically…</div>}
+    {loading && (
+      <div className="symptom-spinner-wrap">
+        <div className="symptom-spinner"/>
+        <div className="symptom-spinner-txt">
+          Thinking about week 8 specifically…<br/>
+          <span style={{fontSize:11,opacity:0.6}}>Checking what's normal at this stage</span>
+        </div>
+      </div>
+    )}
 
     {result && !loading && (
       <div className="symptom-result">
@@ -2766,10 +3349,12 @@ const PANELS = {
   checklist: { label:"Checklist this week", title:<>Seven things. <em>That's it.</em></>,            headBg:"var(--amber-pale)", lblCol:"var(--amber)",  titleCol:"var(--ink)",  dark:false, Panel:null },
   journal:   { label:"Journal",          title:<>Your pregnancy <em>story</em></>,                headBg:"#0a2020",           lblCol:"#70c8b8",       titleCol:"#fff",        dark:true,  Panel:JournalPanel, noScroll:true },
   stories:   { label:"Stories",          title:<>Women who've been <em>right here</em></>,        headBg:"#1e1030",           lblCol:"#c8a0f0",       titleCol:"#fff",        dark:true,  Panel:StoriesPanel },
-  symptom:   { label:"How are you feeling?", title:<>Is this <em>normal</em>?</>,                  headBg:"var(--cream2)",     lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:null },
+  symptom:      { label:"How are you feeling?", title:<>Is this <em>normal</em>?</>,               headBg:"var(--cream2)",     lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:null },
+  symptomDetail:{ label:"",                    title:<></>,                                         headBg:"var(--cream2)",     lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:null, noScroll:true },
   myth:      { label:"Myth busting",         title:<>True, false, or <em>complicated</em></>,       headBg:"var(--amber-pale)", lblCol:"var(--amber)",  titleCol:"var(--ink)",  dark:false, Panel:MythPanel },
   planning:  { label:"Life planning",        title:<>Pregnancy and <em>your daily life</em></>,     headBg:"var(--navy-pale)",  lblCol:"var(--navy)",   titleCol:"var(--ink)",  dark:false, Panel:PlanningPanel },
   fears:     { label:"Real fears",           title:<>The things nobody <em>admits</em></>,          headBg:"var(--ink)",        lblCol:"rgba(255,200,180,0.7)", titleCol:"#fff", dark:true, Panel:FearsPanel },
+  moment:    { label:"Matri moment",         title:<>A pause. <em>Just for you.</em></>,            headBg:"#0a1a10",           lblCol:"#80d0a0",       titleCol:"#fff",  dark:true, Panel:null, noScroll:false },
 };
 
 /* ─── QUICK ADD ENTRY ─────────────────────────────────────────────────── */
@@ -2779,6 +3364,7 @@ function QuickAddEntry({ entries, setEntries, onClose }) {
   const today = istDate();
   const save = () => {
     if (!text.trim()) return;
+    analytics.journalCreated("quick_add");
     setEntries(p => [{id:Date.now(),week:8,date:today,mood:mood||"😊",text:text.trim(),photos:[],heroBg:"linear-gradient(135deg,#e8f5f5,#d0ecec)",heroEmoji:"📝",heroBgColor:"#e0f5f5"},...p]);
     onClose();
   };
@@ -3491,14 +4077,37 @@ function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbu
       <div className="lib-section">
         <div className="lib-section-lbl">Know yourself</div>
         <div className="lw lw-full lw-tall" onClick={()=>onOpen("fears")}
-          style={{background:"linear-gradient(145deg,#1a1210,#2e1a14)",border:"1px solid #2a1410"}}>
+          style={{background:"linear-gradient(145deg,#1a1210,#2e1a14)",border:"1px solid #2a1410",marginBottom:10}}>
           <span style={{position:"absolute",fontSize:140,right:-10,bottom:-10,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",userSelect:"none"}}>🤍</span>
           <div className="win-lg">
             <div className="w-lbl" style={{color:"rgba(255,200,180,0.7)"}}><div className="w-lbl-dot" style={{background:"rgba(255,200,180,0.7)"}}/>Real fears</div>
             <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:8}}>The things nobody <em style={{fontStyle:"italic",color:"#f0c0a0"}}>admits out loud.</em></div>
             <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",lineHeight:1.6}}>Miscarriage. Labour. Your body. Your career. Honest, not dismissive.</div>
           </div>
-          <div className="w-tap w-tap-lt">Read ↗</div>
+          <div className="w-tap w-tap-lt">Tap to explore ↗</div>
+        </div>
+        <div className="lib-grid">
+          {/* NOBODY TELLS YOU */}
+          <div className="lw lw-left lw-med" onClick={()=>onOpen("ntty")}
+            style={{background:"linear-gradient(145deg,#2a1040,#3a1852)",border:"1px solid #301048"}}>
+            <span className="w-bg-e" style={{color:"#d0a0f0"}}>🤫</span>
+            <div className="win">
+              <div className="w-lbl" style={{color:"#c8a0f0"}}><div className="w-lbl-dot" style={{background:"#c8a0f0"}}/>Nobody tells you</div>
+              <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.3}}>The things no one <em style={{fontStyle:"italic",color:"#c8a0f0"}}>warns you about.</em></div>
+            </div>
+            <div className="w-tap w-tap-lt">Tap to explore ↗</div>
+          </div>
+          {/* MYTH BUSTING */}
+          <div className="lw lw-right lw-med" onClick={()=>onOpen("myth")}
+            style={{background:"linear-gradient(145deg,#2a1a04,#3a2808)",border:"1px solid #382008"}}>
+            <span className="w-bg-e" style={{color:"#f0b860"}}>🔍</span>
+            <div className="win">
+              <div className="w-lbl" style={{color:"#f0b860"}}><div className="w-lbl-dot" style={{background:"#f0b860"}}/>Myth busting</div>
+              <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.3}}>What your family <em style={{fontStyle:"italic",color:"#f0b860"}}>got wrong.</em></div>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:5}}>Papaya · Saffron · Eclipses · Ghee</div>
+            </div>
+            <div className="w-tap w-tap-lt">Tap to explore ↗</div>
+          </div>
         </div>
       </div>
 
@@ -3512,7 +4121,7 @@ function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbu
             <div className="wt-md">Pregnancy and your <em style={{color:"var(--navy)"}}>daily life.</em></div>
             <div style={{fontSize:12,color:"var(--muted)",marginTop:6,lineHeight:1.5}}>Working full-time · WFH · Managing home · Freelancing</div>
           </div>
-          <div className="w-tap w-tap-dk">↗</div>
+          <div className="w-tap w-tap-dk">Tap to explore ↗</div>
         </div>
       </div>
 
@@ -3527,7 +4136,7 @@ function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbu
             <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"#fff",lineHeight:1.2,marginBottom:8}}>Women who've been <em style={{fontStyle:"italic",color:"#c8a0f0"}}>right here.</em></div>
             <div style={{fontSize:12,color:"rgba(255,255,255,0.35)"}}>Real experiences. Read, share, feel less alone.</div>
           </div>
-          <div className="w-tap w-tap-lt">Read ↗</div>
+          <div className="w-tap w-tap-lt">Tap to explore ↗</div>
         </div>
       </div>
 
@@ -3541,7 +4150,7 @@ function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbu
               <div className="w-lbl" style={{color:"#70c8b8"}}><div className="w-lbl-dot" style={{background:"#70c8b8"}}/>Album</div>
               <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.2}}>View your <em style={{fontStyle:"italic",color:"#70c8b8"}}>pregnancy book.</em></div>
             </div>
-            <div className="w-tap w-tap-lt">Open ↗</div>
+            <div className="w-tap w-tap-lt">Tap to explore ↗</div>
           </div>
           <div className="lw lw-right lw-sm" onClick={onViewTimeline}
             style={{background:"linear-gradient(145deg,#1a1a30,#282850)",border:"1px solid #202048"}}>
@@ -3550,7 +4159,7 @@ function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbu
               <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.2}}>All your <em style={{fontStyle:"italic",color:"#b0a0f0"}}>memories.</em></div>
               <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:4}}>{journalEntries.length} entries</div>
             </div>
-            <div className="w-tap w-tap-lt">Open ↗</div>
+            <div className="w-tap w-tap-lt">Tap to explore ↗</div>
           </div>
         </div>
       </div>
@@ -3633,6 +4242,228 @@ function JournalTab({ entries, setEntries, onOpenAlbum, moodLog }) {
   );
 }
 
+/* ─── MATRI MOMENT WIDGET ────────────────────────────────────────────────── */
+function MatriMomentWidget({ onOpen, week }) {
+  const moment = getMatriMoment(week);
+  const saved  = loadMoments()[week];
+  return (
+    <div className="w w-full wc-dark1 w-med" onClick={onOpen}
+      style={{background:"linear-gradient(145deg,#0a1a10,#142810)",border:"1px solid #0a2010"}}>
+      <span style={{position:"absolute",fontSize:140,right:-10,bottom:-10,opacity:0.08,
+        transform:"rotate(-10deg)",pointerEvents:"none",userSelect:"none"}}>🌙</span>
+      <div className="win-lg">
+        <div className="w-lbl" style={{color:"#80d0a0"}}>
+          <div className="w-lbl-dot" style={{background:"#80d0a0"}}/>Matri moment
+        </div>
+        <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"#fff",lineHeight:1.35,
+          marginBottom:10,fontStyle:"italic"}}>
+          "{moment.question.slice(0,80)}…"
+        </div>
+        {saved ? (
+          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:12,padding:"8px 12px",
+            fontSize:12,color:"rgba(255,255,255,0.55)",fontStyle:"italic",lineHeight:1.5}}>
+            ✓ You answered this week
+          </div>
+        ) : (
+          <div style={{fontSize:12,color:"rgba(128,208,160,0.6)"}}>
+            {moment.pause}
+          </div>
+        )}
+      </div>
+      <div className="w-tap w-tap-lt">Tap to explore ↗</div>
+    </div>
+  );
+}
+
+/* ─── MATRI MOMENT PANEL ────────────────────────────────────────────────── */
+function MatriMomentPanel({ week, entries, setEntries }) {
+  const moment  = getMatriMoment(week);
+  const saved   = loadMoments()[week];
+  const [text,  setText]  = useState(saved?.text || "");
+  const [saved2, setSaved] = useState(!!saved);
+  const today   = istDate();
+
+  const save = () => {
+    if (!text.trim()) return;
+    analytics.journalCreated("matri_moment");
+    saveMoment(week, text.trim());
+    // Also save to journal entries with moment flag
+    setEntries(p => [{
+      id: Date.now(), week, date: today, mood:"🌙",
+      text: text.trim(), photos:[], isShared:false,
+      type:"moment",
+      heroBg:"linear-gradient(135deg,#0a1a10,#142810)",
+      heroEmoji:"🌙", heroBgColor:"#0a2010"
+    }, ...p]);
+    setSaved(true);
+  };
+
+  return (
+    <div>
+      {/* Pause label */}
+      <div style={{textAlign:"center",fontSize:12,fontWeight:600,letterSpacing:"0.2em",
+        textTransform:"uppercase",color:"var(--teal)",marginBottom:16}}>{moment.pause}</div>
+
+      {/* The question */}
+      <div style={{fontFamily:"'Lora',serif",fontSize:19,color:"var(--ink)",lineHeight:1.65,
+        fontStyle:"italic",marginBottom:20,padding:"0 4px"}}>
+        "{moment.question}"
+      </div>
+
+      {saved2 ? (
+        <div>
+          <div style={{background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",
+            borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:"var(--teal)",
+              marginBottom:6,textTransform:"uppercase",letterSpacing:"0.1em"}}>You wrote</div>
+            <div style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",
+              color:"var(--ink)",lineHeight:1.7}}>"{text}"</div>
+          </div>
+          <div style={{fontSize:11,color:"var(--muted)",textAlign:"center",fontStyle:"italic"}}>
+            Saved to your journal ✓
+          </div>
+        </div>
+      ) : (
+        <>
+          <textarea
+            className="j-textarea"
+            rows={5}
+            value={text}
+            onChange={e=>setText(e.target.value)}
+            placeholder="Write anything. There are no wrong answers here."
+          />
+          <button
+            onClick={save}
+            disabled={!text.trim()}
+            style={{width:"100%",marginTop:10,background:"linear-gradient(135deg,#142810,#0a2010)",
+              color:"#80d0a0",border:"1px solid #204020",borderRadius:14,padding:"13px",
+              fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",
+              opacity:text.trim()?1:0.4}}>
+            Save this moment ✓
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─── STORYBOOK PREVIEW WIDGET ──────────────────────────────────────────── */
+function StorybookPreviewWidget({ entries, onOpenAlbum, onOpenJournal }) {
+  const photos = entries.flatMap(e=>(e.photos||[]).map(p=>photoThumb(p)).filter(Boolean)).slice(0,5);
+  const latest = entries[0];
+  const count  = entries.length;
+  const isEmpty = count === 0;
+
+  return (
+    <div className="w w-full wc-dark3 w-tall" onClick={onOpenJournal}
+      style={{position:"relative",cursor:"pointer",
+      background:"linear-gradient(145deg,#0a2828,#183535)",
+      border:"1px solid #102828",
+      display:"flex",flexDirection:"column",padding:0,overflow:"hidden"}}>
+
+      {isEmpty ? (
+        <>
+          {/* Journal illustration — right side, aligned with text */}
+          <div style={{position:"absolute",right:16,top:"50%",transform:"translateY(-70%)",
+            width:110,height:140,opacity:0.18,pointerEvents:"none",userSelect:"none",zIndex:0}}>
+            <svg viewBox="0 0 110 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="18" y="4" width="84" height="132" rx="6" fill="#70c8b8"/>
+              <rect x="22" y="10" width="76" height="120" rx="4" fill="#0a2828"/>
+              {[18,30,42,54,66,78,90,102].map((y,i)=>(
+                <g key={i}>
+                  <circle cx="22" cy={y} r="4" fill="#70c8b8" opacity="0.8"/>
+                  <circle cx="22" cy={y} r="2.5" fill="#0a2828"/>
+                </g>
+              ))}
+              <rect x="32" y="22" width="56" height="2.5" rx="1" fill="#70c8b8" opacity="0.4"/>
+              <rect x="32" y="32" width="48" height="2" rx="1" fill="#70c8b8" opacity="0.25"/>
+              <rect x="32" y="40" width="52" height="2" rx="1" fill="#70c8b8" opacity="0.25"/>
+              <rect x="32" y="48" width="40" height="2" rx="1" fill="#70c8b8" opacity="0.2"/>
+              <rect x="68" y="20" width="30" height="36" rx="3" fill="#70c8b8" opacity="0.25"/>
+              <rect x="72" y="24" width="22" height="16" rx="2" fill="#70c8b8" opacity="0.2"/>
+              <path d="M79 44 C79 42 76 40 75 42 C74 40 71 42 71 44 C71 47 75 50 75 50 C75 50 79 47 79 44Z" fill="#70c8b8" opacity="0.4"/>
+              <rect x="32" y="68" width="62" height="40" rx="3" fill="#70c8b8" opacity="0.15"/>
+              <rect x="34" y="70" width="28" height="36" rx="2" fill="#70c8b8" opacity="0.2"/>
+              <rect x="66" y="70" width="26" height="36" rx="2" fill="#70c8b8" opacity="0.18"/>
+              <rect x="32" y="114" width="40" height="2" rx="1" fill="#70c8b8" opacity="0.2"/>
+              <rect x="32" y="120" width="30" height="2" rx="1" fill="#70c8b8" opacity="0.15"/>
+            </svg>
+          </div>
+          <div style={{flex:1,padding:"22px 20px 16px",position:"relative",zIndex:1}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",
+              color:"#70c8b8",marginBottom:12}}>Your pregnancy story</div>
+            <div style={{fontFamily:"'Lora',serif",fontSize:28,fontWeight:400,lineHeight:1.1,
+              color:"#fff",marginBottom:14}}>
+              Your pregnancy,<br/><em style={{fontStyle:"italic",color:"#70c8b8"}}>preserved forever.</em>
+            </div>
+            <div style={{fontSize:13,color:"rgba(255,255,255,0.5)",lineHeight:1.8,marginBottom:20,maxWidth:"70%"}}>
+              Every week you write becomes a page.<br/>
+              Every photo, a memory your child<br/>
+              will read someday.
+            </div>
+          </div>
+          <div style={{padding:"0 16px 18px",position:"relative",zIndex:1}}>
+            <button onClick={onOpenJournal} style={{
+              width:"100%",background:"#70c8b8",color:"#0a2828",border:"none",
+              borderRadius:14,padding:"15px 20px",fontSize:14,fontWeight:700,
+              cursor:"pointer",fontFamily:"inherit",display:"flex",
+              alignItems:"center",justifyContent:"space-between",
+              WebkitTapHighlightColor:"transparent"}}>
+              <span>Start your first memory</span>
+              <span style={{fontSize:18}}>→</span>
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <span style={{position:"absolute",fontSize:160,right:-10,bottom:40,opacity:0.07,
+            transform:"rotate(-12deg)",pointerEvents:"none",userSelect:"none"}}>📖</span>
+          <div style={{flex:1,padding:"16px 16px 14px",position:"relative",zIndex:1}}>
+            <div className="w-lbl" style={{color:"#70c8b8",marginBottom:6}}>
+              <div className="w-lbl-dot" style={{background:"#70c8b8"}}/>Your pregnancy story
+            </div>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"#fff",lineHeight:1.2,marginBottom:4}}>
+              {count} {count===1?"memory":"memories"} saved.
+            </div>
+            <div style={{fontFamily:"'Lora',serif",fontSize:12,fontStyle:"italic",
+              color:"rgba(255,255,255,0.35)",marginBottom:14}}>A book is quietly forming…</div>
+            <div style={{display:"flex",gap:7,marginBottom:12}}>
+              {photos.map((src,i)=>(
+                <div key={i} style={{width:48,height:48,borderRadius:10,overflow:"hidden",
+                  flexShrink:0,border:"1.5px solid rgba(255,255,255,0.15)"}}>
+                  <img src={src} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                </div>
+              ))}
+              {photos.length === 0 && [0,1,2].map(i=>(
+                <div key={i} style={{width:48,height:48,borderRadius:10,flexShrink:0,
+                  background:"rgba(255,255,255,0.05)",
+                  border:"1.5px dashed rgba(112,200,184,0.25)",
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,opacity:0.5}}>📷</div>
+              ))}
+              <div onClick={onOpenJournal} style={{width:48,height:48,borderRadius:10,flexShrink:0,
+                background:"rgba(112,200,184,0.1)",border:"1.5px dashed rgba(112,200,184,0.35)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:20,color:"#70c8b8",cursor:"pointer"}}>+</div>
+            </div>
+            {latest && (
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",fontStyle:"italic",
+                fontFamily:"'Lora',serif",lineHeight:1.55,
+                display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
+                "{latest.text}"
+              </div>
+            )}
+          </div>
+          <div className="book-open-bar" onClick={e=>{e.stopPropagation();onOpenAlbum();}}>
+            <span className="book-open-icon">📖</span>
+            <span className="book-open-txt">Open your pregnancy book</span>
+            <span className="book-open-arr">→</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ─── HERO MOOD STRIP ──────────────────────────────────────────────────── */
 function HeroMoodStrip({ journalEntries, moodLog, onTap }) {
   // Pick the most recent signal — journal entry or standalone mood log
@@ -3671,6 +4502,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [symptomQuery, setSymptomQuery] = useState("");
   const [symptomInput, setSymptomInput] = useState("");
+  const [symptomKey, setSymptomKey] = useState(null);
   const [mainTab, setMainTab] = useState("week");
   const [quickAdd, setQuickAdd] = useState(false);
   const [quickAddVis, setQuickAddVis] = useState(false);
@@ -3684,7 +4516,7 @@ export default function App() {
   };
 
   // open/close helpers
-  const open  = id => { setActive(id); requestAnimationFrame(() => setVisible(true)); };
+  const open  = id => { analytics.panelOpened(id); setActive(id); requestAnimationFrame(() => setVisible(true)); };
   const close = ()  => { setVisible(false); setTimeout(() => setActive(null), 390); };
   const openSymptom = (q) => { setSymptomQuery(q||""); setSymptomInput(q||""); open("symptom"); };
 
@@ -3718,6 +4550,7 @@ export default function App() {
   const closeLibAlbum = () => { setLibAlbumVis(false); setTimeout(()=>setLibAlbumOpen(false), 370); };
   const goToJournalTimeline = () => { setMainTab("journal"); };
   const toggleCheck = (id) => {
+    analytics.milestoneChecked(id);
     setChecked((p) => {
       const next = { ...p, [id]: !p[id] };
       saveChecked(next);
@@ -3796,110 +4629,113 @@ export default function App() {
             <button className="week-nav-btn">Wk 9 →</button>
           </div>
 
-          {/* SYMPTOM BAR */}
-          <div className="symptom-bar">
-            <div className="symptom-bar-inner">
-              <span className="symptom-bar-icon">🔍</span>
-              <input className="symptom-bar-input"
-                placeholder="What are you feeling today?"
-                value={symptomInput}
-                onChange={e=>setSymptomInput(e.target.value)}
-                onKeyDown={e=>{if(e.key==="Enter"&&symptomInput.trim())openSymptom(symptomInput);}}/>
-              <button className="symptom-bar-btn" onClick={()=>symptomInput.trim()&&openSymptom(symptomInput)}>Ask</button>
+          {/* SYMPTOM CHIP GRID */}
+          <div className="symptom-section">
+            <div className="symptom-section-hdr">
+              <span className="symptom-section-title">What are you feeling?</span>
+            </div>
+            <div style={{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.5}}>
+              Something bothering you? Let's talk about it!
+            </div>
+            <div className="symptom-chip-grid">
+              {[
+                {key:"nausea",     emoji:"🤢", label:"Nausea",       bg:"#edf7ee", border:"#b8debb", col:"#2a6030"},
+                {key:"cramping",   emoji:"😖", label:"Cramping",     bg:"#fdf0ec", border:"#f0cfc8", col:"#8a2a20"},
+                {key:"spotting",   emoji:"🩸", label:"Spotting",     bg:"#fef0f0", border:"#f5c0c0", col:"#9a2020"},
+                {key:"headache",   emoji:"🤕", label:"Headache",     bg:"#fdf6e4", border:"#ddc080", col:"#7a5010"},
+                {key:"no movement",emoji:"👶", label:"Movement",     bg:"#eaf0f8", border:"#b5cae0", col:"#2a4a70"},
+                {key:"acidity",    emoji:"🔥", label:"Acidity",      bg:"#fff1e8", border:"#f0c898", col:"#8a4010"},
+                {key:"constipation",emoji:"😣",label:"Constipation", bg:"#f5eefb", border:"#d8a8e8", col:"#622070"},
+                {key:"swelling",   emoji:"🦶", label:"Swelling",     bg:"#e8f5f5", border:"#90ccc8", col:"#1a6060"},
+                {key:"discharge",  emoji:"💧", label:"Discharge",    bg:"#eaf0f8", border:"#9ab8d8", col:"#2a4870"},
+                {key:"sleep",      emoji:"🌙", label:"Sleep",        bg:"#eeecf8", border:"#b8b0e0", col:"#3a3070"},
+                {key:"mood swings",emoji:"🎭", label:"Mood swings",  bg:"#fef0f8", border:"#e8b0d8", col:"#822060"},
+              ].map(s=>(
+                <button key={s.key} className="symptom-chip"
+                  style={{background:s.bg, borderColor:s.border, position:"relative"}}
+                  onClick={()=>{ setSymptomKey(s.key); open("symptomDetail"); }}>
+                  <span className="symptom-chip-emoji">{s.emoji}</span>
+                  <span className="symptom-chip-lbl" style={{color:s.col}}>{s.label}</span>
+                  <span style={{position:"absolute",bottom:5,right:6,fontSize:8,color:s.col,opacity:0.4,fontWeight:700,lineHeight:1}}>↗</span>
+                </button>
+              ))}
+            </div>
+            {/* Search bar — coming soon */}
+            <div className="symptom-search-soon">
+              <span className="symptom-search-soon-icon">🔍</span>
+              <span className="symptom-search-soon-txt">Describe what you're feeling…</span>
+              <span className="symptom-search-soon-badge">Coming soon</span>
             </div>
           </div>
 
-          {/* WIDGET GRID */}
+          {/* ── WIDGET GRID ── */}
           <div className="grid">
-            {/* BODY */}
-            <div className="w w-full wc-rose w-tall" onClick={()=>open("body")}>
-              <span className="w-bg-e" style={{color:"var(--rose)",fontSize:120}}>🌿</span>
+
+            {/* BODY — combined with Matri Moment — warm cream/rose */}
+            <div className="w w-full w-tall" onClick={()=>open("body")}
+              style={{background:"linear-gradient(145deg,#fdf6f0,#faeae0)",border:"1px solid #f0d8c8"}}>
+              <span className="w-bg-e" style={{color:"#c05040",fontSize:120}}>🌿</span>
               <div className="win-lg">
-                <div className="w-lbl" style={{color:"var(--rose)"}}><div className="w-lbl-dot" style={{background:"var(--rose)"}}/>Your body</div>
-                <div className="wt-lg">What you're feeling is <em style={{color:"var(--rose)"}}>real.</em></div>
-                <div style={{fontSize:13,color:"var(--muted)",marginBottom:10,lineHeight:1.55}}>The nausea, the exhaustion, the guilt. All of it.</div>
-                <div>
-                  <span className="chip" style={{background:"rgba(191,82,64,0.1)",color:"var(--rose)"}}>🤢 Nausea</span>
-                  <span className="chip" style={{background:"rgba(191,82,64,0.1)",color:"var(--rose)"}}>😴 Exhausted</span>
-                  <span className="chip" style={{background:"rgba(191,82,64,0.1)",color:"var(--rose)"}}>👫 Partner</span>
+                <div className="w-lbl" style={{color:"var(--rose)"}}><div className="w-lbl-dot" style={{background:"var(--rose)"}}/>How are you feeling?</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"var(--ink)",lineHeight:1.65,marginBottom:12}}>{getMatriMoment(8).question}</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
+                  {["😰","😴","🤢","😭","🤍","😤","😕","🌀"].map(e=>(
+                    <span key={e} onClick={ev=>{ev.stopPropagation();logMood(e);}}
+                      style={{fontSize:22,cursor:"pointer",transition:"transform 0.15s",display:"inline-block"}}
+                      onPointerDown={ev=>ev.currentTarget.style.transform="scale(1.3)"}
+                      onPointerUp={ev=>ev.currentTarget.style.transform="scale(1)"}>
+                      {e}
+                    </span>
+                  ))}
                 </div>
+                <button onClick={ev=>{ev.stopPropagation();setMainTab("journal");}}
+                  style={{background:"rgba(191,82,64,0.1)",border:"1px solid rgba(191,82,64,0.2)",
+                    borderRadius:100,padding:"6px 14px",fontSize:11,fontWeight:600,
+                    color:"var(--rose)",cursor:"pointer",fontFamily:"inherit"}}>
+                  ✍️ Write about this
+                </button>
               </div>
-              <div className="w-tap w-tap-dk">Tap to read ↗</div>
+              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
             </div>
 
-            {/* 3AM */}
-            <div className="w w-left wc-dark1 w-med" onClick={()=>open("3am")}>
-              <div className="win">
-                <div className="w-lbl" style={{color:"#f0a07a"}}><div className="w-lbl-dot" style={{background:"#f0a07a"}}/>3am searches</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:17,color:"#fff",lineHeight:1.2,marginBottom:10}}>What everyone <em style={{fontStyle:"italic",color:"#f0a07a"}}>Googles</em></div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6,marginBottom:4,display:"flex",gap:6}}><span style={{color:"#f0a07a",fontWeight:700}}>?</span>Is it normal to feel this sick?</div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6,marginBottom:4,display:"flex",gap:6}}><span style={{color:"#f0a07a",fontWeight:700}}>?</span>Can I eat paneer?</div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6,display:"flex",gap:6}}><span style={{color:"#f0a07a",fontWeight:700}}>?</span>Why do I cry randomly?</div>
-              </div>
-              <div className="w-tap w-tap-lt">Tap ↗</div>
-            </div>
+            {/* STORYBOOK PREVIEW — second, high visibility */}
+            <StorybookPreviewWidget entries={journalEntries} onOpenAlbum={openLibAlbum} onOpenJournal={()=>setMainTab("journal")}/>
 
-            {/* NOBODY TELLS YOU */}
-            <div className="w w-right wc-plum w-med" onClick={()=>open("ntty")}>
-              <span className="w-bg-e" style={{color:"var(--plum)"}}>🤫</span>
+            {/* 3AM — left + WINS — right */}
+            {/* 3AM — Google search theme */}
+            <div className="w w-left w-sm" onClick={()=>open("3am")}
+              style={{background:"#fff",border:"1px solid #e8e0d8"}}>
               <div className="win">
-                <div className="w-lbl" style={{color:"var(--plum)"}}><div className="w-lbl-dot" style={{background:"var(--plum)"}}/>Nobody tells you</div>
-                <div className="wt-md">The things no one <em style={{color:"var(--plum)"}}>warns you about.</em></div>
-              </div>
-              <div className="w-tap w-tap-dk">Tap ↗</div>
-            </div>
-
-            {/* WINS */}
-            <div className="w w-left wc-dark2 w-sm" onClick={()=>open("wins")}>
-              <div className="win">
-                <div className="w-lbl" style={{color:"#b0a0f0"}}><div className="w-lbl-dot" style={{background:"#b0a0f0"}}/>This week's win</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"#fff",lineHeight:1.2,marginBottom:6}}>You made it to <em style={{fontStyle:"italic",color:"#b0a0f0"}}>week 8.</em></div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",lineHeight:1.55}}>That heart hasn't stopped once.</div>
-              </div>
-              <div className="w-tap w-tap-lt">Tap ↗</div>
-            </div>
-
-            {/* PARTNER */}
-            <div className="w w-right wc-teal w-sm" onClick={()=>open("partner")}>
-              <span className="w-bg-e" style={{color:"var(--teal)"}}>🤝</span>
-              <div className="win">
-                <div className="w-lbl" style={{color:"var(--teal)"}}><div className="w-lbl-dot" style={{background:"var(--teal)"}}/>For your partner</div>
-                <div className="wt-sm">What your partner <em style={{color:"var(--teal)"}}>should know.</em></div>
-                <div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Share with him. Specific, not generic.</div>
-              </div>
-              <div className="w-tap w-tap-dk">Tap ↗</div>
-            </div>
-
-            {/* FOOD */}
-            <div className="w w-left wc-forest w-tall" onClick={()=>open("food")}>
-              <span className="w-bg-e" style={{color:"var(--forest)"}}>🥥</span>
-              <div className="win">
-                <div className="w-lbl" style={{color:"var(--forest)"}}><div className="w-lbl-dot" style={{background:"var(--forest)"}}/>Nutrition</div>
-                <div className="wt-md">Food when nothing <em style={{color:"var(--forest)"}}>appeals.</em></div>
-                <div style={{marginTop:10}}>
-                  <span className="chip" style={{background:"rgba(42,74,42,0.1)",color:"var(--forest)"}}>Poha</span>
-                  <span className="chip" style={{background:"rgba(42,74,42,0.1)",color:"var(--forest)"}}>Curd</span>
-                  <span className="chip" style={{background:"rgba(42,74,42,0.1)",color:"var(--forest)"}}>Coconut water</span>
+                <div className="w-lbl" style={{color:"#5f6368",marginBottom:6}}>
+                  <div style={{display:"flex",gap:3,marginBottom:6}}>
+                    {["#4285F4","#EA4335","#FBBC05","#34A853"].map((c,i)=>(
+                      <div key={i} style={{width:6,height:6,borderRadius:"50%",background:c}}/>
+                    ))}
+                  </div>
+                  <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"#5f6368"}}>3am searches</span>
                 </div>
-              </div>
-              <div className="w-tap w-tap-dk">Tap ↗</div>
-            </div>
-
-            {/* MEDICAL */}
-            <div className="w w-right wc-slate w-tall" onClick={()=>open("medical")}>
-              <span className="w-bg-e" style={{color:"var(--slate)"}}>🩺</span>
-              <div className="win">
-                <div className="w-lbl" style={{color:"var(--slate)"}}><div className="w-lbl-dot" style={{background:"var(--slate)"}}/>Medical</div>
-                <div className="wt-md">What needs to happen <em style={{color:"var(--slate)"}}>now.</em></div>
-                <div style={{marginTop:10}}>
-                  {["Book TVS scan","CBC + TSH","PMSMA scheme","NT scan wk 11"].map(t=>(
-                    <div key={t} style={{fontSize:11,color:"var(--slate)",display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
-                      <div style={{width:4,height:4,borderRadius:"50%",background:"var(--slate)",flexShrink:0}}/>{t}
+                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3,marginBottom:8}}>What everyone <em style={{fontStyle:"italic",color:"#4285F4"}}>Googles.</em></div>
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {["Is this normal?","Can I eat paneer?","Why so tired?"].map(q=>(
+                    <div key={q} style={{fontSize:10,color:"#5f6368",display:"flex",gap:5,alignItems:"center",
+                      background:"#f8f9fa",borderRadius:100,padding:"3px 8px"}}>
+                      <span style={{color:"#4285F4",fontSize:9,fontWeight:700}}>🔍</span>{q}
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="w-tap w-tap-dk">Tap ↗</div>
+              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
+            </div>
+
+            {/* WINS — explicit dark indigo */}
+            <div className="w w-right wc-dark2 w-sm" onClick={()=>open("wins")}>
+              <span className="w-bg-e" style={{color:"#b0a0f0",fontSize:80}}>🏆</span>
+              <div className="win">
+                <div className="w-lbl" style={{color:"#b0a0f0"}}><div className="w-lbl-dot" style={{background:"#b0a0f0"}}/>This week's win</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:15,color:"#fff",lineHeight:1.3,marginBottom:6}}>You made it to <em style={{fontStyle:"italic",color:"#b0a0f0"}}>week 8.</em></div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",lineHeight:1.5}}>That heart hasn't stopped once.</div>
+              </div>
+              <div className="w-tap w-tap-lt">Tap to explore ↗</div>
             </div>
 
             {/* CHECKLIST */}
@@ -3924,27 +4760,67 @@ export default function App() {
                 </div>
                 {CHECKS.length>4&&<div style={{fontSize:10,color:"var(--muted)",marginTop:4,fontStyle:"italic"}}>+{CHECKS.length-4} more in full list</div>}
               </div>
-              <div className="w-tap w-tap-dk">Open full list ↗</div>
+              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
             </div>
 
-            {/* JOURNAL ENTRY POINT (goes to journal tab) */}
-            <div className="w w-full wc-dark3 w-tall" onClick={()=>setMainTab("journal")}>
-              <span style={{position:"absolute",fontSize:180,right:-20,bottom:-20,opacity:0.07,transform:"rotate(-12deg)",pointerEvents:"none",userSelect:"none"}}>📖</span>
-              <div className="win-lg">
-                <div className="w-lbl" style={{color:"#70c8b8"}}><div className="w-lbl-dot" style={{background:"#70c8b8"}}/>Journal & memories</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:8}}>Your pregnancy <em style={{fontStyle:"italic",color:"#70c8b8"}}>story.</em></div>
-                <div style={{fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.65,marginBottom:14}}>Write, add photos, track your mood.</div>
-                <div style={{display:"flex",gap:8,marginTop:12}}>
-                  <div style={{width:52,height:52,borderRadius:12,background:"rgba(112,200,184,0.15)",border:"1.5px dashed rgba(112,200,184,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:"#70c8b8",flexShrink:0}}>+</div>
-                  {journalEntries.slice(0,3).map(e=>(
-                    <div key={e.id} style={{width:52,height:52,borderRadius:12,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,overflow:"hidden"}}>
-                      {photoThumb(e.photos[0]) ? <img src={photoThumb(e.photos[0])} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/> : (typeof e.photos[0]==="string"?e.photos[0]:"📝")}
+            {/* NOBODY TELLS YOU — left + PARTNER — right */}
+            <div className="w w-left wc-plum w-sm" onClick={()=>open("ntty")}>
+              <span className="w-bg-e" style={{color:"var(--plum)",fontSize:60}}>🤫</span>
+              <div className="win">
+                <div className="w-lbl" style={{color:"var(--plum)"}}><div className="w-lbl-dot" style={{background:"var(--plum)"}}/>Nobody tells you</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>The things no one <em style={{color:"var(--plum)"}}>warns you about.</em></div>
+              </div>
+              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
+            </div>
+
+            <div className="w w-right wc-teal w-sm" onClick={()=>open("partner")}>
+              <span className="w-bg-e" style={{color:"var(--teal)",fontSize:60}}>🤝</span>
+              <div className="win">
+                <div className="w-lbl" style={{color:"var(--teal)"}}><div className="w-lbl-dot" style={{background:"var(--teal)"}}/>For your partner</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>What your partner <em style={{color:"var(--teal)"}}>should know.</em></div>
+              </div>
+              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
+            </div>
+
+            {/* MEDICAL — left + NUTRITION — right */}
+            <div className="w w-left wc-slate w-sm" onClick={()=>open("medical")}>
+              <span className="w-bg-e" style={{color:"var(--slate)",fontSize:60}}>🩺</span>
+              <div className="win">
+                <div className="w-lbl" style={{color:"var(--slate)"}}><div className="w-lbl-dot" style={{background:"var(--slate)"}}/>Medical</div>
+                <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>
+                  {["Book TVS scan","CBC + TSH","NT scan wk 11"].map(t=>(
+                    <div key={t} style={{fontSize:10,color:"var(--slate)",display:"flex",alignItems:"center",gap:5}}>
+                      <div style={{width:3,height:3,borderRadius:"50%",background:"var(--slate)",flexShrink:0}}/>{t}
                     </div>
                   ))}
-                  <div style={{fontSize:11,color:"rgba(255,255,255,0.3)",alignSelf:"center",marginLeft:4}}>{journalEntries.length} memories</div>
                 </div>
               </div>
-              <div className="w-tap w-tap-lt">Open journal ↗</div>
+              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
+            </div>
+
+            <div className="w w-right wc-forest w-sm" onClick={()=>open("food")}>
+              <span className="w-bg-e" style={{color:"var(--forest)",fontSize:60}}>🥥</span>
+              <div className="win">
+                <div className="w-lbl" style={{color:"var(--forest)"}}><div className="w-lbl-dot" style={{background:"var(--forest)"}}/>Nutrition</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>Food when nothing <em style={{color:"var(--forest)"}}>appeals.</em></div>
+              </div>
+              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
+            </div>
+
+            {/* STORIES */}
+            <div className="w w-full wc-dark4" onClick={()=>open("stories")}>
+              <span style={{position:"absolute",fontSize:160,right:-20,bottom:-20,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",color:"#c8a0f0",userSelect:"none"}}>💬</span>
+              <div className="win-lg">
+                <div className="w-lbl" style={{color:"#c8a0f0"}}><div className="w-lbl-dot" style={{background:"#c8a0f0"}}/>Stories from week 8</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:12}}>Women who've been <em style={{fontStyle:"italic",color:"#c8a0f0"}}>right here.</em></div>
+                <div style={{display:"flex",alignItems:"center"}}>
+                  {STORIES.map(s=>(
+                    <div key={s.id} style={{width:28,height:28,borderRadius:"50%",background:s.aBg,color:s.aCol,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:600,border:"2px solid rgba(0,0,0,0.3)",marginRight:-6,flexShrink:0}}>{s.init}</div>
+                  ))}
+                  <span style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginLeft:14}}>{STORIES.length} stories this week</span>
+                </div>
+              </div>
+              <div className="w-tap w-tap-lt">Tap to explore ↗</div>
             </div>
           </div>
         </>}
@@ -3983,8 +4859,17 @@ export default function App() {
           <div className="panel-inner">
             <div className="panel-head" style={{background:pd.headBg}}>
               <div>
-                <div className="panel-head-lbl" style={{color:pd.lblCol}}>{pd.label}</div>
-                <div className="panel-head-title" style={{color:pd.titleCol}}>{pd.title}</div>
+                {active==="symptomDetail" && symptomKey && COMMON_SYMPTOMS[symptomKey] ? (
+                  <>
+                    <div className="panel-head-lbl" style={{color:"var(--rose)"}}>Week 8 · {COMMON_SYMPTOMS[symptomKey].label}</div>
+                    <div className="panel-head-title" style={{color:"var(--ink)"}}>Ask me anything <em>about this</em></div>
+                  </>
+                ) : (
+                  <>
+                    <div className="panel-head-lbl" style={{color:pd.lblCol}}>{pd.label}</div>
+                    <div className="panel-head-title" style={{color:pd.titleCol}}>{pd.title}</div>
+                  </>
+                )}
               </div>
               <button className={`close-btn${pd.dark?" close-dk":""}`} onClick={close}>✕</button>
             </div>
@@ -3994,6 +4879,8 @@ export default function App() {
                   ? <BabyPanel/>
                   : active==="journal"
                   ? <JournalPanel entries={journalEntries} setEntries={setJournalEntriesPersist} initialTab="timeline" moodLog={moodLog}/>
+                  : active==="symptomDetail"
+                  ? <SymptomDetailPanel symptomKey={symptomKey} week={8}/>
                   : pd.Panel ? <pd.Panel/> : null}
               </div>
             ) : (
@@ -4002,6 +4889,7 @@ export default function App() {
                   : active==="symptom" ? <SymptomPanel initialQuery={symptomQuery}/>
                   : active==="body" ? <BodyPanel onLogMood={logMood}/>
                   : active==="food" ? <FoodPanel/>
+                  : active==="moment" ? <MatriMomentPanel week={8} entries={journalEntries} setEntries={setJournalEntriesPersist}/>
                   : pd.Panel ? <pd.Panel/> : null}
               </div>
             )}
@@ -4044,7 +4932,7 @@ export default function App() {
             {id:"library",icon:"📚",label:"Journey"},
             {id:"journal",icon:"✍️",label:"Memories"},
           ].map(t=>(
-            <button key={t.id} className={`tab-btn${mainTab===t.id?" on":""}`} onClick={()=>setMainTab(t.id)}>
+            <button key={t.id} className={"tab-btn"+(mainTab===t.id?" on":"")} onClick={()=>setMainTab(t.id)}>
               <span className="tab-btn-icon">{t.icon}</span>
               <span className="tab-btn-lbl">{t.label}</span>
               <div className="tab-btn-dot"/>
