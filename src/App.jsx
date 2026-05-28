@@ -1,718 +1,66 @@
-import { useState, useEffect, useRef } from "react";
+import "./styles/app.css";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { analytics } from "./analytics";
+import { supabase } from "./supabase";
+import OnboardingFlow from "./components/OnboardingFlow";
+import SymptomDetailPanel from "./components/SymptomDetailPanel";
+import SymptomPanel from "./components/SymptomPanel";
+import DoctorPrepSheet from "./components/DoctorPrepSheet";
+import { COMMON_SYMPTOMS } from "./constants/symptoms";
+import {
+  WEEKLY_PROMPTS,
+  getWeekPrompt
+} from "./constants/journalPrompts";
+import {
+  MATRI_MOMENTS,
+  getMatriMoment
+} from "./constants/matriMoments";
+import { myths } from "./constants/myths";
+import {
+  isPhotoUrl,
+  isPhotoCrop,
+  photoSquare,
+  photoAlbum,
+  photoThumb,
+  compressImageFile,
+  buildAlbumPages
+} from "./utils/albumUtils";
+
 // Matri v2.1 — build 2026-05-24
 
-/* ─── FONTS + BASE CSS ─────────────────────────────────────────────────── */
-const css = `
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=Dancing+Script:wght@400;600;700&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-:root{
-  --ink:#1a1210;
-  --rose:#bf5240;--rose-pale:#fdf0ec;--rose-bdr:#f0cfc8;
-  --plum:#622070;--plum-pale:#f8eefb;--plum-bdr:#d8a8e8;
-  --navy:#2a4a70;--navy-pale:#eaf0f8;--navy-bdr:#b5cae0;
-  --amber:#8a5010;--amber-pale:#fdf3e4;--amber-bdr:#ddc080;
-  --teal:#1a6060;--teal-pale:#e8f5f5;--teal-bdr:#90cccc;
-  --forest:#2a4a2a;--forest-pale:#edf5ed;--forest-bdr:#a8cca8;
-  --slate:#2a3850;--slate-pale:#edf0f5;--slate-bdr:#a8b8cc;
-  --cream:#fdfaf5;--cream2:#f7f1ea;--muted:#937870;--bdr:#ece3da;
-  --paper:#fefcf6;--paper2:#faf4e8;
+/* ─── AUTH FETCH HELPER ─────────────────────────────────────────────────── */
+// Wraps fetch to always include the Supabase auth token
+async function authFetch(url, options = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
 }
-body{background:var(--cream);}
-.app{font-family:'Inter',sans-serif;background:var(--cream);min-height:100vh;max-width:430px;margin:0 auto;color:var(--ink);}
 
-/* HERO */
-.hero{position:relative;overflow:hidden;cursor:pointer;background:linear-gradient(150deg,#6a2e20 0%,#8a3e2e 45%,#a84e3c 80%,#c06050 100%);-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column;}
-.hero:active{filter:brightness(0.92);}
-.blob{position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none;}
-.hero-bg-emoji{position:absolute;font-size:280px;line-height:1;right:-30px;bottom:-30px;opacity:0.16;pointer-events:none;transform:rotate(-14deg);user-select:none;}
-.hero-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(20,6,2,0.70) 0%,rgba(20,6,2,0.0) 45%,transparent 100%);pointer-events:none;}
-.hero-inner{position:relative;z-index:2;padding:48px 22px 22px;}
-.hero-eyebrow{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:600;letter-spacing:0.26em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:10px;}
-.hero-dot{width:4px;height:4px;border-radius:50%;background:#e88060;}
-.hero-week{font-family:'Lora',serif;font-size:64px;font-weight:400;line-height:0.92;color:#fff;letter-spacing:-0.025em;margin-bottom:8px;}
-.hero-week em{font-style:italic;color:#f0a07a;}
-.hero-tagline{font-family:'Lora',serif;font-size:15px;font-style:italic;color:rgba(255,255,255,0.5);line-height:1.5;margin-bottom:22px;}
-.hero-stats{display:flex;gap:7px;flex-wrap:wrap;}
-.hero-stat{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:10px 14px;}
-.hero-stat-val{font-family:'Lora',serif;font-size:17px;color:#f0a07a;line-height:1;}
-.hero-stat-val-sm{font-family:'Lora',serif;font-size:12px;color:#f0a07a;line-height:1;}
-.hero-stat-lbl{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px;}
-.hero-stat-sub{font-size:9px;color:rgba(255,255,255,0.2);margin-top:1px;font-style:italic;}
-.hero-tap{position:relative;z-index:2;text-align:right;padding:4px 18px 10px;font-size:10px;color:rgba(255,255,255,0.28);font-weight:600;letter-spacing:0.05em;}
-.prog-row{display:flex;align-items:center;gap:10px;padding:11px 20px 12px;background:rgba(255,255,255,0.04);border-top:1px solid rgba(255,255,255,0.06);position:relative;z-index:2;flex-shrink:0;}
-.prog-lbl{font-size:10px;color:rgba(255,255,255,0.3);font-weight:500;white-space:nowrap;}
-.prog-track{flex:1;height:3px;background:rgba(255,255,255,0.08);border-radius:100px;overflow:hidden;}
-.prog-fill{height:100%;width:20%;background:linear-gradient(90deg,#bf5240,#e88060);border-radius:100px;}
-.t1-badge{background:rgba(191,82,64,0.2);border:1px solid rgba(191,82,64,0.28);border-radius:100px;padding:3px 10px;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#e88060;white-space:nowrap;}
+/* ─── useHealthContext HOOK ──────────────────────────────────────────────── */
+function useHealthContext() {
+  const [healthContext, setHealthContext] = useState(null);
 
-/* WIDGET GRID */
-.grid{padding:12px 12px 110px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.w{border-radius:22px;overflow:hidden;cursor:pointer;position:relative;border:1px solid var(--bdr);background:#fff;transition:transform 0.14s,box-shadow 0.14s;-webkit-tap-highlight-color:transparent;}
-.w:active{transform:scale(0.97);}
-.w:hover{box-shadow:0 6px 24px rgba(0,0,0,0.1);}
-.w-full{grid-column:1/-1;}.w-left{grid-column:1;}.w-right{grid-column:2;}
-.w-tall{min-height:220px;}.w-med{min-height:170px;}.w-sm{min-height:140px;}
-.w-tap{position:absolute;bottom:12px;right:14px;font-size:11px;font-weight:700;pointer-events:none;display:flex;align-items:center;gap:3px;letter-spacing:0.02em;}
-.w-tap-dk{color:rgba(0,0,0,0.28);}
-.w-tap-lt{color:rgba(255,255,255,0.38);}
-.w-lbl{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:8px;}
-.w-lbl-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
-.w-bg-e{position:absolute;font-size:100px;line-height:1;opacity:0.07;pointer-events:none;bottom:-8px;right:-8px;transform:rotate(-10deg);user-select:none;}
-.wt-lg{font-family:'Lora',serif;font-size:24px;font-weight:400;line-height:1.2;color:var(--ink);margin-bottom:8px;}
-.wt-lg em{font-style:italic;}
-.wt-md{font-family:'Lora',serif;font-size:20px;font-weight:400;line-height:1.2;color:var(--ink);margin-bottom:8px;}
-.wt-md em{font-style:italic;}
-.wt-sm{font-family:'Lora',serif;font-size:17px;font-weight:400;line-height:1.2;color:var(--ink);margin-bottom:6px;}
-.wt-sm em{font-style:italic;}
-.chip{display:inline-block;border-radius:100px;padding:3px 9px;font-size:10px;font-weight:500;margin:3px 3px 0 0;}
-.win{padding:18px 18px 48px;position:relative;z-index:1;}
-.win-lg{padding:20px 20px 48px;position:relative;z-index:1;}
+  const refresh = useCallback(async () => {
+    try {
+      const resp = await authFetch("/api/health-context");
+      if (resp.ok) {
+        const data = await resp.json();
+        setHealthContext(data);
+      }
+    } catch { /* silent */ }
+  }, []);
 
-/* WIDGET BACKGROUND COLORS — each distinctly different */
-.wc-rose   {background:var(--rose-pale)!important;   border-color:var(--rose-bdr)!important;}
-.wc-dark1  {background:linear-gradient(145deg,#1a1210,#2e1a14)!important;border-color:#2a1410!important;}
-.wc-plum   {background:var(--plum-pale)!important;   border-color:var(--plum-bdr)!important;}
-.wc-dark2  {background:linear-gradient(145deg,#181830,#28285a)!important;border-color:#181840!important;}
-.wc-teal   {background:var(--teal-pale)!important;   border-color:var(--teal-bdr)!important;}
-.wc-forest {background:var(--forest-pale)!important; border-color:var(--forest-bdr)!important;}
-.wc-slate  {background:var(--slate-pale)!important;  border-color:var(--slate-bdr)!important;}
-.wc-amber  {background:var(--amber-pale)!important;  border-color:var(--amber-bdr)!important;}
-.wc-dark3  {background:linear-gradient(145deg,#0a2020,#183535)!important;border-color:#0a2828!important;}
-.wc-dark4  {background:linear-gradient(145deg,#1e1030,#342050)!important;border-color:#200e38!important;}
-.wc-navy   {background:var(--navy-pale)!important;   border-color:var(--navy-bdr)!important;}
+  useEffect(() => { refresh(); }, [refresh]);
 
-/* PANEL / OVERLAY */
-.backdrop{position:fixed;inset:0;z-index:100;background:rgba(16,10,8,0);transition:background 0.3s;pointer-events:none;}
-.backdrop.open{background:rgba(16,10,8,0.78);pointer-events:all;}
-.panel{position:fixed;inset:0;z-index:101;display:flex;flex-direction:column;transform:translateY(102%);transition:transform 0.38s cubic-bezier(0.3,0.72,0,1);pointer-events:none;max-width:430px;left:50%;margin-left:-215px;}
-@media(max-width:430px){.panel{left:0;margin-left:0;}}
-.panel.open{transform:translateY(0);pointer-events:all;}
-.panel-inner{flex:1;display:flex;flex-direction:column;overflow:hidden;margin-top:52px;border-radius:28px 28px 0 0;background:var(--cream);}
-.panel-head{padding:20px 20px 16px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;border-bottom:1px solid var(--bdr);}
-.panel-head-lbl{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;margin-bottom:5px;}
-.panel-head-title{font-family:'Lora',serif;font-size:24px;font-weight:400;line-height:1.2;}
-.panel-head-title em{font-style:italic;}
-.close-btn{width:34px;height:34px;border-radius:50%;background:var(--cream2);border:none;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0;color:var(--muted);font-family:inherit;}
-.close-dk{background:rgba(255,255,255,0.1)!important;color:rgba(255,255,255,0.55)!important;}
-.panel-scroll{flex:1;overflow-y:auto;padding:22px 20px 48px;scrollbar-width:none;}
-.panel-scroll::-webkit-scrollbar{display:none;}
-
-/* PANEL CONTENT ATOMS */
-.p-lbl{font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
-.p-lbl::after{content:'';flex:1;height:1px;background:var(--bdr);}
-.p-card{border-radius:16px;padding:15px 16px;font-size:13px;line-height:1.65;margin-bottom:10px;}
-.pc-dark {background:var(--ink);color:rgba(255,255,255,0.82);}
-.pc-rose {background:var(--rose-pale);border:1px solid var(--rose-bdr);}
-.pc-plum {background:var(--plum-pale);border:1px solid var(--plum-bdr);}
-.pc-teal {background:var(--teal-pale);border:1px solid var(--teal-bdr);}
-.pc-navy {background:var(--navy-pale);border:1px solid var(--navy-bdr);}
-.pc-amber{background:var(--amber-pale);border:1px solid var(--amber-bdr);}
-.pc-sage {background:var(--forest-pale);border:1px solid var(--forest-bdr);}
-.pc-white{background:#fff;border:1px solid var(--bdr);}
-.pc-wins {background:linear-gradient(135deg,#181830,#28285a);color:rgba(255,255,255,0.85);}
-.p-fact{display:flex;gap:9px;margin-bottom:9px;font-size:13px;line-height:1.6;align-items:flex-start;}
-.p-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px;}
-.india-chip{display:inline-flex;align-items:center;gap:5px;background:var(--amber-pale);border:1px solid var(--amber-bdr);border-radius:100px;padding:4px 11px;font-size:10px;font-weight:600;color:var(--amber);margin-bottom:10px;}
-.p-story{background:var(--ink);border-radius:18px;padding:18px;margin-bottom:10px;position:relative;overflow:hidden;}
-.p-story::before{content:'"';font-family:'Lora',serif;position:absolute;top:-14px;left:12px;font-size:90px;color:rgba(255,255,255,0.04);line-height:1;}
-.p-story-tag{display:inline-flex;align-items:center;background:rgba(240,160,122,0.12);border:1px solid rgba(240,160,122,0.2);border-radius:100px;padding:3px 10px;font-size:9px;font-weight:700;color:#f0a07a;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:10px;}
-.p-story-meta{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
-.p-story-av{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;}
-.p-story-name{font-size:11px;color:rgba(255,255,255,0.35);}
-.p-story-q{font-family:'Lora',serif;font-size:15px;font-style:italic;color:rgba(255,255,255,0.84);line-height:1.7;}
-.p-story-foot{font-size:11px;color:rgba(255,255,255,0.22);margin-top:10px;font-style:italic;}
-.em-wrap{display:flex;flex-wrap:wrap;gap:7px;}
-.em-pill{background:#fff;border:1px solid var(--bdr);border-radius:100px;padding:6px 12px;font-size:12px;color:var(--ink);}
-.f-row{display:flex;gap:11px;align-items:flex-start;margin-bottom:11px;}
-.f-ico{font-size:22px;flex-shrink:0;margin-top:1px;}
-.f-name{font-size:13px;font-weight:600;color:var(--ink);}
-.f-note{font-size:11px;color:var(--muted);margin-top:2px;}
-.m-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--bdr);}
-.m-row:last-child{border-bottom:none;}
-.m-name{font-size:13px;font-weight:600;}
-.m-why{font-size:11px;color:var(--muted);margin-top:2px;}
-.m-when{font-size:10px;font-weight:600;color:var(--navy);background:var(--navy-pale);border-radius:100px;padding:2px 9px;white-space:nowrap;flex-shrink:0;margin-top:3px;}
-.doc-row{display:flex;gap:12px;align-items:flex-start;background:var(--navy-pale);border:1px solid var(--navy-bdr);border-radius:14px;padding:14px;margin-bottom:14px;}
-.doc-av{width:36px;height:36px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
-.doc-lbl{font-size:9px;font-weight:700;color:var(--navy);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;}
-.doc-txt{font-size:13px;color:#1e3050;line-height:1.6;}
-.cl-item{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--cream2);cursor:pointer;}
-.cl-item:last-child{border-bottom:none;}
-.cl-ring{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--bdr);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all 0.15s;}
-.cl-ring.on{background:var(--forest);border-color:var(--forest);}
-.cl-txt{font-size:13px;line-height:1.55;flex:1;padding-top:2px;}
-.cl-txt.on{color:var(--forest);opacity:0.55;font-weight:600;}
-.cl-tag{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-top:3px;}
-.shop-row{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin:0 -20px;padding-left:20px;padding-right:20px;}
-.shop-row::-webkit-scrollbar{display:none;}
-.shop-tile{flex-shrink:0;width:105px;background:#fff;border:1px solid var(--bdr);border-radius:16px;padding:14px 11px;text-align:center;}
-.shop-ico{font-size:24px;margin-bottom:7px;}
-.shop-nm{font-size:11px;font-weight:600;color:var(--ink);margin-bottom:3px;line-height:1.3;}
-.shop-wy{font-size:10px;color:var(--muted);line-height:1.4;margin-bottom:5px;}
-.shop-pr{font-size:10px;font-weight:700;color:var(--rose);}
-.sc{background:#fff;border:1px solid var(--bdr);border-radius:20px;overflow:hidden;margin-bottom:13px;cursor:pointer;}
-.sc-img{height:120px;display:flex;align-items:center;justify-content:center;font-size:52px;}
-.sc-body{padding:15px;}
-.sc-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;}
-.sc-author{display:flex;align-items:center;gap:9px;margin-bottom:10px;}
-.sc-name{font-size:12px;font-weight:600;}
-.sc-meta{font-size:10px;color:var(--muted);}
-.sc-wk{background:var(--rose-pale);border:1px solid var(--rose-bdr);border-radius:100px;padding:2px 9px;font-size:9px;font-weight:700;color:var(--rose);margin-left:auto;}
-.sc-title{font-family:'Lora',serif;font-size:16px;font-weight:400;line-height:1.3;color:var(--ink);margin-bottom:7px;}
-.sc-excerpt{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:11px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-.sc-foot{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.sc-chip{background:var(--cream2);border:1px solid var(--bdr);border-radius:100px;padding:3px 9px;font-size:10px;color:var(--muted);}
-.sc-read{background:none;border:none;font-size:12px;font-weight:600;color:var(--rose);cursor:pointer;font-family:inherit;margin-left:auto;}
-.sub-box{border:1.5px dashed var(--rose-bdr);border-radius:20px;padding:22px 18px;text-align:center;background:var(--rose-pale);margin-bottom:12px;}
-.sub-title{font-family:'Lora',serif;font-size:20px;color:var(--ink);margin-bottom:6px;}
-.sub-sub{font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;}
-.sub-btn{background:var(--rose);color:#fff;border:none;border-radius:100px;padding:10px 22px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
-.sub-note{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5;}
-.st-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0 0 16px;font-size:12px;font-weight:600;color:var(--plum);cursor:pointer;font-family:inherit;}
-.st-back:hover{color:var(--ink);}
-.st-detail{background:#fff;border:1px solid var(--bdr);border-radius:22px;overflow:hidden;margin-bottom:16px;}
-.st-detail-hero{height:140px;display:flex;align-items:center;justify-content:center;font-size:56px;}
-.st-detail-body{padding:18px;}
-.st-detail-author{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-.st-detail-title{font-family:'Lora',serif;font-size:22px;font-weight:400;line-height:1.25;color:var(--ink);margin-bottom:12px;}
-.st-detail-text{font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:14px;white-space:pre-wrap;}
-.st-detail-tags{display:flex;flex-wrap:wrap;gap:6px;}
-.st-pending{display:inline-block;background:var(--amber-pale);border:1px solid var(--amber-bdr);border-radius:100px;padding:3px 10px;font-size:9px;font-weight:700;color:var(--amber);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;}
-.st-form{background:#fff;border:1px solid var(--bdr);border-radius:22px;padding:18px;margin-bottom:16px;}
-.st-form-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
-.st-form-input,.st-form-textarea{width:100%;background:var(--cream);border:1px solid var(--bdr);border-radius:14px;padding:12px 14px;font-size:13px;font-family:inherit;color:var(--ink);line-height:1.6;outline:none;margin-bottom:14px;}
-.st-form-textarea{resize:none;min-height:140px;}
-.st-form-input:focus,.st-form-textarea:focus{border-color:var(--plum);}
-.st-tag-pick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
-.st-tag-opt{border:1px solid var(--bdr);border-radius:100px;padding:5px 11px;font-size:11px;font-weight:500;color:var(--muted);background:#fff;cursor:pointer;font-family:inherit;}
-.st-tag-opt.on{background:var(--plum-pale);border-color:var(--plum-bdr);color:var(--plum);}
-.st-tag-add{display:flex;gap:8px;margin-bottom:14px;}
-.st-tag-add .st-form-input{margin-bottom:0;flex:1;}
-.st-tag-add-btn{background:var(--plum-pale);border:1px solid var(--plum-bdr);color:var(--plum);border-radius:100px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;}
-.st-submit{width:100%;background:var(--rose);color:#fff;border:none;border-radius:100px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
-.st-submit:disabled{opacity:0.4;cursor:not-allowed;}
-.st-success{background:var(--forest-pale);border:1px solid var(--forest-bdr);border-radius:18px;padding:18px;text-align:center;margin-bottom:16px;}
-.st-success-title{font-family:'Lora',serif;font-size:18px;color:var(--forest);margin-bottom:6px;}
-.st-success-sub{font-size:12px;color:var(--muted);line-height:1.6;}
-.sc-read{-webkit-tap-highlight-color:transparent;}
-
-/* JOURNAL */
-.j-tabs{display:flex;border-bottom:1px solid var(--bdr);background:#fff;flex-shrink:0;}
-.j-tab{flex:1;padding:12px 8px 10px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;text-align:center;transition:all 0.15s;}
-.j-tab.on{color:var(--teal);border-bottom-color:var(--teal);}
-.j-add-prompt{background:var(--teal-pale);border:1.5px dashed var(--teal-bdr);border-radius:20px;padding:18px;margin-bottom:16px;}
-.j-prompt-top{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-.j-prompt-week{background:var(--teal);color:#fff;border-radius:100px;padding:4px 12px;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;}
-.j-prompt-date{font-size:11px;color:var(--muted);}
-.j-textarea{width:100%;background:#fff;border:1px solid var(--bdr);border-radius:14px;padding:13px 14px;font-size:13px;font-family:inherit;color:var(--ink);line-height:1.6;resize:none;outline:none;min-height:80px;transition:border-color 0.15s;}
-.j-textarea:focus{border-color:var(--teal);}
-.j-textarea::placeholder{color:var(--muted);font-style:italic;}
-.j-photo-row{display:flex;gap:8px;margin-top:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;}
-.j-photo-row::-webkit-scrollbar{display:none;}
-.j-photo-add{width:68px;height:68px;border-radius:14px;border:1.5px dashed var(--teal-bdr);background:rgba(26,96,96,0.05);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;gap:3px;}
-.j-photo-add-icon{font-size:20px;}
-.j-photo-add-lbl{font-size:9px;font-weight:600;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;}
-.j-save-row{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px;flex-wrap:wrap;}
-.j-mood-row{display:flex;gap:6px;}
-.j-mood{font-size:18px;cursor:pointer;opacity:0.5;transition:all 0.15s;}
-.j-mood.on,.j-mood:hover{opacity:1;transform:scale(1.2);}
-.j-save-btn{background:var(--teal);color:#fff;border:none;border-radius:100px;padding:9px 20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
-.j-entry{background:#fff;border:1px solid var(--bdr);border-radius:18px;margin-bottom:10px;overflow:hidden;}
-.j-entry-head{padding:12px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid var(--cream2);}
-.j-entry-wk{background:var(--teal-pale);border:1px solid var(--teal-bdr);border-radius:100px;padding:2px 9px;font-size:9px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:0.1em;}
-.j-entry-date{font-size:11px;color:var(--muted);}
-.j-entry-mood{margin-left:auto;font-size:16px;}
-.j-entry-body{padding:12px 14px;}
-.j-entry-text{font-size:13px;color:var(--ink);line-height:1.65;margin-bottom:8px;font-style:italic;}
-.j-entry-photos{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;}
-.j-entry-photos::-webkit-scrollbar{display:none;}
-.j-entry-photo{width:72px;height:72px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px;border:1px solid var(--bdr);background:var(--cream2);overflow:hidden;}
-.j-entry-photo img{width:100%;height:100%;object-fit:cover;display:block;}
-.j-entry-foot{margin-top:10px;padding-top:10px;border-top:1px solid var(--cream2);}
-.j-entry-del{background:none;border:none;padding:0;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px;}
-.j-entry-del:hover{color:var(--rose);}
-.j-entry-confirm{display:flex;flex-direction:column;gap:8px;}
-.j-entry-confirm-msg{font-size:12px;color:var(--ink);line-height:1.4;}
-.j-entry-confirm-btns{display:flex;gap:8px;}
-.j-entry-confirm-no,.j-entry-confirm-yes{flex:1;border-radius:100px;padding:8px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--bdr);}
-.j-entry-confirm-no{background:#fff;color:var(--muted);}
-.j-entry-confirm-yes{background:var(--rose-pale);border-color:var(--rose-bdr);color:var(--rose);}
-.j-crop-screen{position:absolute;inset:0;z-index:80;background:var(--cream);display:flex;flex-direction:column;padding:16px 18px 22px;overflow:hidden;}
-.j-crop-title{font-family:'Lora',serif;font-size:18px;color:var(--ink);margin-bottom:4px;}
-.j-crop-sub{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
-.j-crop-aspects{display:flex;gap:8px;margin-bottom:12px;}
-.j-crop-aspect{flex:1;padding:9px 8px;border-radius:100px;border:1px solid var(--bdr);background:#fff;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;text-align:center;}
-.j-crop-aspect.on{background:var(--teal-pale);border-color:var(--teal-bdr);color:var(--teal);}
-.j-crop-aspect.done.on::after{content:' ✓';}
-.j-crop-viewport{width:100%;max-width:320px;margin:0 auto 12px;border-radius:16px;overflow:hidden;position:relative;background:#1a1210;touch-action:none;cursor:grab;flex-shrink:0;}
-.j-crop-viewport.square{aspect-ratio:1;}
-.j-crop-viewport.album{aspect-ratio:16/9;}
-.j-crop-hint{font-size:11px;color:var(--teal);margin-bottom:10px;font-weight:500;}
-.j-camera-screen{position:absolute;inset:0;z-index:85;background:#0c0c0c;display:flex;flex-direction:column;padding:16px 18px 22px;}
-.j-camera-title{font-family:'Lora',serif;font-size:18px;color:#fff;margin-bottom:4px;}
-.j-camera-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:12px;}
-.j-camera-video-wrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;margin-bottom:14px;}
-.j-camera-video{width:100%;max-height:100%;border-radius:16px;object-fit:cover;background:#000;}
-.j-camera-actions{display:flex;gap:10px;}
-.j-camera-cancel,.j-camera-shutter{flex:1;border-radius:100px;padding:12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:none;}
-.j-camera-cancel{background:rgba(255,255,255,0.12);color:rgba(255,255,255,0.7);}
-.j-camera-shutter{background:var(--teal);color:#fff;}
-.j-crop-viewport:active{cursor:grabbing;}
-.j-crop-viewport img{position:absolute;top:0;left:0;pointer-events:none;user-select:none;max-width:none;}
-.j-crop-frame{position:absolute;inset:0;pointer-events:none;border:2px solid rgba(255,255,255,0.85);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,0.45);}
-.j-crop-zoom-lbl{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
-.j-crop-zoom{width:100%;margin-bottom:16px;accent-color:var(--teal);}
-.j-crop-actions{display:flex;gap:10px;flex-shrink:0;padding:12px 18px 20px;background:var(--cream);border-top:1px solid var(--bdr);}
-.j-crop-cancel,.j-crop-save{flex:1;border-radius:100px;padding:12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--bdr);}
-.j-crop-cancel{background:#fff;color:var(--muted);}
-.j-crop-save{background:var(--teal);color:#fff;border-color:var(--teal);}
-
-/* ALBUM TRIGGER BUTTON */
-.album-btn{width:100%;background:linear-gradient(135deg,#0a2020,#183535);color:#fff;border:none;border-radius:16px;padding:14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px;}
-
-/* ALBUM FULL-SCREEN */
-.album-screen{position:absolute;inset:0;z-index:200;background:#0c0c0c;display:flex;flex-direction:column;transform:translateY(102%);transition:transform 0.36s cubic-bezier(0.3,0.72,0,1);}
-.album-screen.open{transform:translateY(0);}
-.album-bar{padding:18px 20px 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.album-bar-left{display:flex;flex-direction:column;}
-.album-bar-title{font-family:'Dancing Script',cursive;font-size:26px;color:#fff;font-weight:600;line-height:1.1;}
-.album-bar-sub{font-size:10px;color:rgba(255,255,255,0.28);letter-spacing:0.1em;text-transform:uppercase;margin-top:2px;}
-.album-bar-right{display:flex;align-items:center;gap:8px;}
-.album-print{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:7px 14px;font-size:11px;font-weight:600;color:rgba(255,255,255,0.6);cursor:pointer;font-family:inherit;}
-.album-x{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.6);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;}
-.album-pg-label{text-align:center;font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase;flex-shrink:0;padding-bottom:6px;}
-
-/* THE BOOK PAGE */
-.book{flex:1;overflow:hidden;display:flex;align-items:stretch;padding:0 14px 4px;min-height:0;height:0;}
-.page{background:var(--paper);border-radius:14px;overflow:hidden;box-shadow:0 6px 40px rgba(0,0,0,0.55);display:flex;flex-direction:column;flex:1;position:relative;min-height:0;height:100%;}
-/* spine shadow */
-.page::before{content:'';position:absolute;left:0;top:0;bottom:0;width:14px;background:linear-gradient(to right,rgba(0,0,0,0.08),transparent);z-index:3;pointer-events:none;}
-
-/* PAGE TYPES */
-
-/* ── COVER ── */
-.pg-cover{background:#fdf6f0;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
-.pg-cover-dots{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(191,82,64,0.06) 1px,transparent 1px);background-size:22px 22px;pointer-events:none;}
-.pg-cover-photo{width:100%;height:66.7%;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;min-height:360px;}
-.pg-cover-photo-emoji{font-size:140px;opacity:0.22;position:relative;z-index:1;}
-.pg-cover-photo-overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(240,200,180,0.15),rgba(200,120,100,0.1));}
-.pg-cover-photo-fade{position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to top,#fdf6f0,transparent);}
-.pg-cover-body{padding:14px 22px 22px;position:relative;z-index:2;flex:1;display:flex;flex-direction:column;}
-.pg-cover-series{font-size:9px;font-weight:600;letter-spacing:0.28em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
-.pg-cover-title{font-family:'Lora',serif;font-size:36px;font-weight:400;font-style:italic;color:var(--ink);line-height:1.1;margin-bottom:6px;}
-.pg-cover-name{font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:12px;letter-spacing:0.08em;}
-.pg-cover-chips{display:flex;gap:6px;flex-wrap:wrap;}
-.pg-cover-chip{background:rgba(191,82,64,0.08);border:1px solid rgba(191,82,64,0.18);border-radius:100px;padding:4px 12px;font-size:10px;color:var(--rose);}
-.pg-cover-tagline{font-family:'Lora',serif;font-size:11px;font-style:italic;color:var(--muted);margin-top:auto;line-height:1.65;opacity:0.7;}
-
-/* ── WEEK HEADER ── */
-.pg-wk-photo{height:200px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.pg-wk-photo-fade{position:absolute;bottom:0;left:0;right:0;height:90px;}
-.pg-wk-body{padding:16px 22px 20px;flex:1;}
-.pg-wk-num{font-family:'Lora',serif;font-size:64px;font-weight:400;font-style:italic;line-height:0.9;margin-bottom:4px;}
-.pg-wk-label{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:10px;}
-.pg-wk-divider{height:1px;background:var(--cream2);margin-bottom:12px;}
-.pg-wk-baby{display:flex;align-items:center;gap:12px;background:var(--paper2);border-radius:12px;padding:12px;margin-bottom:10px;}
-.pg-wk-baby-emoji{font-size:34px;}
-.pg-wk-baby-size{font-family:'Lora',serif;font-size:15px;color:var(--ink);}
-.pg-wk-baby-size em{font-style:italic;color:var(--rose);}
-.pg-wk-baby-fact{font-size:11px;color:var(--muted);line-height:1.5;margin-top:2px;}
-.pg-wk-date{font-family:'Inter',sans-serif;font-size:12px;color:var(--muted);letter-spacing:0.04em;}
-.pg-wk-mood{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px;color:var(--muted);}
-
-/* ── ENTRY — PHOTO FIRST ── */
-.pg-entry{display:flex;flex-direction:column;background:var(--paper);min-height:0;overflow:hidden;}
-
-/* big hero photo — taller, takes most of the page */
-.pg-entry-hero{height:300px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.pg-entry-hero-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-.pg-entry-hero-emoji{font-size:100px;opacity:0.3;}
-.pg-entry-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.pg-entry-hero-fade{position:absolute;bottom:0;left:0;right:0;height:120px;}
-.pg-entry-hero-wk{position:absolute;top:14px;left:16px;background:rgba(255,255,255,0.92);border-radius:100px;padding:3px 11px;font-size:9px;font-weight:700;color:var(--rose);letter-spacing:0.1em;text-transform:uppercase;backdrop-filter:blur(4px);}
-.pg-entry-hero-mood{position:absolute;top:12px;right:16px;font-size:28px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.2));}
-
-/* small photo strip — polaroids */
-.pg-entry-photos{display:flex;gap:8px;padding:12px 18px 4px;flex-shrink:0;}
-.pg-entry-polaroid{flex:1;max-width:90px;background:#fff;padding:5px 5px 14px;border-radius:4px;box-shadow:2px 3px 10px rgba(0,0,0,0.12);position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;font-size:32px;overflow:hidden;}
-.pg-entry-polaroid img{width:100%;height:100%;object-fit:cover;display:block;}
-.pg-entry-polaroid:nth-child(odd){transform:rotate(-1.5deg);}
-.pg-entry-polaroid:nth-child(even){transform:rotate(1.2deg);}
-.pg-polaroid-tape{position:absolute;top:-5px;left:50%;transform:translateX(-50%) rotate(-1.5deg);width:34px;height:12px;background:rgba(255,220,155,0.65);border-radius:2px;}
-
-/* text area */
-.pg-entry-content{padding:12px 20px 14px;flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
-.pg-entry-date{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--muted);margin-bottom:8px;letter-spacing:0.04em;}
-.pg-entry-text{font-family:'Lora',serif;font-size:13px;font-style:italic;color:var(--ink);line-height:1.8;flex:1;padding-left:12px;border-left:2px solid var(--rose-bdr);}
-.pg-entry-footer{display:flex;justify-content:space-between;border-top:1px solid var(--cream2);padding-top:8px;margin-top:10px;}
-.pg-entry-footer-wk{font-family:'Inter',sans-serif;font-size:10px;color:var(--muted);letter-spacing:0.04em;}
-.pg-entry-footer-pg{font-size:10px;color:rgba(26,18,16,0.18);}
-
-/* ── CLOSING ── */
-.pg-closing{display:flex;flex-direction:column;min-height:0;overflow:hidden;align-items:center;justify-content:center;padding:36px 28px;text-align:center;background:linear-gradient(160deg,var(--paper2),var(--paper));flex:1;}
-.pg-closing-icon{font-size:54px;margin-bottom:18px;opacity:0.7;}
-.pg-closing-title{font-family:'Dancing Script',cursive;font-size:32px;font-weight:600;color:var(--rose);margin-bottom:12px;line-height:1.2;}
-.pg-closing-body{font-family:'Lora',serif;font-size:13px;font-style:italic;color:var(--muted);line-height:1.85;margin-bottom:18px;}
-.pg-closing-div{width:50px;height:1px;background:var(--cream2);margin:0 auto 14px;}
-.pg-closing-cta{font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--rose);}
-.pg-closing-cont{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;font-style:italic;}
-.pg-closing-dots{display:flex;gap:5px;justify-content:center;margin-top:14px;}
-.pg-closing-dot{width:5px;height:5px;border-radius:50%;background:var(--cream2);}
-
-/* ALBUM NAV */
-.album-nav{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 20px;flex-shrink:0;}
-.anav-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;color:rgba(255,255,255,0.55);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;}
-.anav-btn:hover{background:rgba(255,255,255,0.14);}
-.anav-btn:disabled{opacity:0.18;cursor:default;}
-.anav-btn.next{background:rgba(255,255,255,0.16);color:#fff;}
-.anav-center{text-align:center;}
-.anav-dots{display:flex;gap:4px;justify-content:center;margin-bottom:4px;}
-.anav-dot{height:4px;border-radius:100px;cursor:pointer;transition:all 0.2s;}
-.anav-total{font-size:10px;color:rgba(255,255,255,0.28);}
-
-/* PRINT MODAL */
-.print-back{position:absolute;inset:0;z-index:300;background:rgba(0,0,0,0.65);display:flex;align-items:flex-end;}
-.print-sheet{background:#fff;border-radius:28px 28px 0 0;padding:26px 22px 32px;width:100%;}
-.print-title{font-family:'Dancing Script',cursive;font-size:26px;color:var(--ink);margin-bottom:6px;text-align:center;}
-.print-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:18px;line-height:1.6;}
-.print-opt{display:flex;gap:14px;align-items:center;background:var(--cream);border:1px solid var(--bdr);border-radius:16px;padding:13px 15px;margin-bottom:10px;}
-.print-opt-btn{border:none;border-radius:100px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;color:#fff;}
-.print-cancel{width:100%;background:none;border:1.5px solid var(--bdr);border-radius:100px;padding:11px;font-size:13px;color:var(--muted);cursor:pointer;margin-top:8px;font-family:inherit;}
-
-/* BOTTOM NAV */
-.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(253,250,245,0.96);backdrop-filter:blur(18px);border-top:1px solid var(--bdr);padding:10px 20px 18px;display:flex;justify-content:space-between;align-items:center;z-index:50;}
-.bnav-btn{display:flex;align-items:center;gap:6px;background:none;border:1.5px solid var(--bdr);border-radius:100px;padding:9px 16px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.14s;}
-.bnav-btn:hover{border-color:var(--rose);color:var(--rose);}
-.bnav-btn.next{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600;}
-.bnav-mid{text-align:center;}
-.bnav-wk{font-family:'Lora',serif;font-size:22px;color:var(--ink);display:block;line-height:1;}
-.bnav-of{font-size:10px;color:var(--muted);}
-
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.hero{animation:fadeUp 0.3s ease both;}
-.w:nth-child(1){animation:fadeUp 0.35s 0.05s ease both;}
-.w:nth-child(2){animation:fadeUp 0.35s 0.09s ease both;}
-.w:nth-child(3){animation:fadeUp 0.35s 0.13s ease both;}
-.w:nth-child(4){animation:fadeUp 0.35s 0.17s ease both;}
-.w:nth-child(5){animation:fadeUp 0.35s 0.21s ease both;}
-.w:nth-child(6){animation:fadeUp 0.35s 0.25s ease both;}
-.w:nth-child(7){animation:fadeUp 0.35s 0.29s ease both;}
-.w:nth-child(8){animation:fadeUp 0.35s 0.33s ease both;}
-.w:nth-child(9){animation:fadeUp 0.35s 0.37s ease both;}
-.w:nth-child(10){animation:fadeUp 0.35s 0.41s ease both;}
-
-/* HERO MOOD STRIP */
-.hero-mood-strip{position:relative;z-index:2;display:flex;align-items:center;gap:10px;padding:8px 22px 10px;}
-.hero-mood-entry{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:5px 12px;}
-.hero-mood-emoji{font-size:14px;}
-.hero-mood-text{font-size:10px;color:rgba(255,255,255,0.45);font-style:italic;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.hero-mood-ago{font-size:10px;color:rgba(255,255,255,0.25);white-space:nowrap;}
-
-/* SYMPTOM SEARCH BAR */
-.symptom-bar{padding:10px 12px 0;animation:fadeUp 0.35s ease both;}
-.symptom-bar-inner{background:#fff;border:1px solid var(--bdr);border-radius:16px;padding:0;display:flex;align-items:center;overflow:hidden;transition:box-shadow 0.15s;}
-.symptom-bar-inner:focus-within{box-shadow:0 0 0 2px var(--rose-bdr);}
-.symptom-bar-icon{padding:0 12px 0 14px;font-size:16px;flex-shrink:0;color:var(--muted);}
-.symptom-bar-input{flex:1;border:none;outline:none;font-size:13px;font-family:inherit;color:var(--ink);padding:13px 0;background:transparent;}
-.symptom-bar-input::placeholder{color:var(--muted);}
-.symptom-bar-btn{padding:0 18px;background:var(--rose);border:none;cursor:pointer;font-size:12px;font-weight:600;color:#fff;font-family:inherit;border-radius:0 14px 14px 0;align-self:stretch;min-height:46px;}
-
-/* ── SYMPTOM CHIP GRID ── */
-.symptom-section{padding:14px 12px 0;}
-.symptom-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.symptom-section-title{font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);}
-.symptom-chip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;}
-.symptom-chip{display:flex;flex-direction:column;align-items:center;gap:4px;border-radius:14px;padding:10px 4px 8px;cursor:pointer;transition:all 0.14s;-webkit-tap-highlight-color:transparent;font-family:inherit;border:1px solid transparent;}
-.symptom-chip:active{transform:scale(0.93);opacity:0.85;}
-.symptom-chip-emoji{font-size:22px;line-height:1;}
-.symptom-chip-lbl{font-size:9px;font-weight:600;text-align:center;line-height:1.2;}
-.symptom-search-soon{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--bdr);border-radius:14px;padding:11px 14px;opacity:0.6;}
-.symptom-search-soon-icon{font-size:15px;color:var(--muted);}
-.symptom-search-soon-txt{flex:1;font-size:13px;color:var(--muted);font-family:inherit;}
-.symptom-search-soon-badge{font-size:9px;font-weight:700;letter-spacing:0.08em;background:var(--cream2);border:1px solid var(--bdr);border-radius:100px;padding:3px 9px;color:var(--muted);white-space:nowrap;}
-.symptom-ask-link{font-size:11px;color:var(--teal);font-weight:600;cursor:pointer;text-align:right;display:block;padding:4px 0 10px;-webkit-tap-highlight-color:transparent;}
-
-/* ── SYMPTOM SPINNER ── */
-@keyframes spin{to{transform:rotate(360deg);}}
-.symptom-spinner-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;gap:16px;}
-.symptom-spinner{width:40px;height:40px;border:3px solid var(--rose-pale);border-top-color:var(--rose);border-radius:50%;animation:spin 0.8s linear infinite;}
-.symptom-spinner-txt{font-size:13px;color:var(--muted);font-style:italic;text-align:center;line-height:1.6;}
-
-/* ── STORYBOOK BOOK COVER ── */
-.book-open-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;background:rgba(112,200,184,0.12);border-top:1px solid rgba(112,200,184,0.2);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background 0.15s;}
-.book-open-bar:active{background:rgba(112,200,184,0.22);}
-.book-open-icon{font-size:18px;}
-.book-open-txt{font-family:'Lora',serif;font-size:14px;font-style:italic;color:#70c8b8;}
-.book-open-arr{font-size:12px;color:rgba(112,200,184,0.6);}
-.book-empty-cta{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 16px;gap:10px;}
-.book-empty-icon{font-size:52px;opacity:0.4;}
-.book-empty-title{font-family:'Lora',serif;font-size:20px;color:#fff;line-height:1.25;text-align:center;}
-.book-empty-title em{font-style:italic;color:#70c8b8;}
-.book-empty-btn{background:rgba(112,200,184,0.15);border:1.5px solid rgba(112,200,184,0.4);border-radius:100px;padding:11px 22px;color:#70c8b8;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:all 0.15s;margin-top:4px;}
-.book-empty-btn:active{background:rgba(112,200,184,0.28);}
-
-/* SYMPTOM PANEL */
-.symptom-result{background:#fff;border:1px solid var(--bdr);border-radius:16px;padding:16px;margin-bottom:10px;}
-.symptom-result-q{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--cream2);}
-.symptom-tier{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--cream2);}
-.symptom-tier:last-child{border-bottom:none;}
-.symptom-tier-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
-.symptom-tier-label{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:3px;}
-.symptom-tier-text{font-size:12px;color:var(--muted);line-height:1.6;}
-.symptom-loading{text-align:center;padding:24px;font-size:13px;color:var(--muted);font-style:italic;}
-
-/* FOOD SEARCH WIDGET */
-.wc-food-search{background:var(--forest-pale);border-color:var(--forest-bdr);}
-.food-search-input-wrap{display:flex;align-items:center;background:#fff;border:1px solid var(--forest-bdr);border-radius:100px;padding:0 14px;gap:8px;margin-top:10px;}
-.food-search-input{flex:1;border:none;outline:none;font-size:12px;font-family:inherit;color:var(--ink);padding:9px 0;background:transparent;}
-.food-search-input::placeholder{color:var(--muted);}
-
-/* ── BOTTOM TAB NAV ── */
-.tab-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:50;padding:0 0 env(safe-area-inset-bottom,0px);}
-.tab-nav-inner{margin:0 16px 14px;background:rgba(26,18,16,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:20px;display:flex;border:1px solid rgba(255,255,255,0.05);}
-.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:11px 4px 10px;border:none;background:none;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:all 0.2s;position:relative;}
-.tab-btn-icon{font-size:18px;line-height:1;opacity:0.5;transition:all 0.2s;}
-.tab-btn.on .tab-btn-icon{opacity:1;}
-.tab-btn-lbl{font-size:10px;font-weight:600;letter-spacing:0.05em;color:rgba(255,255,255,0.35);transition:color 0.2s;white-space:nowrap;}
-.tab-btn.on .tab-btn-lbl{color:rgba(255,255,255,0.9);}
-.tab-btn-dot{width:18px;height:2px;border-radius:100px;background:var(--rose);opacity:0;transition:opacity 0.2s;margin-top:1px;}
-.tab-btn.on .tab-btn-dot{opacity:1;}
-
-/* ── WEEK NAV STRIP ── */
-.week-nav{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 0;}
-.week-nav-btn{background:none;border:1.5px solid var(--bdr);border-radius:100px;padding:6px 14px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.14s;}
-.week-nav-btn:hover{border-color:var(--rose);color:var(--rose);}
-.week-nav-mid{text-align:center;}
-.week-nav-label{font-family:'Lora',serif;font-size:16px;color:var(--ink);display:block;line-height:1;}
-.week-nav-sub{font-size:9px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;}
-
-/* ── QUICK ADD FAB ── */
-.fab{position:fixed;bottom:100px;right:calc(50% - 215px + 16px);width:52px;height:52px;border-radius:50%;background:var(--rose);border:none;color:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(191,82,64,0.4);z-index:49;transition:transform 0.15s,box-shadow 0.15s;-webkit-tap-highlight-color:transparent;}
-.fab:active{transform:scale(0.92);}
-@media(max-width:430px){.fab{right:16px;}}
-
-/* ── QUICK ADD SHEET ── */
-.quick-add-sheet{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;justify-content:flex-end;pointer-events:none;}
-.quick-add-sheet.open{pointer-events:all;}
-.quick-add-backdrop{position:absolute;inset:0;background:rgba(16,10,8,0);transition:background 0.3s;}
-.quick-add-sheet.open .quick-add-backdrop{background:rgba(16,10,8,0.7);}
-.quick-add-card{position:relative;background:var(--cream);border-radius:28px 28px 0 0;padding:20px 20px 40px;transform:translateY(102%);transition:transform 0.36s cubic-bezier(0.3,0.72,0,1);}
-.quick-add-sheet.open .quick-add-card{transform:translateY(0);}
-.quick-add-title{font-family:'Lora',serif;font-size:20px;color:var(--ink);margin-bottom:14px;font-weight:400;}
-.quick-add-title em{font-style:italic;color:var(--teal);}
-
-/* ── LIBRARY ── */
-.library{padding:0 0 110px;overflow-y:auto;flex:1;}
-.lib-header{padding:20px 16px 8px;}
-.lib-header-title{font-family:'Lora',serif;font-size:28px;font-weight:400;color:var(--ink);line-height:1.1;margin-bottom:4px;}
-.lib-header-title em{font-style:italic;color:var(--rose);}
-.lib-header-sub{font-size:13px;color:var(--muted);}
-.lib-section{padding:16px 12px 0;}
-.lib-section-lbl{font-size:9px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);padding:0 4px;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
-.lib-section-lbl::after{content:'';flex:1;height:1px;background:var(--bdr);}
-.lib-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.lw{border-radius:22px;overflow:hidden;cursor:pointer;position:relative;border:1px solid var(--bdr);background:#fff;transition:transform 0.14s,box-shadow 0.14s;-webkit-tap-highlight-color:transparent;}
-.lw:active{transform:scale(0.97);}
-.lw:hover{box-shadow:0 6px 24px rgba(0,0,0,0.1);}
-.lw-full{grid-column:1/-1;}
-.lw-tall{min-height:200px;}.lw-med{min-height:160px;}.lw-sm{min-height:130px;}
-
-/* ── MOOD CHART ── */
-.mood-chart{padding:14px 16px;}
-.mood-chart-week{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
-.mood-chart-wk{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;width:40px;flex-shrink:0;}
-.mood-chart-dots{display:flex;gap:5px;flex-wrap:wrap;}
-.mood-chart-dot{font-size:14px;line-height:1;}
-
-/* ── MILESTONE TIMELINE ── */
-.milestone-scroll{overflow-x:auto;padding:0 12px 8px;scrollbar-width:none;}
-.milestone-scroll::-webkit-scrollbar{display:none;}
-.milestone-track{display:flex;gap:0;align-items:flex-start;padding:8px 4px;min-width:max-content;}
-.milestone-item{display:flex;flex-direction:column;align-items:center;width:70px;}
-.milestone-line{height:2px;flex:1;background:var(--bdr);margin-top:16px;min-width:20px;}
-.milestone-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--bdr);background:#fff;flex-shrink:0;transition:all 0.15s;}
-.milestone-dot.done{background:var(--rose);border-color:var(--rose);}
-.milestone-dot.current{background:var(--rose);border-color:var(--rose);box-shadow:0 0 0 3px var(--rose-pale);}
-.milestone-dot.upcoming{background:#fff;border-color:var(--bdr);}
-.milestone-wk{font-size:9px;font-weight:700;color:var(--muted);margin-top:5px;text-align:center;}
-.milestone-name{font-size:9px;color:var(--muted);text-align:center;line-height:1.3;margin-top:2px;max-width:65px;}
-
-/* ── JOURNAL TAB (full page) ── */
-.journal-tab{display:flex;flex-direction:column;height:100%;position:relative;overflow:hidden;background:var(--cream);}
-.journal-tab-header{padding:20px 16px 0;flex-shrink:0;}
-.journal-tab-title{font-family:'Lora',serif;font-size:28px;color:var(--ink);font-weight:400;line-height:1.1;margin-bottom:4px;}
-.journal-tab-title em{font-style:italic;color:var(--teal);}
-.journal-tab-sub{font-size:13px;color:var(--muted);margin-bottom:14px;}
-
-/* ── LIBRARY HERO ── */
-.lib-hero{position:relative;overflow:hidden;background:linear-gradient(150deg,#2e4e6e 0%,#3a5e80 45%,#486e90 80%,#5880a4 100%);padding:52px 22px 0;display:flex;flex-direction:column;}
-.lib-hero-bg-emoji{position:absolute;font-size:280px;line-height:1;right:-20px;bottom:-20px;opacity:0.16;pointer-events:none;transform:rotate(-12deg);user-select:none;}
-.lib-hero-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,18,32,0.65) 0%,rgba(8,18,32,0.0) 45%,transparent 100%);pointer-events:none;}
-.lib-hero-inner{position:relative;z-index:2;padding-bottom:20px;}
-.lib-hero-eyebrow{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:600;letter-spacing:0.26em;text-transform:uppercase;color:rgba(255,255,255,0.32);margin-bottom:10px;}
-.lib-hero-dot{width:4px;height:4px;border-radius:50%;background:#7090c0;}
-.lib-hero-title{font-family:'Lora',serif;font-size:42px;font-weight:400;line-height:0.95;color:#fff;letter-spacing:-0.02em;margin-bottom:10px;}
-.lib-hero-title em{font-style:italic;color:#90b8f0;}
-.lib-hero-sub{font-family:'Lora',serif;font-size:14px;font-style:italic;color:rgba(255,255,255,0.42);line-height:1.55;margin-bottom:20px;}
-.lib-hero-stats{display:flex;gap:8px;flex-wrap:wrap;padding-bottom:20px;}
-.lib-hero-stat{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:9px 13px;}
-.lib-hero-stat-val{font-family:'Lora',serif;font-size:15px;color:#90b8f0;line-height:1;}
-.lib-hero-stat-lbl{font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;}
-
-/* ── JOURNAL HERO ── */
-.jh{position:relative;overflow:hidden;cursor:default;background:linear-gradient(150deg,#2e6868 0%,#3a7878 45%,#488888 80%,#569898 100%);}
-.jh-bg{position:absolute;font-size:260px;line-height:1;right:-20px;bottom:-20px;opacity:0.16;pointer-events:none;transform:rotate(-12deg);user-select:none;}
-.jh-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,22,22,0.65) 0%,rgba(6,22,22,0.0) 45%,transparent 100%);pointer-events:none;}
-.jh-photo{position:absolute;inset:0;overflow:hidden;}
-.jh-photo img{width:100%;height:100%;object-fit:cover;opacity:0.85;filter:contrast(1.1) saturate(1.15) brightness(0.95);}
-.jh-inner{position:relative;z-index:2;padding:52px 22px 20px;}
-.jh-eyebrow{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:600;letter-spacing:0.26em;text-transform:uppercase;color:rgba(255,255,255,0.32);margin-bottom:10px;}
-.jh-dot{width:4px;height:4px;border-radius:50%;background:#70c8b8;}
-.jh-title{font-family:'Lora',serif;font-size:48px;font-weight:400;line-height:0.92;color:#fff;letter-spacing:-0.025em;margin-bottom:8px;}
-.jh-title em{font-style:italic;color:#70c8b8;}
-.jh-entry-preview{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:13px 15px;margin-bottom:18px;}
-.jh-entry-mood{font-size:18px;margin-bottom:5px;}
-.jh-entry-text{font-family:'Lora',serif;font-size:13px;font-style:italic;color:rgba(255,255,255,0.65);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.jh-entry-date{font-size:10px;color:rgba(255,255,255,0.28);margin-top:5px;}
-.jh-stats{display:flex;gap:8px;flex-wrap:wrap;}
-.jh-stat{display:flex;flex-direction:column;gap:2px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:9px 13px;}
-.jh-stat-val{font-family:'Lora',serif;font-size:15px;color:#70c8b8;line-height:1;}
-.jh-stat-lbl{font-size:10px;color:rgba(255,255,255,0.3);margin-top:2px;}
-
-/* ── JOURNAL TAB GRID ── */
-.jgrid{padding:10px 12px 100px;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-/* ── MOOD TOAST ── */
-.mood-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-80px);z-index:500;background:var(--ink);color:#fff;border-radius:100px;padding:10px 20px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);transition:transform 0.3s cubic-bezier(0.3,0.72,0,1),opacity 0.3s;opacity:0;pointer-events:none;}
-.mood-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
-
-/* ── EMOTION PILLS (interactive) ── */
-.em-pill{background:#fff;border:1px solid var(--bdr);border-radius:100px;padding:6px 12px;font-size:12px;color:var(--ink);cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent;}
-.em-pill:active{transform:scale(0.94);}
-.em-pill.logged{background:var(--rose-pale);border-color:var(--rose-bdr);color:var(--rose);}
-
-/* ── PUBLIC/PRIVATE TOGGLE ── */
-.privacy-toggle{display:flex;background:var(--cream2);border-radius:100px;padding:3px;gap:2px;border:1px solid var(--bdr);min-width:0;max-width:100%;}
-.privacy-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;padding:5px 6px;border:none;background:transparent;border-radius:100px;font-size:clamp(9px,2.2vw,11px);font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;min-width:0;overflow:hidden;}
-.privacy-btn.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,0.08);}
-.privacy-btn .pb-label{display:inline;}
-@media(max-width:360px){.privacy-btn .pb-label{display:none;}.privacy-btn{padding:5px 8px;}}
-
-/* ── SHARE STRIP ── */
-.share-strip-wrap{padding:16px;background:var(--cream);}
-.share-strip-title{font-family:'Lora',serif;font-size:16px;color:var(--ink);margin-bottom:12px;font-weight:400;}
-.share-strip-title em{font-style:italic;color:var(--teal);}
-.share-card{background:linear-gradient(135deg,#0a2020,#183535);border-radius:16px;overflow:hidden;margin-bottom:12px;}
-.share-card-header{padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.08);}
-.share-card-title{font-family:'Lora',serif;font-size:14px;color:#fff;font-weight:400;margin-bottom:2px;}
-.share-card-sub{font-size:10px;color:rgba(255,255,255,0.3);}
-.share-week-row{display:flex;gap:0;padding:12px 16px;overflow-x:auto;scrollbar-width:none;}
-.share-week-row::-webkit-scrollbar{display:none;}
-.share-week-item{flex-shrink:0;width:72px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 4px;}
-.share-week-num{font-size:9px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.1em;}
-.share-week-size{font-size:9px;color:rgba(255,255,255,0.25);text-align:center;line-height:1.3;}
-.share-week-moods{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;font-size:14px;}
-.share-week-snippet{font-size:9px;color:rgba(255,255,255,0.4);text-align:center;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.share-week-divider{width:1px;background:rgba(255,255,255,0.06);flex-shrink:0;margin:8px 0;align-self:stretch;}
-.share-btn-row{display:flex;gap:8px;padding:0 16px 14px;}
-.share-btn-main{flex:1;background:var(--teal);color:#fff;border:none;border-radius:100px;padding:11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;}
-.share-btn-copy{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.12);border-radius:100px;padding:11px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
-
-/* ── FRIENDS ── */
-.friends-card{background:linear-gradient(135deg,#1a1a30,#282850);border-radius:16px;padding:16px 18px;margin-bottom:10px;}
-.friends-label{font-size:9px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:rgba(180,170,240,0.6);margin-bottom:8px;}
-.friends-title{font-family:'Lora',serif;font-size:18px;color:#fff;line-height:1.2;margin-bottom:6px;}
-.friends-title em{font-style:italic;color:#b0a0f0;}
-.friends-sub{font-size:12px;color:rgba(255,255,255,0.35);line-height:1.6;margin-bottom:12px;}
-/* ── SYMPTOM DETAIL PANEL ── */
-.sdp-header{background:var(--cream2);border-bottom:1px solid var(--bdr);padding:14px 16px;}
-.sdp-topic{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.sdp-topic-emoji{font-size:28px;}
-.sdp-topic-label{font-size:18px;font-weight:700;color:var(--ink);}
-.sdp-status{font-size:11px;font-weight:600;color:var(--forest);background:var(--forest-pale);border:1px solid var(--forest-bdr);border-radius:100px;padding:3px 10px;display:inline-block;}
-.sdp-card{background:#fff;border:1px solid var(--bdr);border-radius:14px;padding:14px 16px;margin-bottom:10px;}
-.sdp-card-lbl{font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:6px;}
-.sdp-card-txt{font-size:13px;color:var(--ink);line-height:1.7;}
-.sdp-call-card{background:var(--rose-pale);border:1px solid var(--rose-bdr);border-radius:14px;padding:14px 16px;margin-bottom:16px;}
-.sdp-divider{display:flex;align-items:center;gap:10px;margin:16px 0 12px;font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);}
-.sdp-divider::before,.sdp-divider::after{content:"";flex:1;height:1px;background:var(--bdr);}
-.sdp-suggestions{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
-.sdp-suggestion{background:var(--cream2);border:1px solid var(--bdr);border-radius:100px;padding:9px 14px;font-size:12px;font-weight:500;color:var(--ink);cursor:pointer;text-align:left;font-family:inherit;transition:all 0.14s;-webkit-tap-highlight-color:transparent;}
-.sdp-suggestion:active{background:var(--rose-pale);border-color:var(--rose-bdr);}
-.sdp-chat{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
-.sdp-msg-q{align-self:flex-end;background:var(--rose);color:#fff;border-radius:18px 18px 4px 18px;padding:10px 14px;font-size:13px;line-height:1.5;max-width:85%;}
-.sdp-msg-a{align-self:flex-start;background:#fff;border:1px solid var(--bdr);border-radius:18px 18px 18px 4px;padding:10px 14px;font-size:13px;color:var(--ink);line-height:1.6;max-width:92%;}
-.sdp-msg-scope{align-self:flex-start;background:var(--amber-pale);border:1px solid var(--amber-bdr);border-radius:14px;padding:10px 14px;font-size:12px;color:var(--amber);line-height:1.5;max-width:92%;font-style:italic;}
-.sdp-input-row{display:flex;gap:8px;align-items:flex-end;padding-top:8px;border-top:1px solid var(--bdr);}
-.sdp-input{flex:1;border:1px solid var(--bdr);border-radius:14px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--ink);background:#fff;outline:none;resize:none;line-height:1.5;}
-.sdp-input:focus{border-color:var(--rose-bdr);}
-.sdp-send{background:var(--rose);border:none;border-radius:12px;padding:10px 14px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
-.sdp-send:disabled{opacity:0.4;cursor:default;}
-
-.friends-coming{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:5px 14px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.08em;}
-
-/* ── RICH TIMELINE CARDS ── */
-.tl-week-group{margin-bottom:18px;}
-.tl-week-header{display:flex;align-items:center;gap:10px;padding:0 16px;margin-bottom:10px;}
-.tl-week-num{font-family:'Lora',serif;font-size:36px;font-weight:400;line-height:1;color:var(--rose);opacity:0.9;flex-shrink:0;}
-.tl-week-meta{flex:1;}
-.tl-week-label{font-size:11px;font-weight:700;color:var(--ink);letter-spacing:0.05em;}
-.tl-week-baby{font-size:10px;color:var(--muted);margin-top:2px;}
-.tl-week-line{flex:1;height:1px;background:var(--bdr);}
-
-.tl-card{margin:0 12px 8px;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 1px 8px rgba(0,0,0,0.05);}
-.tl-card-inner{padding:12px 14px 10px;}
-.tl-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
-.tl-card-date{display:flex;align-items:baseline;gap:4px;}
-.tl-card-date-day{font-size:13px;font-weight:700;color:var(--ink);}
-.tl-card-date-month{font-size:11px;font-weight:500;color:var(--muted);}
-.tl-card-badges{display:flex;align-items:center;gap:6px;}
-.tl-card-public{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;background:var(--teal-pale);border:1px solid var(--teal-bdr);border-radius:100px;padding:2px 8px;color:var(--teal);}
-.tl-card-mood{font-size:22px;line-height:1;}
-.tl-card-text{font-family:'Lora',serif;font-size:13px;font-style:italic;line-height:1.7;color:var(--ink);margin-bottom:10px;padding-left:12px;border-left:2px solid var(--rose-bdr);}
-.tl-card-photos{display:flex;gap:7px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none;}
-.tl-card-photos::-webkit-scrollbar{display:none;}
-.tl-card-photo{width:72px;height:72px;border-radius:10px;flex-shrink:0;overflow:hidden;border:2px solid rgba(255,255,255,0.6);box-shadow:1px 2px 8px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center;font-size:26px;}
-.tl-card-photo img{width:100%;height:100%;object-fit:cover;}
-.tl-card-foot{display:flex;align-items:center;justify-content:flex-end;border-top:1px solid rgba(0,0,0,0.05);padding-top:8px;}
-.tl-del-btn{background:none;border:none;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit;padding:0;opacity:0.6;transition:opacity 0.15s;}
-.tl-del-btn:hover{opacity:1;color:var(--rose);}
-.tl-confirm{background:var(--rose-pale);border-radius:10px;padding:10px 12px;margin-top:6px;border:1px solid var(--rose-bdr);}
-.tl-confirm-msg{font-size:12px;color:var(--rose);margin-bottom:8px;line-height:1.5;}
-.tl-confirm-btns{display:flex;gap:8px;}
-.tl-confirm-no{flex:1;background:none;border:1px solid var(--bdr);border-radius:100px;padding:6px;font-size:11px;color:var(--muted);cursor:pointer;font-family:inherit;}
-.tl-confirm-yes{flex:1;background:var(--rose);border:none;border-radius:100px;padding:6px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;}
-
-/* Card color themes — cycling */
-.tl-card-rose  {background:var(--rose-pale);  border:1px solid var(--rose-bdr);}
-.tl-card-teal  {background:var(--teal-pale);  border:1px solid var(--teal-bdr);}
-.tl-card-plum  {background:var(--plum-pale);  border:1px solid var(--plum-bdr);}
-.tl-card-navy  {background:var(--navy-pale);  border:1px solid var(--navy-bdr);}
-.tl-card-amber {background:var(--amber-pale); border:1px solid var(--amber-bdr);}
-.tl-card-forest{background:var(--forest-pale);border:1px solid var(--forest-bdr);}
-.tl-card-dark  {background:linear-gradient(135deg,#1a1210,#2e1a14);}
-
-/* ── NUTRITION METERS ── */
-.nutr-meters{display:flex;flex-direction:column;gap:12px;margin-bottom:16px;}
-.nutr-meter{background:#fff;border:1px solid var(--bdr);border-radius:16px;padding:14px 16px;}
-.nutr-meter-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.nutr-meter-left{display:flex;align-items:center;gap:10px;}
-.nutr-meter-icon{font-size:22px;flex-shrink:0;}
-.nutr-meter-name{font-size:13px;font-weight:600;color:var(--ink);line-height:1.2;}
-.nutr-meter-target{font-size:10px;color:var(--muted);margin-top:2px;}
-.nutr-meter-count{font-family:'Lora',serif;font-size:22px;font-weight:400;color:var(--ink);line-height:1;}
-.nutr-meter-unit{font-size:9px;color:var(--muted);text-align:right;margin-top:2px;}
-.nutr-track{height:8px;background:var(--cream2);border-radius:100px;overflow:hidden;margin-bottom:10px;}
-.nutr-fill{height:100%;border-radius:100px;transition:width 0.4s cubic-bezier(0.3,0.72,0,1);}
-.nutr-taps{display:flex;gap:6px;}
-.nutr-tap-btn{flex:1;border:none;border-radius:100px;padding:7px 4px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;-webkit-tap-highlight-color:transparent;}
-.nutr-tap-btn:active{transform:scale(0.95);}
-.nutr-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;font-style:italic;}
-`;
-
-
-
+  return { healthContext, refreshContext: refresh };
+}
 
 /* ─── DATA ───────────────────────────────────────────────────────────────── */
 
@@ -805,24 +153,6 @@ const JOURNAL_ENTRIES = [
     heroBg:"linear-gradient(135deg,#eaf2f8,#d5e8f5)",heroEmoji:"🩺",heroBgColor:"#e4f0f8"},
 ];
 
-const isPhotoUrl = (p) =>
-  typeof p === "string" && (p.startsWith("blob:") || p.startsWith("data:") || p.startsWith("http"));
-
-const isPhotoCrop = (p) => p && typeof p === "object" && (p.square || p.album);
-
-const photoSquare = (p) => {
-  if (isPhotoCrop(p)) return p.square || null;
-  if (isPhotoUrl(p)) return p;
-  return null;
-};
-
-const photoAlbum = (p) => {
-  if (isPhotoCrop(p)) return p.album || null;
-  if (isPhotoUrl(p)) return p;
-  return null;
-};
-
-const photoThumb = (p) => photoSquare(p) || photoAlbum(p);
 
 const CROP_ASPECTS = {
   square: { key: "square", exportW: 960, exportH: 960, label: "Memory", hint: "Square — for your timeline & polaroids" },
@@ -848,28 +178,7 @@ const JOURNAL_STORAGE_KEY = "matri-journal-entries";
 const JOURNAL_IDS_KEY = "matri-journal-ids";
 const journalEntryKey = (id) => `matri-journal-entry-${id}`;
 
-function compressImageFile(file, maxSide = 960, quality = 0.72) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+
 
 function loadJournalEntries() {
   try {
@@ -964,25 +273,23 @@ const BABY_SIZES = {
   40:{compare:"a newborn",cm:"50cm",fact:"Ready to meet you.",icon:"👶"},
 };
 
-/* ─── ALBUM PAGE BUILDER ──────────────────────────────────────────────── */
-function buildAlbumPages(entries) {
-  const pages = [];
-  pages.push({ type:"cover", id:"cover" });
-  const albumEntries = entries.filter(e =>
-    e.type !== "moment" &&
-    (e.text?.trim() || (e.photos && e.photos.length > 0))
-  );
-  const byWeek = albumEntries.reduce((a,e)=>{ if(!a[e.week])a[e.week]=[]; a[e.week].push(e); return a; },{});
-  let pg = 2;
-  Object.entries(byWeek).sort(([a],[b])=>Number(a)-Number(b)).forEach(([week,wentries])=>{
-    wentries.forEach(entry => pages.push({ type:"entry", id:`e-${entry.id}`, entry, week:Number(week), pg:pg++ }));
-  });
-  pages.push({ type:"closing", id:"closing", count:albumEntries.length, weeks:Object.keys(byWeek).length });
-  return pages;
-}
 
 /* ─── ALBUM PAGE COMPONENTS ───────────────────────────────────────────── */
 const COVER_PHOTO_KEY = "matri-cover-photo";
+
+// Extras whose names are variants of a core lab test should not be saved as separate rows
+const CORE_LAB_ALIASES = [
+  ["hemoglobin","haemoglobin","hb","hgb","hb level"],
+  ["tsh","thyroid stimulating hormone","thyroid"],
+  ["blood sugar fasting","blood sugar (f)","blood glucose fasting","fbs","fasting blood sugar",
+   "fasting blood glucose","blood glucose fasting (fbs)","fasting sugar","fasting glucose","fbg","blood sugar f","glucose fasting"],
+  ["blood sugar pp","blood sugar (pp)","postprandial blood sugar","pp blood sugar","post prandial",
+   "ppbs","blood sugar post prandial","2hr pp","2 hr pp","post-prandial glucose","blood glucose pp"],
+];
+function isCoreLabAlias(name) {
+  const n = (name || "").toLowerCase().trim();
+  return CORE_LAB_ALIASES.some(group => group.some(a => n.includes(a) || a.includes(n)));
+}
 
 function PgCover() {
   const [coverPhoto, setCoverPhoto] = useState(() => {
@@ -1004,7 +311,7 @@ function PgCover() {
       <div className="pg-cover-dots"/>
       <div className="pg-cover-photo"
         style={{background:"linear-gradient(160deg,#faeae0,#f5d5c8 50%,#eeddd8 100%)",cursor:"pointer"}}
-        onClick={()=>fileRef.current?.click()}>
+        onClick={e=>{e.stopPropagation();fileRef.current?.click();}}>
         {coverPhoto ? (
           <img src={coverPhoto} alt="Cover" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}}/>
         ) : (
@@ -1685,25 +992,486 @@ function FoodPanel() {
   </>;
 }
 
-function MedPanel() {
+/* ─── MEDICINE UTILITIES ─────────────────────────────────────────────────── */
+// Safely parse a medicine entry regardless of whether it's a string or object
+function parseMed(m) {
+  if (!m) return { name: "Unknown", dosage: "", frequency: "", duration: "", notes: "", active: true, paused: false, pause_reason: null };
+  if (typeof m === "string") {
+    try { return parseMed(JSON.parse(m)); } catch {}
+    return { name: m, dosage: "", frequency: "", duration: "", notes: "", active: true, paused: false, pause_reason: null };
+  }
+  return {
+    name:         m.name         || m.medicine || m.drug || "Unknown",
+    dosage:       m.dosage       || m.dose     || "",
+    frequency:    m.frequency    || m.freq     || "",
+    duration:     m.duration     || m.days     || "",
+    notes:        m.notes        || m.instruction || "",
+    active:       m.active !== false,
+    paused:       m.paused === true,
+    pause_reason: m.pause_reason || null,
+  };
+}
+
+// Convert pharmacy notation to human schedule
+// "1-0-0" → "Once daily · Morning"
+// "1-1-1" → "Three times daily · Morning, Afternoon & Night"
+// "1-0-1" → "Twice daily · Morning & Night"
+// "0-0-1" → "Once daily · Night"
+function humanSchedule(frequency) {
+  if (!frequency) return null;
+
+  // Parse X-X-X pattern
+  const match = frequency.match(/(\d+)-(\d+)-(\d+)/);
+  if (match) {
+    const [, m, a, n] = match.map(Number);
+    const slots = [];
+    if (m) slots.push("Morning");
+    if (a) slots.push("Afternoon");
+    if (n) slots.push("Night");
+    const total = m + a + n;
+    const timesLabel = total === 1 ? "Once daily" : total === 2 ? "Twice daily" : total === 3 ? "Three times daily" : `${total}x daily`;
+    const when = slots.length === 1 ? slots[0] : slots.slice(0, -1).join(", ") + " & " + slots[slots.length - 1];
+    return { times: timesLabel, when };
+  }
+
+  // Already human readable — just clean it up
+  const lower = frequency.toLowerCase();
+  if (lower.includes("once") || lower.includes("od") || lower.includes("1-0-0") || lower.includes("0-0-1"))
+    return { times: "Once daily", when: lower.includes("night") || lower.includes("0-0-1") ? "Night" : "Morning" };
+  if (lower.includes("twice") || lower.includes("bd") || lower.includes("bid"))
+    return { times: "Twice daily", when: "Morning & Night" };
+  if (lower.includes("three") || lower.includes("tds") || lower.includes("tid"))
+    return { times: "Three times daily", when: "Morning, Afternoon & Night" };
+  if (lower.includes("four") || lower.includes("qid"))
+    return { times: "Four times daily", when: "Every 6 hours" };
+
+  // Return as-is if we can't parse
+  return { times: frequency, when: null };
+}
+
+// Meal timing extraction
+function mealTiming(med) {
+  const text = `${med.frequency || ""} ${med.notes || ""}`.toLowerCase();
+  if (text.includes("before food") || text.includes("empty stomach")) return "Before meals";
+  if (text.includes("after food") || text.includes("with food")) return "After meals";
+  if (text.includes("with milk")) return "With milk";
+  return null;
+}
+
+
+// Used on both home (This Week) and profile page — same component, same data
+/* ─── MEDICINE CARD ──────────────────────────────────────────────────────── */
+function MedicineCard({ med: rawMed, compact = false, onEdit, onPause, onDelete }) {
+  const med      = parseMed(rawMed);
+  const schedule = humanSchedule(med.frequency);
+  const meal     = mealTiming(med);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isPaused = med.paused === true;
+
+  if (compact) {
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid var(--bdr)"}}>
+        <div style={{width:26,height:26,borderRadius:8,background:isPaused?"var(--cream2)":"var(--rose-pale)",border:`1px solid ${isPaused?"var(--bdr)":"var(--rose-bdr)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0,opacity:isPaused?0.5:1}}>💊</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:11,fontWeight:600,color:isPaused?"var(--muted)":"var(--ink)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textDecoration:isPaused?"line-through":undefined}}>{med.name}</div>
+          {isPaused
+            ? <div style={{fontSize:9,color:"var(--muted)"}}>Paused{med.pause_reason?` · ${med.pause_reason}`:""}</div>
+            : med.dosage && <div style={{fontSize:9,color:"var(--muted)"}}>{med.dosage}</div>
+          }
+        </div>
+        {isPaused
+          ? <div style={{fontSize:9,fontWeight:600,color:"var(--muted)",background:"var(--cream2)",borderRadius:100,padding:"2px 7px",flexShrink:0}}>Paused</div>
+          : schedule && <div style={{fontSize:9,fontWeight:600,color:"var(--rose)",background:"var(--rose-pale)",borderRadius:100,padding:"2px 7px",flexShrink:0}}>{schedule.times}</div>
+        }
+      </div>
+    );
+  }
+
+  return (
+    <div style={{background:isPaused?"var(--cream2)":"#fff",border:`1px solid ${isPaused?"var(--bdr)":"var(--bdr)"}`,borderRadius:16,padding:"14px 16px",marginBottom:10,opacity:isPaused?0.75:1,position:"relative",zIndex:menuOpen?10:1}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:schedule&&!isPaused?10:0}}>
+        <div style={{width:36,height:36,borderRadius:10,background:isPaused?"var(--cream2)":"var(--rose-pale)",border:`1px solid ${isPaused?"var(--bdr)":"var(--rose-bdr)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>💊</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:600,color:"var(--ink)",lineHeight:1.2,marginBottom:2,textDecoration:isPaused?"line-through":undefined}}>{med.name}</div>
+          {med.dosage && <div style={{fontSize:11,color:"var(--muted)"}}>{med.dosage}</div>}
+          {isPaused && med.pause_reason && (
+            <div style={{fontSize:11,color:"var(--amber)",marginTop:2,fontStyle:"italic"}}>{med.pause_reason}</div>
+          )}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          {isPaused
+            ? <div style={{fontSize:9,fontWeight:700,color:"var(--muted)",background:"var(--cream2)",border:"1px solid var(--bdr)",borderRadius:100,padding:"3px 10px"}}>Paused</div>
+            : <div style={{fontSize:9,fontWeight:700,color:"var(--teal)",background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:100,padding:"3px 10px"}}>Active</div>
+          }
+          {/* ••• menu */}
+          {(onEdit || onPause || onDelete) && (
+            <div style={{position:"relative"}}>
+              <button
+                onClick={e=>{e.stopPropagation();setMenuOpen(o=>!o);}}
+                style={{width:28,height:28,borderRadius:"50%",background:"transparent",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit",letterSpacing:2}}
+              >•••</button>
+              {menuOpen && (
+                <>
+                  {/* click-outside trap */}
+                  <div style={{position:"fixed",inset:0,zIndex:10}} onClick={()=>setMenuOpen(false)}/>
+                  <div style={{position:"absolute",right:0,top:32,zIndex:50,background:"#fff",border:"1px solid var(--bdr)",borderRadius:14,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",overflow:"hidden",minWidth:140}}>
+                    {onEdit && (
+                      <button onClick={e=>{e.stopPropagation();setMenuOpen(false);onEdit(med);}}
+                        style={{width:"100%",padding:"11px 16px",background:"none",border:"none",textAlign:"left",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,color:"var(--ink)"}}>
+                        ✏️ Edit details
+                      </button>
+                    )}
+                    {onPause && (
+                      <button onClick={e=>{e.stopPropagation();setMenuOpen(false);onPause(med);}}
+                        style={{width:"100%",padding:"11px 16px",background:"none",border:"none",textAlign:"left",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,color:isPaused?"var(--teal)":"var(--amber)",borderTop:"1px solid var(--bdr)"}}>
+                        {isPaused?"▶ Resume medicine":"⏸ Pause medicine"}
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button onClick={e=>{e.stopPropagation();setMenuOpen(false);onDelete(med);}}
+                        style={{width:"100%",padding:"11px 16px",background:"none",border:"none",textAlign:"left",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,color:"var(--rose)",borderTop:"1px solid var(--bdr)"}}>
+                        🗑 Remove
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      {!isPaused && schedule && (
+        <div style={{background:"var(--cream2)",borderRadius:12,padding:"10px 12px",display:"flex",gap:0,flexWrap:"wrap"}}>
+          {[
+            ["Frequency", schedule.times],
+            schedule.when ? ["When", schedule.when] : null,
+            meal ? ["With meals", meal] : null,
+            med.duration ? ["Duration", med.duration] : null,
+          ].filter(Boolean).map(([label, val], i) => (
+            <div key={label} style={{display:"flex",flexDirection:"column",gap:1,paddingLeft:i>0?12:0,marginLeft:i>0?12:0,borderLeft:i>0?"1px solid var(--bdr)":"none",marginBottom:4}}>
+              <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>{label}</span>
+              <span style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {!isPaused && med.notes && (
+        <div style={{fontSize:11,color:"var(--muted)",marginTop:8,fontStyle:"italic",lineHeight:1.5}}>{med.notes}</div>
+      )}
+      {/* Reminder toggle — coming soon */}
+      {!isPaused && (
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10,paddingTop:10,borderTop:"1px solid var(--cream2)"}}>
+          <div style={{fontSize:10,color:"var(--muted)",flex:1}}>🔔 Reminders</div>
+          <div style={{fontSize:9,fontWeight:600,color:"var(--muted)",background:"var(--cream2)",border:"1px solid var(--bdr)",borderRadius:100,padding:"2px 8px"}}>Coming soon</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MedHealthWidget({ profile, onEditHealth, compact = false, onMedsUpdate, onPause, onEdit, onDelete }) {
+  const p = profile || {};
+  const allMeds = (p.medications || []).map(parseMed);
+  const activeMeds = allMeds.filter(m => m.active !== false && !m.paused);
+  const pausedMeds = allMeds.filter(m => m.paused === true);
+  const hasMeds = allMeds.filter(m => m.active !== false).length > 0;
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetVis,  setSheetVis]  = useState(false);
+  const openSheet  = (e) => { e?.stopPropagation(); setSheetOpen(true);  requestAnimationFrame(()=>setSheetVis(true)); };
+  const closeSheet = () => { setSheetVis(false); setTimeout(()=>setSheetOpen(false), 350); };
+
+  // liveProfile uses the prop directly — mutations are handled by App via appMedHandlers
+  const liveProfile = p;
+
+  if (compact) {
+    return (
+      <>
+        <div className="w w-left wc-rose w-sm" style={{cursor:"pointer"}} onClick={openSheet}>
+          <span className="w-bg-e" style={{color:"var(--rose)",fontSize:60}}>💊</span>
+          <div className="win">
+            <div className="w-lbl" style={{color:"var(--rose)",marginBottom:6}}>
+              <div className="w-lbl-dot" style={{background:"var(--rose)"}}/>Health &amp; Meds
+            </div>
+            {p.blood_group && (
+              <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--rose)",lineHeight:1,marginBottom:4}}>{p.blood_group}</div>
+            )}
+            {hasMeds ? (
+              <div style={{fontSize:11,color:"var(--ink)",fontWeight:600}}>
+                {activeMeds.length} medicine{activeMeds.length!==1?"s":""}
+                {pausedMeds.length>0&&<span style={{color:"var(--muted)",fontWeight:400}}> · {pausedMeds.length} paused</span>}
+              </div>
+            ) : (
+              <div style={{fontSize:10,color:"var(--muted)",lineHeight:1.4}}>Add prescriptions in profile</div>
+            )}
+            {(p.conditions||[]).length > 0 && (
+              <div style={{marginTop:5,display:"flex",flexWrap:"wrap",gap:3}}>
+                {p.conditions.slice(0,2).map(c=>(
+                  <span key={c} style={{fontSize:9,background:"var(--rose-pale)",color:"var(--rose)",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"1px 6px"}}>{c}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="w-tap w-tap-dk">View ↗</div>
+        </div>
+
+        {sheetOpen && (
+          <>
+            <div style={{position:"fixed",inset:0,zIndex:200,background:sheetVis?"rgba(16,10,8,0.78)":"rgba(16,10,8,0)",transition:"background 0.3s",pointerEvents:sheetVis?"all":"none"}} onClick={closeSheet}/>
+            <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:201,background:"var(--cream)",borderRadius:"28px 28px 0 0",transform:`translateY(${sheetVis?0:102}%)`,transition:"transform 0.36s cubic-bezier(0.3,0.72,0,1)",maxHeight:"85vh",display:"flex",flexDirection:"column"}}>
+              <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--rose)",marginBottom:4}}>Health &amp; Medicines</div>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)"}}>Your <em style={{fontStyle:"italic"}}>health snapshot</em></div>
+                </div>
+                <button onClick={closeSheet} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
+              </div>
+              <div style={{overflowY:"auto",padding:"18px 20px 48px",scrollbarWidth:"none",flex:1}}>
+                <MedHealthWidgetFull
+                  profile={liveProfile}
+                  onEditHealth={onEditHealth}
+                  onClose={closeSheet}
+                  onPause={onPause}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <MedHealthWidgetFull
+      profile={liveProfile}
+      onEditHealth={onEditHealth}
+      onPause={onPause}
+      onEdit={onEdit}
+      onDelete={onDelete}
+    />
+  );
+}
+
+/* ── MedDialogs — rendered outside any sheet/stacking context ─────────────── */
+function MedDialogs({ pauseMed, setPauseMed, confirmPause, editMed, setEditMed, confirmEdit, deleteMed, setDeleteMed, confirmDelete }) {
+  if (!pauseMed && !editMed && !deleteMed) return null;
+  return (
+    <>
+      {pauseMed && (
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(16,10,8,0.6)"}} onClick={()=>setPauseMed(null)}/>
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:501,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:6}}>Pause <em>{pauseMed.name}?</em></div>
+            <div style={{fontSize:12,color:"var(--muted)",marginBottom:16,lineHeight:1.6}}>The medicine will be marked as paused. Your doctor can resume it when ready.</div>
+            <div style={{fontSize:11,fontWeight:700,color:"var(--ink)",marginBottom:8}}>Reason (optional)</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:14}}>
+              {["Ran out","About to run out","Travelling","Doctor said stop","Side effects","Other"].map(r=>(
+                <button key={r} onClick={()=>setPauseMed(m=>({...m,reason:r}))}
+                  style={{borderRadius:100,padding:"6px 13px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",border:`1.5px solid ${pauseMed.reason===r?"var(--rose)":"var(--bdr)"}`,background:pauseMed.reason===r?"var(--rose-pale)":"#fff",color:pauseMed.reason===r?"var(--rose)":"var(--muted)"}}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            {(pauseMed.reason==="Ran out"||pauseMed.reason==="About to run out") && (
+              <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:12,padding:"10px 14px",fontSize:11,color:"var(--amber)",marginBottom:14,lineHeight:1.5}}>
+                ⚠️ A reminder will show on your home screen so you don't forget to let your doctor know.
+              </div>
+            )}
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setPauseMed(null)} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>Cancel</button>
+              <button onClick={confirmPause} style={{flex:2,padding:"13px",background:"var(--amber)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+                Pause {pauseMed.name.split(" ")[0]}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+      {editMed && (
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(16,10,8,0.6)"}} onClick={()=>setEditMed(null)}/>
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:501,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:16}}>Edit <em>{editMed._origName}</em></div>
+            {[["Dosage","dosage","e.g. 500mg"],["Frequency","frequency","e.g. twice daily"],["Duration","duration","e.g. 30 days"]].map(([lbl,key,ph])=>(
+              <div key={key} style={{marginBottom:12}}>
+                <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",color:"var(--muted)",marginBottom:5}}>{lbl}</div>
+                <input className="pedit-input" value={editMed[key]||""} placeholder={ph} onChange={e=>setEditMed(m=>({...m,[key]:e.target.value}))}/>
+              </div>
+            ))}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",color:"var(--muted)",marginBottom:5}}>Notes</div>
+              <textarea className="pedit-input" rows={2} value={editMed.notes||""} placeholder="Special instructions…" onChange={e=>setEditMed(m=>({...m,notes:e.target.value}))} style={{resize:"none"}}/>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setEditMed(null)} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>Cancel</button>
+              <button onClick={confirmEdit} style={{flex:2,padding:"13px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save changes ✓</button>
+            </div>
+          </div>
+        </>
+      )}
+      {deleteMed && (
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(16,10,8,0.6)"}} onClick={()=>setDeleteMed(null)}/>
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:501,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove <em>{deleteMed.name}?</em></div>
+            <div style={{fontSize:12,color:"var(--muted)",marginBottom:20,lineHeight:1.65}}>This will remove the medicine from your tracker. This cannot be undone.</div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setDeleteMed(null)} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>Cancel</button>
+              <button onClick={confirmDelete} style={{flex:2,padding:"13px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Yes, remove</button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// The actual full content — pure display, no dialog state
+function MedHealthWidgetFull({ profile, onEditHealth, onClose, onPause, onEdit, onDelete }) {
+  const p = profile || {};
+  const activeMeds = (p.medications || []).map(parseMed).filter(m => m.active !== false && !m.paused);
+  const pausedMeds = (p.medications || []).map(parseMed).filter(m => m.paused === true);
+  const hasMeds    = (p.medications || []).map(parseMed).filter(m => m.active !== false).length > 0;
+  const hasHealth  = p.blood_group || (p.conditions||[]).length > 0;
+
+  return (
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div className="w-lbl" style={{color:"var(--rose)",marginBottom:0}}>
+          <div className="w-lbl-dot" style={{background:"var(--rose)"}}/>Health &amp; Medicines
+        </div>
+        {onEditHealth && (
+          <button style={{fontSize:10,fontWeight:600,color:"var(--rose)",background:"var(--rose-pale)",border:"none",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}
+            onClick={onEditHealth}>{hasHealth||hasMeds?"Edit":"+ Add"}</button>
+        )}
+      </div>
+
+      {/* Blood group + conditions */}
+      {hasHealth && (
+        <div style={{marginBottom:hasMeds?10:0}}>
+          {p.blood_group && (
+            <div style={{display:"flex",alignItems:"baseline",gap:5,marginBottom:4}}>
+              <span style={{fontFamily:"'Lora',serif",fontSize:17,color:"var(--ink)"}}>
+                Blood group <em style={{fontStyle:"italic",color:"var(--rose)"}}>{p.blood_group}</em>
+              </span>
+            </div>
+          )}
+          {(p.conditions||[]).length > 0 && (
+            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>
+              {p.conditions.map(c => (
+                <span key={c} className="chip" style={{background:"var(--rose-pale)",color:"var(--rose)",border:"1px solid var(--rose-bdr)"}}>{c}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Active medicines */}
+      {activeMeds.length > 0 && (
+        <div style={{marginBottom:8}}>
+          {activeMeds.map((med, i) => (
+            <MedicineCard key={i} med={med} compact={false}
+              onEdit={onEdit}
+              onPause={onPause}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Paused medicines */}
+      {pausedMeds.length > 0 && (
+        <div>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--muted)",marginBottom:6,marginTop:4}}>Paused</div>
+          {pausedMeds.map((med, i) => (
+            <MedicineCard key={i} med={med} compact={false}
+              onEdit={onEdit}
+              onPause={onPause}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+
+      {!hasMeds && !hasHealth && (
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"8px 0"}}>
+          <div style={{fontSize:12,color:"var(--muted)",lineHeight:1.5,textAlign:"center"}}>
+            Add your blood group, conditions and prescriptions for personalised health tracking
+          </div>
+          <div style={{fontSize:11,fontWeight:600,color:"var(--rose)",marginTop:2}}>+ Add health info</div>
+        </div>
+      )}
+      {!hasMeds && hasHealth && (
+        <div style={{fontSize:11,color:"var(--muted)",marginTop:6,fontStyle:"italic"}}>Upload a prescription in profile to track medicines here</div>
+      )}
+    </div>
+  );
+}
+
+
+
+function MedPanel({ profileData, completedTests = {}, onMarkTestComplete, onRxUpload, onPause, onEdit, onDelete }) {
+  const p = profileData || {};
+  const allMeds = (p.medications || []).map(parseMed).filter(m => m.active !== false);
+  const activeMeds = allMeds.filter(m => !m.paused);
+  const pausedMeds = allMeds.filter(m => m.paused);
+
   return <>
+    {allMeds.length > 0 ? <>
+      <div className="p-lbl" style={{color:"var(--rose)"}}>Your medicines</div>
+      <div style={{marginBottom:16}}>
+        {activeMeds.map((med, i) => (
+          <MedicineCard key={i} med={med} compact={false}
+            onEdit={onEdit}
+            onPause={onPause}
+            onDelete={onDelete}
+          />
+        ))}
+        {pausedMeds.length > 0 && <>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--muted)",margin:"8px 0 6px"}}>Paused</div>
+          {pausedMeds.map((med, i) => (
+            <MedicineCard key={i} med={med} compact={false}
+              onEdit={onEdit}
+              onPause={onPause}
+              onDelete={onDelete}
+            />
+          ))}
+        </>}
+      </div>
+    </> : (
+      <div className="doc-row" style={{marginBottom:8}}>
+        <div className="doc-av">💊</div>
+        <div>
+          <div className="doc-lbl">No medicines yet</div>
+          <div className="doc-txt">Upload a prescription and Matri will track your medicines here automatically.</div>
+        </div>
+      </div>
+    )}
+
+    {onRxUpload && (
+      <button onClick={onRxUpload} style={{width:"100%",padding:"11px",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:14,fontSize:13,fontWeight:600,color:"var(--rose)",cursor:"pointer",fontFamily:"inherit",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        ✦ Upload prescription
+      </button>
+    )}
+
+    {(p.blood_group || (p.conditions||[]).length > 0) && <>
+      <div className="p-lbl" style={{color:"var(--rose)"}}>Health info</div>
+      <div className="p-card pc-white" style={{padding:"10px 16px",marginBottom:16}}>
+        {p.blood_group && <div style={{fontSize:13,marginBottom:4}}>Blood group · <strong>{p.blood_group}</strong></div>}
+        {(p.conditions||[]).map(c=><span key={c} className="chip" style={{background:"var(--rose-pale)",color:"var(--rose)",border:"1px solid var(--rose-bdr)",margin:"2px"}}>{c}</span>)}
+      </div>
+    </>}
     <div className="doc-row">
-      <div className="doc-av">👩‍⚕️</div>
-      <div><div className="doc-lbl">Doctor's note</div><div className="doc-txt">Your first dating scan (TVS) should happen between weeks 7–10. Confirms heartbeat, gestational age, rules out ectopic pregnancy. Book it today — not this week. Today.</div></div>
+      <div className="doc-av">✨</div>
+      <div><div className="doc-lbl">Matri's note</div><div className="doc-txt">Your first dating scan (TVS) should happen between weeks 7–10. Confirms heartbeat, gestational age, rules out ectopic pregnancy. Book it today — not this week. Today.</div></div>
     </div>
-    <div className="p-lbl" style={{color:"var(--navy)"}}>Tests this trimester</div>
-    <div className="p-card pc-white" style={{padding:"4px 16px 8px"}}>
-      {[{nm:"TVS / Dating Scan",why:"Heartbeat + gestational age",wh:"Wk 7–10"},
-        {nm:"Blood Group + Rh Factor",why:"Critical if Rh negative",wh:"First visit"},
-        {nm:"CBC (Blood count)",why:"Anaemia — very common in Indian women",wh:"Wk 8–10"},
-        {nm:"TSH (Thyroid)",why:"Directly affects fetal brain development",wh:"Wk 8–10"},
-        {nm:"Blood Sugar / HbA1c",why:"Gestational diabetes screening",wh:"Wk 8–10"},
-        {nm:"NT Scan + Double Marker",why:"Chromosomal screening",wh:"Wk 11–14"},
-      ].map((t,i)=>(
-        <div key={i} className="m-row"><div style={{flex:1}}><div className="m-name">{t.nm}</div><div className="m-why">{t.why}</div></div><div className="m-when">{t.wh}</div></div>
-      ))}
+    <div className="p-lbl" style={{color:"var(--navy)",marginTop:8}}>Tests to do this trimester</div>
+    <div style={{marginBottom:16}} onClick={e=>e.stopPropagation()}>
+      <TestSuggestionsStrip week={8} completedTests={completedTests} onMarkComplete={onMarkTestComplete}/>
     </div>
-    <div className="india-chip" style={{marginTop:16}}>🇮🇳 PMSMA Scheme</div>
+    <div className="india-chip" style={{marginTop:4}}>🇮🇳 PMSMA Scheme</div>
     <div style={{fontSize:13,lineHeight:1.65,marginBottom:14}}>Under <strong>Pradhan Mantri Surakshit Matritva Abhiyan</strong>, free antenatal checkups on the <strong>9th of every month</strong> at government health centres.</div>
     <div className="p-card pc-rose"><strong>Call your doctor immediately if:</strong> Heavy bleeding, severe abdominal pain, fever above 100.4°F, burning urination, or anything that feels wrong.</div>
   </>;
@@ -2652,144 +2420,7 @@ function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
 }
 
 
-/* ─── COMMON SYMPTOMS (pre-structured, no AI needed) ─────────────────────── */
-const COMMON_SYMPTOMS = {
-  "cramping": {
-    label: "Cramping", emoji: "😖",
-    status: "Usually normal ✅",
-    means: "Round ligament pain or uterine stretching is very common in week 8. Your uterus is growing rapidly.",
-    tryThis: "Rest, change position, warm (not hot) water bottle on lower back. Gentle walking can help.",
-    callIf: "Heavy bleeding, severe pain that doesn't ease, fever above 100.4°F, or pain on one side only.",
-    questions: ["Is cramping normal this early?","What's the difference between round ligament pain and something serious?","Does cramping mean I should rest completely?"],
-    context: "Cramping in early pregnancy. Key facts: round ligament pain is most common cause in T1, uterus growing rapidly, implantation cramping also possible. Progesterone causes uterine relaxation which can feel like cramps.",
-  },
-  "nausea": {
-    label: "Nausea", emoji: "🤢",
-    status: "Very common ✅",
-    means: "Week 8 is peak nausea for most women. HCG hormone levels are at their highest right now.",
-    tryThis: "Eat small amounts every 90 minutes. Keep crackers by the bed. Ginger biscuits, coconut water, cold foods smell less.",
-    callIf: "Unable to keep any fluids down for 24 hours, signs of dehydration (dark urine, dizziness), weight loss.",
-    questions: ["When will the nausea peak and stop?","What can I eat right now that won't make me sick?","Is my nausea worse than normal?"],
-    context: "Morning sickness / nausea in week 8 pregnancy. Key facts: HCG peaks at weeks 8-10, affects 70-80% of women, usually resolves by week 12-14. Hyperemesis gravidarum (severe) affects 1-2%. Indian context: ginger, coconut water, poha, cold foods, small frequent meals help. Vitamin B6 can reduce nausea.",
-  },
-  "spotting": {
-    label: "Spotting", emoji: "🩸",
-    status: "Often normal, monitor carefully ⚠️",
-    means: "Light spotting (pink or brown) can occur from implantation, cervical sensitivity, or subchorionic bleeding.",
-    tryThis: "Rest, avoid intercourse until you've spoken to your doctor. Note the colour and amount.",
-    callIf: "Bright red bleeding, clots, heavy flow like a period, cramping with bleeding — call doctor today.",
-    questions: ["How do I know if this is serious?","What colour spotting is okay vs worrying?","Should I go to the doctor today?"],
-    context: "Spotting / light bleeding in week 8 pregnancy. Key facts: implantation bleeding usually week 6-7, subchorionic hematoma common, cervical ectropion makes cervix more sensitive. Brown/pink = old blood, usually less urgent. Bright red + cramping = see doctor same day.",
-  },
-  "headache": {
-    label: "Headache", emoji: "🤕",
-    status: "Common in T1 ✅",
-    means: "Blood volume increases 50% during pregnancy. Hormonal shifts and dehydration both cause headaches.",
-    tryThis: "Drink 2–3 glasses of water immediately. Rest in a dark room. Paracetamol (not ibuprofen) is safe if needed.",
-    callIf: "Severe headache with vision changes, swelling in face/hands, or headache after week 20 — could be preeclampsia.",
-    questions: ["Is paracetamol safe to take?","Why are my headaches worse now than before pregnancy?","How much water should I be drinking?"],
-    context: "Headaches in week 8 pregnancy. Key facts: blood volume expanding causes vessel dilation, oestrogen fluctuation triggers migraines, dehydration major cause. Paracetamol (acetaminophen) safe. Ibuprofen/aspirin should be avoided. Caffeine withdrawal common trigger in T1.",
-  },
-  "no movement": {
-    label: "No movement felt", emoji: "👶",
-    status: "Normal before week 18 ✅",
-    means: "You won't reliably feel movement until week 18–22. At week 8 baby is only 1.6cm — too small to feel.",
-    tryThis: "Nothing to do right now. Start kick counting from week 28 when movements become regular.",
-    callIf: "If you've been feeling movement and it suddenly stops after week 24, call your doctor the same day.",
-    questions: ["When will I first feel movement?","What does movement feel like at first?","Should I be worried I don't feel anything?"],
-    context: "Fetal movement in week 8 pregnancy. Key facts: at week 8 baby is 1.6cm and movements not perceptible. First-time mothers feel movement (quickening) at 18-22 weeks, experienced mothers at 16-18 weeks. Sensation described as butterflies, bubbles, or flutters initially.",
-  },
-  "acidity": {
-    label: "Acidity", emoji: "🔥",
-    status: "Very common ✅",
-    means: "Progesterone relaxes the valve between stomach and oesophagus. Stomach acid refluxes more easily.",
-    tryThis: "Eat small meals. Don't lie down for 30 mins after eating. Cold milk, coconut water, banana can help.",
-    callIf: "Severe chest pain, difficulty swallowing, or if it's affecting your ability to eat at all.",
-    questions: ["Why is my acidity so much worse now?","What Indian foods make acidity better or worse?","Is it safe to take antacids?"],
-    context: "Acidity / heartburn / GERD in week 8 pregnancy. Key facts: progesterone relaxes lower oesophageal sphincter, uterus will press on stomach later. Indian context: spicy food, chai, coffee worsen symptoms. Coconut water, cold milk, banana, jeera water help. Antacids with calcium/magnesium generally safe — check with doctor.",
-  },
-  "constipation": {
-    label: "Constipation", emoji: "😣",
-    status: "Very common ✅",
-    means: "Progesterone slows digestion. Iron supplements (if you've started) also cause constipation.",
-    tryThis: "Increase water intake significantly. Prunes, papaya (ripe only), fibre-rich foods. Gentle walking helps.",
-    callIf: "No bowel movement for more than 5 days, severe pain, or blood in stool.",
-    questions: ["My iron tablets are making it worse — what can I do?","Which Indian foods help constipation?","Is it safe to use a laxative?"],
-    context: "Constipation in week 8 pregnancy. Key facts: progesterone slows gut motility, iron supplements worsen it, growing uterus adds pressure later. Indian context: isabgol (psyllium husk), warm water with lemon, prunes, ripe papaya, moong dal, green vegetables help. Stimulant laxatives not recommended — osmotic laxatives like lactulose generally considered safer.",
-  },
-  "swelling": {
-    label: "Swelling", emoji: "🦶",
-    status: "Mild swelling is normal ✅",
-    means: "Some swelling, especially in feet and ankles, is normal from increased blood volume.",
-    tryThis: "Elevate feet when resting. Stay hydrated. Avoid standing for long periods.",
-    callIf: "Sudden or severe swelling, swelling in face or hands, or swelling with headache — signs of preeclampsia.",
-    questions: ["Why does drinking more water actually help swelling?","When is swelling a sign of something serious?","What can I do at work when I can't elevate my feet?"],
-    context: "Oedema / swelling in pregnancy week 8. Key facts: blood volume increases 40-50%, body retains more sodium and fluid. Ankle/foot swelling common especially in T3. Facial/hand swelling with headache = preeclampsia warning sign. More water reduces retention counterintuitively. Compression socks help.",
-  },
-  "discharge": {
-    label: "Discharge", emoji: "💧",
-    status: "Usually normal ✅",
-    means: "Increased clear or white discharge (leucorrhoea) is normal and protective during pregnancy.",
-    tryThis: "Wear breathable cotton underwear. Don't douche or use scented products.",
-    callIf: "Yellow, green, grey, or foul-smelling discharge, or discharge with itching/burning — signs of infection.",
-    questions: ["How do I know if the discharge is normal?","Is it safe to use panty liners throughout pregnancy?","What does abnormal discharge look like?"],
-    context: "Vaginal discharge in week 8 pregnancy. Key facts: leucorrhoea (white/clear discharge) increases due to oestrogen and increased blood flow. Normal = white/clear, mild smell, no itching. Bacterial vaginosis and yeast infections more common in pregnancy. BV linked to preterm birth if untreated — needs antibiotics.",
-  },
-  "sleep": {
-    label: "Sleep", emoji: "🌙",
-    status: "Very common ✅",
-    means: "Progesterone causes fatigue but paradoxically disrupts deep sleep. Anxiety and frequent urination don't help.",
-    tryThis: "Sleep on your left side. Pillow between knees. Avoid screens 30 mins before bed.",
-    callIf: "Severe insomnia affecting daily functioning — speak to your doctor about safe options.",
-    questions: ["Why am I exhausted but can't sleep?","Is sleeping on my back harmful this early?","What position is best for pregnancy sleep?"],
-    context: "Sleep disturbance in week 8 pregnancy. Key facts: progesterone is sedating but reduces REM sleep quality. Frequent urination (nocturia) starts early. Left side sleeping improves blood flow to placenta and kidneys — becomes important in T2/T3. Back sleeping fine in T1. Pregnancy pillow helps alignment. Vivid dreams common due to hormones.",
-  },
-  "mood swings": {
-    label: "Mood swings", emoji: "🎭",
-    status: "Very common ✅",
-    means: "HCG and progesterone surge causes rapid emotional shifts. Week 8 is one of the most emotionally volatile periods of pregnancy.",
-    tryThis: "Name what you're feeling without judging it. Short walks help regulate mood. Tell your partner it's hormonal, not personal.",
-    callIf: "Persistent low mood lasting more than two weeks, inability to function, or thoughts of self-harm — speak to your doctor.",
-    questions: ["Is it normal to cry for no reason?","How do I explain mood swings to my partner?","When do mood swings usually settle down?"],
-    context: "Mood swings in week 8 pregnancy. Key facts: oestrogen and progesterone directly affect serotonin and dopamine. HCG peaks at weeks 8-10, heightening emotional sensitivity. Anxiety about the pregnancy, exhaustion, and nausea compound emotional instability. Usually improves significantly in T2 when hormones stabilise. Prenatal depression affects 10-15% of women — persistent low mood is not just 'hormones' and needs medical attention.",
-  },
-};
-
-/* ─── WEEKLY PROMPTS (guided journal) ────────────────────────────────────── */
-const WEEKLY_PROMPTS = {
-  6:  "You just found out. Before the world knows — what are you feeling, right now, in this moment?",
-  7:  "What's the first thing you'll tell your baby about this week?",
-  8:  "Week 8 is one of the hardest weeks to keep a secret. What's the biggest thing you're carrying alone?",
-  9:  "The nausea is real. So is the love. What's keeping you going today?",
-  10: "You're through the hardest part of the first trimester. What do you want to remember about these weeks?",
-  11: "Your baby can now make facial expressions. What face do you imagine?",
-  12: "Almost at the end of T1. What has surprised you most about yourself these past 12 weeks?",
-  16: "You might start to feel movement soon. What will you do the first moment you feel it?",
-  20: "Halfway. What are you secretly most excited about?",
-  24: "Your baby can recognise your voice now. What song or phrase do you say most that they might already know?",
-  28: "Third trimester begins. What feels different now compared to week 8?",
-  32: "You're getting closer. What's the one thing you want your baby to know about the person carrying them?",
-  36: "Almost there. Write a letter to the version of you from week 6 who had just found out.",
-  40: "Today could be the day. What do you want to remember about being pregnant?",
-};
-
-const getWeekPrompt = (week) =>
-  WEEKLY_PROMPTS[week] || `Week ${week}. What's on your mind today?`;
-
 /* ─── MATRI MOMENTS (one per week) ──────────────────────────────────────── */
-const MATRI_MOMENTS = {
-  6:  { question: "A tiny heart started beating this week. Before you knew, before any scan — it was already there. What does that feel like to sit with?", pause: "Take 10 seconds with that." },
-  7:  { question: "Your baby's brain is forming 100 new neurons every minute right now. What do you hope fills that mind someday?", pause: "Let yourself imagine it." },
-  8:  { question: "Your baby's heart has been beating for two weeks without stopping. Through your nausea, your exhaustion, your fears — it just keeps going. What do you want them to know, right now?", pause: "Take a breath. Write anything." },
-  9:  { question: "All the essential organs have begun forming. Your body is doing something extraordinary without you having to think about it. When did you last trust yourself this completely?", pause: "Sit with that for a moment." },
-  10: { question: "Your baby can now move — tiny movements you can't feel yet. They're in there, responding to their world. What would you say to them if they could hear you?", pause: "They can't yet. But soon." },
-  20: { question: "You're halfway. The person you were before pregnancy and the mother you're becoming — what's the biggest difference you notice?", pause: "Be honest with yourself." },
-  28: { question: "Your baby can recognise sounds they've heard repeatedly. What song, what phrase, what sound do you want them to carry with them into the world?", pause: "Hum it, if you want." },
-  36: { question: "Almost time. If you could whisper one thing to your baby before they arrive — just one thing — what would it be?", pause: "Write it down. They'll read it someday." },
-};
-
-const getMatriMoment = (week) =>
-  MATRI_MOMENTS[week] || MATRI_MOMENTS[8];
 
 const MOMENT_STORAGE_KEY = "matri-moments";
 
@@ -2804,341 +2435,9 @@ function saveMoment(week, text) {
   } catch {}
 }
 
-/* ─── SYMPTOM DETAIL PANEL ──────────────────────────────────────────────── */
-function SymptomDetailPanel({ symptomKey, week = 8 }) {
-  const s = COMMON_SYMPTOMS[symptomKey];
-  const [messages, setMessages] = useState([]); // {role:"user"|"assistant"|"scope", text}
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [askedQs, setAskedQs] = useState(new Set());
-  const chatRef = useRef(null);
-
-  const OUT_OF_SCOPE = `I'm focused on ${s?.label?.toLowerCase() || "this symptom"} right now. For other concerns, go back and tap the relevant symptom from the home screen.`;
-
-  const buildSystemPrompt = () => `You are Matri, a warm and knowledgeable pregnancy companion for Indian women in Week ${week}, First Trimester.
-
-The user is asking about: ${s?.label} during pregnancy.
-
-Grounding facts you must use:
-${s?.context || ""}
-
-Your rules:
-1. ONLY answer questions directly related to ${s?.label} during pregnancy. 
-2. If the question is about anything else, respond with exactly: "OUT_OF_SCOPE"
-3. Keep answers to 2-3 sentences maximum. Warm, honest, never alarming.
-4. Never diagnose. For severe symptoms, suggest consulting a doctor.
-5. Use Indian context where relevant (food, medicines, lifestyle).
-6. Do not repeat information already given in previous answers.
-7. Never say you are an AI or mention Claude/Anthropic.`;
-
-  const ask = async (question) => {
-    if (!question.trim() || loading) return;
-    analytics.aiChatStarted(s.label);
-    const userMsg = question.trim();
-    setInput("");
-    setMessages(p => [...p, { role:"user", text: userMsg }]);
-    setLoading(true);
-
-    // Scroll to bottom
-    setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior:"smooth" }), 100);
-
-    try {
-      const history = messages.map(m => ({
-        role: m.role === "user" ? "user" : "assistant",
-        content: m.role === "scope" ? OUT_OF_SCOPE : m.text,
-      }));
-
-      const resp = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 300,
-          system: buildSystemPrompt(),
-          messages: [
-            ...history,
-            { role: "user", content: userMsg },
-          ],
-        }),
-      });
-
-      const data = await resp.json();
-      const text = data.content?.[0]?.text || "";
-
-      if (text.includes("OUT_OF_SCOPE")) {
-        setMessages(p => [...p, { role:"scope", text: OUT_OF_SCOPE }]);
-      } else {
-        setMessages(p => [...p, { role:"assistant", text }]);
-      }
-    } catch {
-      setMessages(p => [...p, { role:"scope", text: "Something didn't go through on our end. Give it a moment and try again — we're here." }]);
-    }
-
-    setLoading(false);
-    setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior:"smooth" }), 100);
-  };
-
-  if (!s) return null;
-
-  const statusColor = s.status.includes("⚠️") ? "var(--amber)" :
-    s.status.includes("✅") ? "var(--forest)" : "var(--muted)";
-  const statusBg = s.status.includes("⚠️") ? "var(--amber-pale)" :
-    s.status.includes("✅") ? "var(--forest-pale)" : "var(--cream2)";
-  const statusBdr = s.status.includes("⚠️") ? "var(--amber-bdr)" :
-    s.status.includes("✅") ? "var(--forest-bdr)" : "var(--bdr)";
-
-  return (
-    <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
-      {/* Scrollable content */}
-      <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"16px 16px 0",scrollbarWidth:"none"}}>
-
-        {/* Topic header */}
-        <div className="sdp-topic">
-          <span className="sdp-topic-emoji">{s.emoji}</span>
-          <div>
-            <div className="sdp-topic-label">{s.label}</div>
-            <span className="sdp-status" style={{color:statusColor,background:statusBg,border:`1px solid ${statusBdr}`}}>{s.status}</span>
-          </div>
-        </div>
-
-        {/* Structured anchor cards */}
-        <div className="sdp-card">
-          <div className="sdp-card-lbl" style={{color:"var(--teal)"}}>What this usually means</div>
-          <div className="sdp-card-txt">{s.means}</div>
-        </div>
-        <div className="sdp-card">
-          <div className="sdp-card-lbl" style={{color:"var(--forest)"}}>Try this</div>
-          <div className="sdp-card-txt">{s.tryThis}</div>
-        </div>
-        <div className="sdp-call-card">
-          <div className="sdp-card-lbl" style={{color:"var(--rose)"}}>Call your doctor if</div>
-          <div className="sdp-card-txt" style={{color:"var(--rose)"}}>{s.callIf}</div>
-        </div>
-
-        {/* Suggested questions */}
-        {messages.length === 0 && (
-          <>
-            <div className="sdp-divider">Ask more about {s.label.toLowerCase()}</div>
-            <div className="sdp-suggestions">
-              {s.questions.filter((_,i) => !askedQs.has(i)).map((q,i) => {
-                const origIdx = s.questions.indexOf(q);
-                return (
-                  <button key={origIdx} className="sdp-suggestion" onClick={() => {
-                    setAskedQs(prev => new Set([...prev, origIdx]));
-                    ask(q);
-                  }}>
-                    {q} →
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
-
-        {/* Chat thread */}
-        {messages.length > 0 && (
-          <div className="sdp-chat">
-            {messages.map((m,i) => (
-              <div key={i} className={
-                m.role === "user" ? "sdp-msg-q" :
-                m.role === "scope" ? "sdp-msg-scope" : "sdp-msg-a"
-              }>{m.text}</div>
-            ))}
-            {loading && (
-              <div className="sdp-msg-a" style={{display:"flex",alignItems:"center",gap:10}}>
-                <div className="symptom-spinner" style={{width:18,height:18,borderWidth:2}}/>
-                <span style={{fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>Thinking about week {week} specifically…</span>
-              </div>
-            )}
-          </div>
-        )}
-
-          {messages.length > 0 && !loading && (
-            <div style={{marginTop:8,marginBottom:8}}>
-              {s.questions.filter((_,i) => !askedQs.has(i)).length > 0 && (
-                <>
-                  <div style={{fontSize:10,color:"var(--muted)",marginBottom:6,fontStyle:"italic"}}>More questions</div>
-                  {s.questions.filter((_,i) => !askedQs.has(i)).map((q,i) => {
-                    const origIdx = s.questions.indexOf(q);
-                    return (
-                      <button key={origIdx} className="sdp-suggestion" style={{marginBottom:6}} onClick={() => {
-                        setAskedQs(prev => new Set([...prev, origIdx]));
-                        ask(q);
-                      }}>
-                        {q} →
-                      </button>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          )}
-
-        <div style={{height:16}}/>
-      </div>
-
-      {/* Input row — fixed at bottom */}
-      <div style={{padding:"10px 16px",background:"var(--cream)",borderTop:"1px solid var(--bdr)"}}>
-        <div className="sdp-input-row">
-          <textarea className="sdp-input" rows={1} value={input}
-            placeholder={`Ask anything about ${s.label.toLowerCase()}…`}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input); }}}
-          />
-          <button className="sdp-send" disabled={!input.trim() || loading} onClick={() => ask(input)}>
-            Send
-          </button>
-        </div>
-        <div style={{fontSize:10,color:"var(--muted)",marginTop:6,textAlign:"center",fontStyle:"italic"}}>
-          Focused on {s.label.toLowerCase()} · Week {week}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SymptomPanel({ initialQuery }) {
-  const [query, setQuery] = useState(initialQuery || "");
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const inputRef = useRef();
-
-  const QUICK = ["stomach tightening","headache","no movement felt","leg cramps","can't sleep","spotting","breathless"];
-
-  const ask = async (q) => {
-    const trimmed = (q || query).trim();
-    if (!trimmed) return;
-    analytics.symptomAsked(trimmed);
-    setQuery(trimmed);
-    setLoading(true);
-    setResult(null);
-    try {
-      const resp = await fetch("/api/chat", {
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-        },
-        body:JSON.stringify({
-          model:"claude-sonnet-4-20250514",
-          max_tokens:600,
-          system:`You are Matri, a compassionate Indian pregnancy companion app. The user is 8 weeks pregnant (first trimester). When they describe a symptom or concern, respond in this exact JSON format with no other text:
-{
-  "symptom": "short name of the symptom",
-  "likely": "most probable explanation in 1-2 sentences, reassuring and specific to week 8",
-  "watch": "what to monitor or what would warrant a call — 1 sentence",
-  "callNow": "specific red flags that mean call doctor immediately — 1 sentence, or null if none",
-  "reassurance": "a warm closing sentence"
-}`,
-          messages:[{role:"user",content:trimmed}]
-        })
-      });
-      const data = await resp.json();
-      const text = data.content?.find(b=>b.type==="text")?.text || "";
-      const clean = text.replace(/```json|```/g,"").trim();
-      setResult(JSON.parse(clean));
-    } catch {
-      setResult({symptom:"Couldn't connect right now",likely:"We weren't able to reach our servers just now. This sometimes happens with a slow connection.",watch:"Wait a few seconds and tap your question again — it usually works on the second try.",callNow:"If you're worried about something urgent, always call your doctor directly. That's always the right call.",reassurance:"We're sorry for the trouble. Your question was heard — just try once more."});
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => { if (initialQuery) ask(initialQuery); }, []);
-
-  const handleChip = (key) => {
-    analytics.quickQuestionClicked(key);
-    const s = COMMON_SYMPTOMS[key];
-    if (!s) return;
-    setQuery(s.label);
-    setResult({ symptom: s.label, likely: s.means, watch: s.tryThis, callNow: s.callIf, reassurance: "You're not alone in feeling this. Trust your instincts — if something feels wrong, always call your doctor.", _structured: true });
-    setLoading(false);
-  };
-
-  return <>
-    <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:12,fontStyle:"italic"}}>
-      Tap a common concern or describe what you're feeling.
-    </div>
-
-    {/* Common symptom chips */}
-    {!result && (
-      <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:14}}>
-        {Object.entries(COMMON_SYMPTOMS).map(([key, s])=>(
-          <button key={key} onClick={()=>handleChip(key)}
-            style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:100,
-              padding:"6px 13px",fontSize:12,color:"var(--ink)",cursor:"pointer",
-              fontFamily:"inherit",fontWeight:500,transition:"all 0.14s",
-              WebkitTapHighlightColor:"transparent"}}>
-            {s.label}
-          </button>
-        ))}
-      </div>
-    )}
-
-    {/* Search input */}
-    <div className="symptom-bar-inner" style={{marginBottom:12,borderRadius:14}}>
-      <span className="symptom-bar-icon">🔍</span>
-      <input ref={inputRef} className="symptom-bar-input" placeholder="e.g. stomach tightening, can't sleep, spotting..." value={query} onChange={e=>setQuery(e.target.value)}
-        onKeyDown={e=>{if(e.key==="Enter")ask();}}/>
-      <button className="symptom-bar-btn" onClick={()=>ask()}>Ask</button>
-    </div>
-
-    {/* Quick chips */}
-    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
-      {QUICK.map(q=>(
-        <div key={q} onClick={()=>ask(q)} style={{background:"var(--cream2)",border:"1px solid var(--bdr)",borderRadius:100,padding:"5px 12px",fontSize:11,color:"var(--muted)",cursor:"pointer",transition:"all 0.15s"}}>{q}</div>
-      ))}
-    </div>
-
-    {loading && (
-      <div className="symptom-spinner-wrap">
-        <div className="symptom-spinner"/>
-        <div className="symptom-spinner-txt">
-          Thinking about week 8 specifically…<br/>
-          <span style={{fontSize:11,opacity:0.6}}>Checking what's normal at this stage</span>
-        </div>
-      </div>
-    )}
-
-    {result && !loading && (
-      <div className="symptom-result">
-        <div className="symptom-result-q">You asked about: <strong>{result.symptom}</strong></div>
-        <div className="symptom-tier">
-          <div className="symptom-tier-dot" style={{background:"var(--forest)"}}/>
-          <div><div className="symptom-tier-label" style={{color:"var(--forest)"}}>Most likely</div><div className="symptom-tier-text">{result.likely}</div></div>
-        </div>
-        {result.watch && <div className="symptom-tier">
-          <div className="symptom-tier-dot" style={{background:"var(--amber)"}}/>
-          <div><div className="symptom-tier-label" style={{color:"var(--amber)"}}>Watch for</div><div className="symptom-tier-text">{result.watch}</div></div>
-        </div>}
-        {result.callNow && <div className="symptom-tier">
-          <div className="symptom-tier-dot" style={{background:"var(--rose)"}}/>
-          <div><div className="symptom-tier-label" style={{color:"var(--rose)"}}>Call doctor if</div><div className="symptom-tier-text">{result.callNow}</div></div>
-        </div>}
-        <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid var(--cream2)",fontFamily:"'Lora',serif",fontSize:13,fontStyle:"italic",color:"var(--muted)",lineHeight:1.65}}>{result.reassurance}</div>
-      </div>
-    )}
-
-    <div className="p-card pc-rose" style={{marginTop:4}}>
-      <strong>Important:</strong> This is general guidance for week 8. It does not replace your doctor. If something feels wrong, trust that instinct and call.
-    </div>
-  </>;
-}
-
 /* ─── PANEL CONFIG ───────────────────────────────────────────────────── */
 function MythPanel() {
-  const myths = [
-    {claim:"Eating papaya causes miscarriage",verdict:"Partly true",col:"var(--amber)",bg:"var(--amber-pale)",bdr:"var(--amber-bdr)",explanation:"Raw, unripe papaya contains latex which can trigger uterine contractions. Ripe papaya in small amounts is generally considered safe, but most doctors advise avoiding it entirely in the first trimester — not worth the risk."},
-    {claim:"Saffron milk makes the baby fair",verdict:"False",col:"var(--rose)",bg:"var(--rose-pale)",bdr:"var(--rose-bdr)",explanation:"Skin colour is determined entirely by genetics. Saffron has no effect on the baby's complexion. That said, saffron milk in moderation is harmless and may help with sleep — just not for this reason."},
-    {claim:"You should eat for two",verdict:"False",col:"var(--rose)",bg:"var(--rose-pale)",bdr:"var(--rose-bdr)",explanation:"In the first trimester you need almost no extra calories. By the third trimester, only about 300–450 extra calories per day — roughly one banana and a small bowl of dal. Overeating increases gestational diabetes risk."},
-    {claim:"Sex during pregnancy harms the baby",verdict:"False",col:"var(--forest)",bg:"var(--forest-pale)",bdr:"var(--forest-bdr)",explanation:"For a normal pregnancy with no complications, sex is completely safe throughout. The baby is protected by the amniotic sac and cervical mucus plug. Your doctor will tell you if there are specific reasons to abstain."},
-    {claim:"Sitting cross-legged affects the baby's position",verdict:"False",col:"var(--forest)",bg:"var(--forest-pale)",bdr:"var(--forest-bdr)",explanation:"There is no evidence that sitting cross-legged affects fetal positioning. Baby's position is determined by their own movement, the shape of your uterus, and your pelvic anatomy — not how you sit."},
-    {claim:"A solar eclipse can cause birth defects",verdict:"False",col:"var(--forest)",bg:"var(--forest-pale)",bdr:"var(--forest-bdr)",explanation:"This is cultural belief with no scientific basis. UV radiation during an eclipse is no different from a regular cloudy day. You can go outside, eat, and carry on normally."},
-    {claim:"Coconut water makes the baby's skin fair",verdict:"False",col:"var(--rose)",bg:"var(--rose-pale)",bdr:"var(--rose-bdr)",explanation:"Skin tone is genetic, full stop. Coconut water is genuinely good for hydration and electrolyte balance during pregnancy — drink it for those reasons, not for this one."},
-    {claim:"Ghee helps with normal delivery",verdict:"Unproven",col:"var(--amber)",bg:"var(--amber-pale)",bdr:"var(--amber-bdr)",explanation:"There is no clinical evidence that consuming ghee in late pregnancy lubricates the birth canal or makes delivery easier. Ghee is a healthy fat and fine in moderation — but don't eat it for this purpose."},
-    {claim:"AC and cold air harms the baby",verdict:"False",col:"var(--forest)",bg:"var(--forest-pale)",bdr:"var(--forest-bdr)",explanation:"Air conditioning is fine during pregnancy. Your body regulates temperature well, and the baby is insulated by amniotic fluid. In fact, overheating (especially in early pregnancy) is the actual concern — staying cool is beneficial."},
-    {claim:"You can't exercise during pregnancy",verdict:"False",col:"var(--forest)",bg:"var(--forest-pale)",bdr:"var(--forest-bdr)",explanation:"Moderate exercise is actively recommended during a normal pregnancy. Walking, swimming, and prenatal yoga are excellent. Exercise reduces gestational diabetes risk, improves mood, and can shorten labour. Always check with your doctor first."},
-  ];
+  
   return <>
     <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:14,padding:"14px 16px",marginBottom:16,fontSize:13,lineHeight:1.65}}>
       <strong>The rule:</strong> If advice comes from a relative but not your doctor, question it. Most pregnancy myths in India are well-meaning but wrong — and some cause unnecessary anxiety or harmful behaviour.
@@ -3860,7 +3159,6 @@ function FriendsCard() {
           background:`rgba(16,10,8,${vis?0.78:0})`,
           transition:"background 0.3s",
           display:"flex",flexDirection:"column",justifyContent:"flex-end",
-          maxWidth:430,left:"50%",marginLeft:-215,
           pointerEvents: vis ? "all" : "none"
         }} onClick={closeOverlay}>
           <div onClick={e=>e.stopPropagation()} style={{
@@ -3994,7 +3292,7 @@ function MoodSummary({ entries, moodLog, onDeleteMood, dark }) {
   );
 }
 
-function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbum, onViewTimeline }) {
+function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbum, onViewTimeline, onOpenProfile, profileData }) {
   const entryCount = journalEntries.length;
   const weeksTracked = new Set(journalEntries.map(e=>e.week)).size;
   const lastMood = journalEntries[0]?.mood || "🤍";
@@ -4005,8 +3303,17 @@ function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbu
       <div className="lib-hero">
         <span className="lib-hero-bg-emoji">🤰</span>
         <div className="lib-hero-grad"/>
+        <div style={{position:"relative",zIndex:2,padding:"18px 0 0",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div className="lib-hero-eyebrow" style={{marginBottom:0}}><div className="lib-hero-dot"/>Matri · Journey</div>
+          {onOpenProfile && (
+            <div className="profile-chip" onClick={e=>{e.stopPropagation();onOpenProfile();}}>
+              <div className="profile-chip-avatar" style={{fontSize:14}}>🤰</div>
+              {profileData?.name && <span className="profile-chip-name">{profileData.name.split(" ")[0]}</span>}
+            </div>
+          )}
+        </div>
         <div className="lib-hero-inner">
-          <div className="lib-hero-eyebrow"><div className="lib-hero-dot"/>Matri · Journey</div>
+          <div/>
           <div className="lib-hero-title">Always <em>with you.</em></div>
           <div className="lib-hero-sub">The things that matter all the way through.</div>
           <div className="lib-hero-stats">
@@ -4166,7 +3473,7 @@ function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onViewAlbu
     </div>
   );
 }
-function JournalTab({ entries, setEntries, onOpenAlbum, moodLog }) {
+function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenProfile, profileData }) {
   const latest = entries[0];
 
   // Collect all photos across all entries for the thumbnail row
@@ -4183,8 +3490,17 @@ function JournalTab({ entries, setEntries, onOpenAlbum, moodLog }) {
       <div className="jh">
         <span className="jh-bg">🤱</span>
         <div className="jh-grad"/>
+        {/* Top row — eyebrow + profile chip at same height as home */}
+        <div style={{position:"relative",zIndex:2,padding:"18px 22px 0",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+          <div className="jh-eyebrow" style={{marginBottom:0}}><div className="jh-dot"/>Matri · Your journey</div>
+          {onOpenProfile && (
+            <div className="profile-chip" onClick={e=>{e.stopPropagation();onOpenProfile();}}>
+              <div className="profile-chip-avatar" style={{fontSize:14}}>🤰</div>
+              {profileData?.name && <span className="profile-chip-name">{profileData.name.split(" ")[0]}</span>}
+            </div>
+          )}
+        </div>
         <div className="jh-inner">
-          <div className="jh-eyebrow"><div className="jh-dot"/>Matri · Your journey</div>
           <div className="jh-title">Journal & <em>Memories.</em></div>
 
           {/* Photo thumbnail row — like pregnancy story widget */}
@@ -4492,8 +3808,2666 @@ function HeroMoodStrip({ journalEntries, moodLog, onTap }) {
   );
 }
 
+/* ─── PRESCRIPTION EDITOR ─────────────────────────────────────────────────── */
+/* ─── INSIGHT FEED WIDGET ────────────────────────────────────────────────── */
+function InsightFeedWidget({ healthContext, profileData, onOpenDoctorPrep }) {
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading]   = useState(false);
+
+  useEffect(() => {
+    if (!healthContext?.summary && !profileData) return;
+    const cacheKey = "matri_insights_" + (healthContext?.summary || "").slice(0, 40);
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) { setInsights(JSON.parse(cached)); return; }
+
+    setLoading(true);
+    authFetch("/api/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        system: "You are Matri, a warm pregnancy companion. Based on the woman's health data, generate 2-3 personalised proactive insights. Return ONLY a JSON array of objects: [{text: string, type: 'info'|'nudge'|'prep', priority: 'high'|'medium'|'low'}]. Each text max 12 words. Warm, never alarming, never a verdict. No markdown.",
+        messages: [{ role: "user", content: `Health context: ${healthContext?.summary || "Week 8 pregnancy, first trimester"}. Generate 2-3 insights.` }],
+        max_tokens: 300,
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      const text = data.content?.[0]?.text || "[]";
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setInsights(parsed);
+      sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
+    })
+    .catch(() => setInsights([]))
+    .finally(() => setLoading(false));
+  }, [healthContext?.summary]);
+
+  const dotColor = (type) => type === "prep" ? "var(--rose)" : type === "nudge" ? "var(--amber)" : "#c8a0ff";
+
+  const hasDoctorPrep = (healthContext?.doctorPrep || []).length > 0;
+  const daysLeft = profileData?.next_appointment_date
+    ? Math.ceil((new Date(profileData.next_appointment_date) - new Date()) / (1000*60*60*24))
+    : null;
+
+  return (
+    <div className="w w-full insight-feed" onClick={hasDoctorPrep ? onOpenDoctorPrep : undefined}>
+      <div className="insight-feed-inner">
+        <div className="insight-feed-lbl">
+          <span>✦</span> Matri's insights
+          {hasDoctorPrep && daysLeft !== null && daysLeft <= 7 && daysLeft >= 0 && (
+            <span style={{marginLeft:"auto",fontSize:9,background:"var(--rose)",color:"#fff",borderRadius:100,padding:"2px 8px",fontWeight:700}}>
+              Appt in {daysLeft}d →
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <div className="insight-empty">Thinking about your week…</div>
+        ) : insights?.length ? (
+          insights.map((ins, i) => (
+            <div key={i} className="insight-item">
+              <div className="insight-dot" style={{background: dotColor(ins.type)}}/>
+              <div className="insight-text">{ins.text}</div>
+            </div>
+          ))
+        ) : (
+          <div className="insight-empty">
+            Add your health details to get personalised insights
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── PRESCRIPTION UPLOAD FLOW ───────────────────────────────────────────── */
+// The full fan-out upload — prescription → medicines + tests + scans + summary
+function PrescriptionUploadFlow({ onComplete, onClose }) {
+  const [vis,      setVis]      = useState(false);
+  const [file,     setFile]     = useState(null);
+  const [step,     setStep]     = useState("upload"); // upload → confirm → done
+  const [loading,  setLoading]  = useState(false);
+  const [result,   setResult]   = useState(null);
+  const [error,    setError]    = useState(null);
+  const fileRef = useRef();
+
+  useEffect(() => { requestAnimationFrame(() => setVis(true)); }, []);
+  const close = () => { setVis(false); setTimeout(onClose, 350); };
+
+  const handleFile = e => { const f = e.target.files?.[0]; if (f) setFile(f); };
+
+  const infer = async () => {
+    if (!file) return;
+    setLoading(true); setError(null);
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+
+      const resp = await authFetch("/api/infer", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "prescription",
+          fileBase64: base64,
+          mimeType: file.type,
+          fileName: file.name,
+          week: 8,
+        })
+      });
+
+      if (!resp.ok) throw new Error("Server error");
+      const data = await resp.json();
+      setResult({ ...data.parsed, _debug: data._debug });
+      setStep("confirm");
+    } catch(e) {
+      setError("Couldn't read the prescription. Try a clearer photo.");
+    }
+    setLoading(false);
+  };
+
+  const confirm = async () => {
+    // Data is already saved by api/infer — just close and refresh
+    onComplete(result);
+    close();
+  };
+
+  return (
+    <>
+      <div className={`pedit-backdrop${vis?" open":""}`} onClick={close}/>
+      <div className={`pedit-sheet${vis?" open":""}`} style={{maxHeight:"90vh",overflowY:"auto"}}>
+        <div className="pedit-handle"/>
+
+        {step === "upload" && <>
+          <div className="pedit-title">Upload <em>prescription</em></div>
+          <div style={{fontSize:12,color:"var(--muted)",marginBottom:16,lineHeight:1.6}}>
+            Matri will read the prescription and automatically add medicines, tests, and scan dates to the right places.
+          </div>
+
+          {/* Upload zone */}
+          <div
+            style={{border:`2px dashed ${file?"var(--rose)":"var(--bdr)"}`,borderRadius:16,padding:24,textAlign:"center",cursor:"pointer",background:file?"var(--rose-pale)":"#fff",marginBottom:16,transition:"all 0.2s"}}
+            onClick={() => fileRef.current?.click()}
+          >
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}} onChange={handleFile}/>
+            {file ? <>
+              <div style={{fontSize:24,marginBottom:6}}>📄</div>
+              <div style={{fontSize:13,fontWeight:600,color:"var(--rose)"}}>{file.name}</div>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Tap to change</div>
+            </> : <>
+              <div style={{fontSize:24,marginBottom:6}}>💊</div>
+              <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>Attach prescription</div>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:4}}>Photo or PDF</div>
+            </>}
+          </div>
+
+          {error && <div style={{fontSize:12,color:"var(--rose)",marginBottom:12,textAlign:"center"}}>{error}</div>}
+
+          {loading ? (
+            <div style={{textAlign:"center",padding:"18px 0 6px"}}>
+              <div style={{width:36,height:36,border:"3px solid var(--rose-pale)",borderTopColor:"var(--rose)",borderRadius:"50%",animation:"spin 0.85s linear infinite",margin:"0 auto 14px"}}/>
+              <div style={{fontSize:14,fontWeight:600,color:"var(--ink)",marginBottom:6}}>Reading your prescription…</div>
+              <div style={{fontSize:12,color:"var(--muted)",lineHeight:1.7}}>This usually takes about a minute.<br/>Matri is finding every medicine, test &amp; scan date.</div>
+            </div>
+          ) : (
+            <button
+              onClick={infer} disabled={!file}
+              style={{width:"100%",padding:"14px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:15,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}
+            >
+              ✦ Read prescription
+            </button>
+          )}
+        </>}
+
+        {step === "confirm" && result && <>
+          <div className="pedit-title">Matri <em>found</em></div>
+          <div style={{fontSize:12,color:"var(--muted)",marginBottom:16,lineHeight:1.6}}>
+            {result.summary || "Review what Matri found and confirm to save."}
+          </div>
+
+          {/* Medicines */}
+          {(result.medicines || []).length > 0 && (
+            <div className="rx-confirm-section">
+              <div className="rx-confirm-title">💊 Medicines ({result.medicines.length})</div>
+              {result.medicines.map((m, i) => (
+                <div key={i} className="rx-confirm-item">
+                  <span className="rx-confirm-icon">💊</span>
+                  <div>
+                    <div className="rx-confirm-text">{m.name} {m.dosage && `· ${m.dosage}`}</div>
+                    <div className="rx-confirm-sub">{m.frequency}{m.duration?` · ${m.duration}`:""}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Tests ordered */}
+          {(result.tests_ordered || []).length > 0 && (
+            <div className="rx-confirm-section">
+              <div className="rx-confirm-title">🧪 Tests ordered ({result.tests_ordered.length})</div>
+              {result.tests_ordered.map((t, i) => (
+                <div key={i} className="rx-confirm-item">
+                  <span className="rx-confirm-icon">🧪</span>
+                  <div>
+                    <div className="rx-confirm-text">{t.name}</div>
+                    {t.notes && <div className="rx-confirm-sub">{t.notes}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Scan dates */}
+          {(result.scans_advised || result.scan_dates || []).length > 0 && (
+            <div className="rx-confirm-section">
+              <div className="rx-confirm-title">🔬 Scans scheduled ({(result.scans_advised||result.scan_dates||[]).length})</div>
+              {(result.scans_advised||result.scan_dates||[]).map((s, i) => (
+                <div key={i} className="rx-confirm-item">
+                  <span className="rx-confirm-icon">🔬</span>
+                  <div>
+                    <div className="rx-confirm-text">{s.type}</div>
+                    <div className="rx-confirm-sub">{s.date || s.week || s.notes}</div>
+                    {s.low_confidence && <div style={{fontSize:9,color:"var(--amber)"}}>⚠️ Low confidence</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Diet instructions */}
+          {(result.diet_instructions || []).length > 0 && (
+            <div className="rx-confirm-section">
+              <div className="rx-confirm-title">🥗 Diet instructions ({result.diet_instructions.length})</div>
+              {result.diet_instructions.map((d, i) => (
+                <div key={i} className="rx-confirm-item">
+                  <span className="rx-confirm-icon">🥗</span>
+                  <div className="rx-confirm-text">{d}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Monitoring instructions */}
+          {(result.monitoring_instructions || []).length > 0 && (
+            <div className="rx-confirm-section">
+              <div className="rx-confirm-title">📊 Monitoring ({result.monitoring_instructions.length})</div>
+              {result.monitoring_instructions.map((m, i) => (
+                <div key={i} className="rx-confirm-item">
+                  <span className="rx-confirm-icon">📊</span>
+                  <div className="rx-confirm-text">{m}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Debug info — shows what the backend actually extracted and saved */}
+          {result._debug && (
+            <div style={{background:"var(--cream2)",border:"1px solid var(--bdr)",borderRadius:10,padding:"10px 12px",fontSize:10,color:"var(--muted)",marginBottom:8,lineHeight:1.7}}>
+              <strong style={{color:"var(--ink)"}}>Backend saved:</strong> {result._debug.tests_extracted} test{result._debug.tests_extracted!==1?"s":""} found by AI
+              {result._debug.tests_extracted > 0 && <> · {result._debug.tests_inserted} inserted into DB</>}
+              {result._debug.tests_names?.length > 0 && <div>Tests: {result._debug.tests_names.join(", ")}</div>}
+            </div>
+          )}
+
+          <div style={{display:"flex",gap:10,marginTop:8}}>
+            <button onClick={() => setStep("upload")} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+              Re-upload
+            </button>
+            <button onClick={confirm} style={{flex:2,padding:"13px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+              Save all ✓
+            </button>
+          </div>
+        </>}
+      </div>
+    </>
+  );
+}
+
+/* ─── PRESCRIPTIONS LIST (Doctor's Area) ─────────────────────────────────── */
+function PrescriptionsList({ prescriptions = [], onViewDetail, onDeleted }) {
+  const [deleteRx, setDeleteRx] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!deleteRx) return;
+    setDeleting(true);
+    try {
+      if (deleteRx.id) {
+        // Full cascade delete via API
+        const resp = await authFetch("/api/prescription/delete", {
+          method: "DELETE",
+          body: JSON.stringify({ prescription_id: deleteRx.id }),
+        });
+        if (!resp.ok) throw new Error("Delete failed");
+      } else {
+        // Old entry with no id — remove from profile.prescriptions jsonb directly
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not logged in");
+        const { data: profile } = await supabase.from("profiles").select("prescriptions").eq("id", user.id).single();
+        // Match by index since there's no id — filter out the one we want to remove
+        const existing = profile?.prescriptions || [];
+        // Remove by matching all available fields
+        const updated = existing.filter(rx =>
+          !(rx.doctor === deleteRx.doctor &&
+            rx.date === deleteRx.date &&
+            rx.summary === deleteRx.summary)
+        );
+        await supabase.from("profiles").update({ prescriptions: updated }).eq("id", user.id);
+      }
+      setDeleteRx(null);
+      onDeleted && onDeleted();
+    } catch (e) {
+      alert("Could not delete prescription. Please try again.");
+    }
+    setDeleting(false);
+  };
+
+  if (!prescriptions.length) {
+    return (
+      <div style={{background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:14,padding:"16px",textAlign:"center"}}>
+        <div style={{fontSize:24,marginBottom:8,opacity:0.4}}>📋</div>
+        <div style={{fontSize:12,color:"var(--muted)",lineHeight:1.6}}>No prescriptions uploaded yet.<br/>Use the button below to upload one.</div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {prescriptions.map((rx, i) => {
+          const date = rx.date ? new Date(rx.date).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : null;
+          const counts = [
+            rx.medicine_count && `${rx.medicine_count} medicine${rx.medicine_count!==1?"s":""}`,
+            rx.test_count && `${rx.test_count} test${rx.test_count!==1?"s":""}`,
+            rx.scan_count && `${rx.scan_count} scan${rx.scan_count!==1?"s":""}`,
+          ].filter(Boolean).join(" · ");
+
+          return (
+            <div key={rx.id || i}
+              style={{background:"#fff",border:"1px solid var(--navy-bdr)",borderRadius:16,padding:"14px 16px",cursor:"pointer"}}
+              onClick={() => onViewDetail && onViewDetail(rx)}>
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.2,marginBottom:3}}>
+                    {rx.doctor || (rx.date ? `Prescription · ${new Date(rx.date).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}` : "Uploaded prescription")}
+                    {rx.clinic && <span style={{fontSize:11,color:"var(--muted)",fontFamily:"'Inter',sans-serif",fontStyle:"normal"}}> · {rx.clinic}</span>}
+                  </div>
+                  {date && <div style={{fontSize:10,color:"var(--muted)",marginBottom:4}}>{date}</div>}
+                  {counts && <div style={{fontSize:11,color:"var(--navy)",fontWeight:500,marginBottom:4}}>{counts}</div>}
+                  {rx.summary && (
+                    <div style={{fontSize:11,color:"var(--muted)",fontStyle:"italic",lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                      "{rx.summary}"
+                    </div>
+                  )}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,alignItems:"flex-end"}}>
+                  <div style={{fontSize:10,color:"var(--navy)",fontWeight:600}}>View ↗</div>
+                  <button
+                    onClick={e=>{e.stopPropagation();setDeleteRx(rx);}}
+                    style={{fontSize:10,color:"var(--rose)",background:"var(--rose-pale)",border:"none",borderRadius:100,padding:"3px 9px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── DELETE CONFIRM DIALOG ── */}
+      {deleteRx && (
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(16,10,8,0.7)"}} onClick={()=>setDeleteRx(null)}/>
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:601,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove this <em>prescription?</em></div>
+            <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:12,padding:"12px 14px",fontSize:12,color:"var(--rose)",marginBottom:16,lineHeight:1.65}}>
+              This will permanently remove this prescription and all medicines, tests, and scan dates linked to it. The AI health context derived from it will also be cleared and rebuilt. <strong>This cannot be undone.</strong>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>setDeleteRx(null)} disabled={deleting} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>Cancel</button>
+              <button onClick={confirmDelete} disabled={deleting} style={{flex:2,padding:"13px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:deleting?"default":"pointer",fontFamily:"inherit",opacity:deleting?0.6:1}}>
+                {deleting?"Removing…":"Yes, remove"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/* ─── PRESCRIPTION DETAIL SHEET ──────────────────────────────────────────── */
+function PrescriptionDetailSheet({ rx, onClose, onDelete }) {
+  const [vis, setVis] = useState(false);
+  const [fullRx, setFullRx] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [signedUrl, setSignedUrl] = useState(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(()=>setVis(true));
+
+    // Fetch full prescription record from Supabase if we have an id
+    const load = async () => {
+      setLoading(true);
+      try {
+        if (rx.id) {
+          const { data } = await supabase
+            .from("prescriptions")
+            .select("*")
+            .eq("id", rx.id)
+            .single();
+          if (data) {
+            setFullRx(data);
+            // Generate signed URL via backend (service role key — anon key can't sign private buckets)
+            if (data.file_url) {
+              try {
+                const resp = await authFetch("/api/storage/signed-url", {
+                  method: "POST",
+                  body: JSON.stringify({ file_url: data.file_url }),
+                });
+                if (resp.ok) {
+                  const { signedUrl } = await resp.json();
+                  if (signedUrl) setSignedUrl(signedUrl);
+                }
+              } catch { /* leave signedUrl null — view button will be hidden */ }
+            }
+          }
+        }
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, [rx.id]);
+
+  const close = () => { setVis(false); setTimeout(onClose, 350); };
+
+  // Merge: fullRx has the arrays, rx has the summary fields
+  const data = fullRx ? { ...rx, ...fullRx } : rx;
+
+  const date = data.prescribed_date || data.date
+    ? new Date(data.prescribed_date || data.date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})
+    : null;
+  const followUp = data.follow_up_date
+    ? new Date(data.follow_up_date).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})
+    : null;
+
+  const downloadFile = async () => {
+    const url = signedUrl;
+    if (!url) return;
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `prescription-${data.doctor_name||data.doctor||"doc"}-${data.prescribed_date||data.date||"unknown"}`;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(url, "_blank");
+    }
+  };
+
+  const Section = ({title, items}) => {
+    if (!items?.length) return null;
+    return (
+      <div style={{marginBottom:16}}>
+        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--navy)",marginBottom:8}}>{title}</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {items.map((item, i) => (
+            <div key={i} style={{background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:12,padding:"10px 12px",fontSize:12,color:"var(--ink)",lineHeight:1.5}}>
+              {typeof item === "string" ? item : (
+                <>
+                  <div style={{fontWeight:600}}>{item.name || item.type || item.test_name}</div>
+                  {item.dosage && <div style={{color:"var(--muted)"}}>{item.dosage}</div>}
+                  {item.frequency && <div style={{color:"var(--muted)"}}>{item.frequency}{item.duration?` · ${item.duration}`:""}</div>}
+                  {item.notes && <div style={{color:"var(--muted)",fontStyle:"italic",marginTop:2}}>{item.notes}</div>}
+                  {item.due_date && <div style={{color:"var(--navy)",fontSize:10,marginTop:2}}>Due: {new Date(item.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</div>}
+                  {(item.date || item.week) && <div style={{color:"var(--navy)",fontSize:10,marginTop:2}}>{item.date||""}{item.week?` · ${item.week}`:""}</div>}
+                  {item.low_confidence && <div style={{fontSize:9,color:"var(--amber)",marginTop:2}}>⚠️ Low confidence — verify with doctor</div>}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const hasFileUrl = !!signedUrl;
+
+  return (
+    <>
+      <div style={{position:"fixed",inset:0,zIndex:700,background:vis?"rgba(16,10,8,0.78)":"rgba(16,10,8,0)",transition:"background 0.3s",pointerEvents:vis?"all":"none"}} onClick={close}/>
+      <div onClick={e=>e.stopPropagation()} style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:701,background:"var(--cream)",borderRadius:"28px 28px 0 0",transform:`translateY(${vis?0:102}%)`,transition:"transform 0.36s cubic-bezier(0.3,0.72,0,1)",maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Header */}
+        <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
+          <div>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--navy)",marginBottom:4}}>Prescription</div>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>
+              {data.doctor_name || data.doctor || "Doctor's prescription"}
+            </div>
+            {(data.clinic_name || data.clinic) && <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>{data.clinic_name || data.clinic}</div>}
+            {date && <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>{date}</div>}
+          </div>
+          <button onClick={close} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{overflowY:"auto",padding:"18px 20px 40px",scrollbarWidth:"none",flex:1}}>
+          {loading ? (
+            <div style={{textAlign:"center",padding:"32px 0",color:"var(--muted)",fontSize:13}}>Loading prescription details…</div>
+          ) : (
+            <>
+              {/* Summary */}
+              {data.summary && (
+                <div style={{background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:14,padding:"14px 16px",fontSize:13,color:"var(--ink)",lineHeight:1.65,marginBottom:16,fontStyle:"italic"}}>
+                  "{data.summary}"
+                </div>
+              )}
+
+              {/* File actions */}
+              {hasFileUrl && (
+                <div style={{display:"flex",gap:8,marginBottom:16}}>
+                  <a href={signedUrl} target="_blank" rel="noopener noreferrer"
+                    style={{flex:1,padding:"11px",background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:14,fontSize:12,fontWeight:600,color:"var(--navy)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6,textDecoration:"none"}}>
+                    👁 View original
+                  </a>
+                  <button onClick={downloadFile}
+                    style={{flex:1,padding:"11px",background:"var(--navy)",border:"none",borderRadius:14,fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                    ⬇ Download
+                  </button>
+                </div>
+              )}
+
+              {followUp && (
+                <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:12,padding:"10px 14px",fontSize:12,color:"var(--amber)",marginBottom:16,display:"flex",alignItems:"center",gap:8}}>
+                  📅 <span>Follow-up: <strong>{followUp}</strong></span>
+                </div>
+              )}
+
+              <Section title="💊 Medicines" items={data.medicines}/>
+              <Section title="🧪 Tests ordered" items={data.tests_ordered}/>
+              <Section title="🔬 Scans advised" items={data.scan_dates || data.scans_advised}/>
+              <Section title="🥗 Diet instructions" items={data.diet_instructions}/>
+              <Section title="📊 Monitoring" items={data.monitoring_instructions}/>
+              <Section title="📝 Doctor's advice" items={data.doctor_advice}/>
+
+              {!data.medicines?.length && !data.tests_ordered?.length && !data.diet_instructions?.length && (
+                <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",textAlign:"center",padding:"8px 0"}}>
+                  Detailed breakdown not available for this prescription.
+                </div>
+              )}
+
+              <button onClick={() => setConfirmingDelete(true)}
+                style={{width:"100%",padding:"12px",background:"transparent",border:"1.5px solid var(--rose-bdr)",borderRadius:14,fontSize:13,fontWeight:600,color:"var(--rose)",cursor:"pointer",fontFamily:"inherit",marginTop:16}}>
+                Remove this prescription
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── DELETE CONFIRMATION SHEET ── */}
+      {confirmingDelete && (
+        <>
+          <div
+            style={{position:"fixed",inset:0,zIndex:702,background:"rgba(16,10,8,0.5)"}}
+            onClick={() => { if (!deleting) setConfirmingDelete(false); }}
+          />
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:703,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove this <em>prescription?</em></div>
+            <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:12,padding:"12px 14px",fontSize:12,color:"var(--rose)",marginBottom:20,lineHeight:1.65}}>
+              This will permanently remove this prescription and all medicines, tests, and scan dates linked to it. <strong>This cannot be undone.</strong>
+            </div>
+            {deleting ? (
+              <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,padding:"14px 0",color:"var(--muted)",fontSize:13,fontStyle:"italic"}}>
+                <div style={{width:18,height:18,border:"2px solid var(--rose-pale)",borderTopColor:"var(--rose)",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>
+                Removing prescription and linked data…
+              </div>
+            ) : (
+              <div style={{display:"flex",gap:10}}>
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleting(true);
+                    try { await onDelete(rx); } finally { setDeleting(false); }
+                  }}
+                  style={{flex:2,padding:"13px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+                  Yes, remove
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function PrescriptionEditor({ editData, setEditData }) {
+  const [file,      setFile]      = useState(null);
+  const [inferring, setInferring] = useState(false);
+  const [meds,      setMeds]      = useState(editData.prescriptions || []);
+  const [error,     setError]     = useState(null);
+  const fileRef = useRef();
+
+  // Sync meds back to editData
+  useEffect(() => { setEditData(d => ({ ...d, prescriptions: meds })); }, [meds]);
+
+  const handleFile = e => { const f = e.target.files?.[0]; if (f) { setFile(f); setError(null); } };
+
+  const inferRx = async () => {
+    if (!file) return;
+    setInferring(true); setError(null);
+    try {
+      const base64 = await new Promise((res,rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const isImage = file.type.startsWith("image/");
+      const content = isImage ? [
+        { type:"image", source:{ type:"base64", media_type:file.type, data:base64 } },
+        { type:"text", text:`This is a doctor's prescription for a pregnant woman. Extract every medicine mentioned. Return ONLY a JSON array of objects, each with: name (string), dosage (string, e.g. "500mg"), frequency (string, e.g. "twice daily"), duration (string, e.g. "2 weeks"), notes (string, any special instructions, empty string if none). No markdown, no extra text, pure JSON array.` }
+      ] : [
+        { type:"document", source:{ type:"base64", media_type:"application/pdf", data:base64 } },
+        { type:"text", text:`This is a doctor's prescription PDF for a pregnant woman. Extract every medicine mentioned. Return ONLY a JSON array of objects, each with: name (string), dosage (string), frequency (string), duration (string), notes (string). No markdown, pure JSON array.` }
+      ];
+
+      const resp = await authFetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ system:"Extract prescription data and return pure JSON array only.", messages:[{ role:"user", content }] })
+      });
+      if (!resp.ok) throw new Error("Server error");
+      const data = await resp.json();
+      const text = data.content?.[0]?.text || "";
+      const parsed = JSON.parse(text.replace(/```json|```/g,"").trim());
+      setMeds(parsed);
+    } catch(e) {
+      setError("Couldn't read the prescription. Try a clearer photo.");
+    }
+    setInferring(false);
+  };
+
+  return (
+    <>
+      {/* Premium AI card */}
+      <div className="rx-premium-card">
+        <div className="rx-premium-glow"/>
+        <div className="rx-premium-badge">✦ Smart read</div>
+        <div className="rx-premium-title">Let Matri <em>read</em> your prescription</div>
+        <div className="rx-premium-sub">Photo or PDF of a handwritten or printed prescription — Matri will list every medicine clearly.</div>
+
+        <div className={`rx-upload-zone${file?" has-file":""}`} onClick={() => fileRef.current?.click()}>
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}} onChange={handleFile}/>
+          {file ? <>
+            <div style={{fontSize:18,marginBottom:3}}>📄</div>
+            <div style={{fontSize:12,fontWeight:600,color:"rgba(120,190,255,0.9)"}}>{file.name}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.28)",marginTop:2}}>Tap to change</div>
+          </> : <>
+            <div style={{fontSize:18,marginBottom:3}}>💊</div>
+            <div style={{fontSize:12,fontWeight:500,color:"rgba(255,255,255,0.5)"}}>Attach prescription</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.26)",marginTop:2}}>Photo or PDF</div>
+          </>}
+        </div>
+
+        <button className="rx-infer-btn" onClick={inferRx} disabled={inferring || !file}>
+          {inferring ? <><span>⏳</span> Reading prescription…</> : <><span>✦</span> Read prescription</>}
+        </button>
+
+        {error && <div style={{fontSize:11,color:"#ff9090",marginTop:10,textAlign:"center"}}>{error}</div>}
+
+        {meds.length > 0 && (
+          <div className="rx-result">
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"rgba(120,190,255,0.7)",marginBottom:8}}>✦ Medicines found</div>
+            {meds.map((m, i) => (
+              <div key={i} className="rx-med-row">
+                <div className="rx-med-name">{m.name} {m.dosage && <span style={{fontWeight:400,color:"rgba(255,255,255,0.5)"}}>· {m.dosage}</span>}</div>
+                <div className="rx-med-detail">
+                  {m.frequency && `${m.frequency}`}{m.duration && ` · ${m.duration}`}
+                  {m.notes && <span style={{display:"block",color:"rgba(255,255,255,0.3)"}}>{m.notes}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ─── LAB TIMELINE ROW ────────────────────────────────────────────────────── */
+function LabTimelineRow({ name, unit, entries=[], normalRange, onAdd, onRemove }) {
+  const [adding, setAdding] = useState(false);
+  const [newVal, setNewVal] = useState("");
+  const [newDate, setNewDate] = useState(new Date().toISOString().split("T")[0]);
+
+  const isLow  = (v) => normalRange && v < normalRange[0];
+  const isHigh = (v) => normalRange && v > normalRange[1];
+  const statusColor = (v) => isLow(v)||isHigh(v) ? "var(--rose)" : "var(--forest)";
+  const dotBg = (v) => isLow(v)||isHigh(v) ? "var(--rose-pale)" : "var(--teal-pale)";
+  const dotBorder = (v) => isLow(v)||isHigh(v) ? "var(--rose)" : "var(--teal)";
+
+  const latest = entries[entries.length-1];
+  const trend = entries.length >= 2
+    ? entries[entries.length-1].value > entries[entries.length-2].value ? "↑" : entries[entries.length-1].value < entries[entries.length-2].value ? "↓" : "→"
+    : null;
+
+  const confirm = () => {
+    if (!newVal) return;
+    onAdd({ value: parseFloat(newVal), date: newDate });
+    setNewVal(""); setAdding(false);
+  };
+
+  return (
+    <div className="lab-timeline-row">
+      <div className="lab-timeline-header">
+        <span>
+          <span className="lab-timeline-name">{name}</span>
+          {unit && <span className="lab-timeline-unit">({unit})</span>}
+        </span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {latest && normalRange && (
+            <span className="lab-timeline-status" style={{
+              background: isLow(latest.value)||isHigh(latest.value) ? "var(--rose-pale)" : "var(--teal-pale)",
+              color: statusColor(latest.value)
+            }}>
+              {isLow(latest.value) ? "⚠️ Low" : isHigh(latest.value) ? "⚠️ High" : "✓ Normal"}
+            </span>
+          )}
+          {trend && <span style={{fontSize:14,color:latest&&(isLow(latest.value)||isHigh(latest.value))?"var(--rose)":"var(--teal)"}}>{trend}</span>}
+        </div>
+      </div>
+
+      {/* Timeline dots */}
+      <div className="lab-timeline-scroll">
+        {entries.map((e, i) => (
+          <div key={i} className="lab-timeline-entry" onDoubleClick={()=>onRemove(i)} title="Double tap to remove">
+            <div className="lab-timeline-dot" style={{background:dotBg(e.value),borderColor:dotBorder(e.value),color:statusColor(e.value)}}>
+              <span>{e.value}</span>
+            </div>
+            <div className="lab-timeline-val">{e.value}</div>
+            <div className="lab-timeline-date">{new Date(e.date).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</div>
+          </div>
+        ))}
+        {/* Add button inline */}
+        <div style={{display:"flex",alignItems:"flex-start",paddingLeft:entries.length?12:0,paddingTop:4}}>
+          <button className="lab-timeline-add" onClick={()=>setAdding(a=>!a)} title="Add new reading">
+            {adding?"×":"+"}
+          </button>
+        </div>
+      </div>
+
+      {/* Inline add form */}
+      {adding && (
+        <div className="lab-add-form">
+          <input type="number" placeholder="Value" value={newVal} onChange={e=>setNewVal(e.target.value)} style={{maxWidth:80}}/>
+          <input type="date" value={newDate} onChange={e=>setNewDate(e.target.value)}/>
+          <button className="lab-add-confirm" onClick={confirm}>Add</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── TEST ORDERS ────────────────────────────────────────────────────────── */
+
+function TestOrderRow({ order, uploading, checking, onUpload, onViewDetail, onDelete }) {
+  const fileRef = useRef();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const done = order.status === "completed";
+  const dueDate = order.due_date
+    ? new Date(order.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"short"})
+    : null;
+  return (
+    <div
+      onClick={done && !confirmDelete ? onViewDetail : undefined}
+      style={{background:"#fff",border:`1px solid ${confirmDelete?"var(--rose-bdr)":done?"var(--teal-bdr)":"var(--bdr)"}`,borderRadius:16,padding:"13px 16px",cursor:done&&!confirmDelete?"pointer":"default",transition:"border-color 0.2s"}}>
+      <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}}
+        onChange={e=>{const f=e.target.files?.[0];if(f)onUpload(f);e.target.value="";}}/>
+
+      {confirmDelete ? (
+        /* ── Inline delete confirmation ── */
+        <div onClick={e=>e.stopPropagation()}>
+          <div style={{fontSize:13,color:"var(--ink)",marginBottom:10}}>Remove <strong>{order.test_name}</strong>?</div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setConfirmDelete(false)}
+              style={{flex:1,padding:"8px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+              Cancel
+            </button>
+            <button onClick={()=>{setConfirmDelete(false);onDelete();}}
+              style={{flex:2,padding:"8px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+              Yes, remove
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",marginBottom:3}}>
+              <span style={{fontFamily:"'Lora',serif",fontSize:15,color:"var(--ink)"}}>{order.test_name}</span>
+              <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",
+                color:done?"var(--teal)":"var(--amber)",background:done?"var(--teal-pale)":"var(--amber-pale)",
+                border:`1px solid ${done?"var(--teal-bdr)":"var(--amber-bdr)"}`,borderRadius:100,padding:"2px 7px",flexShrink:0}}>
+                {done ? "✓ Done" : "Ordered"}
+              </span>
+            </div>
+            {dueDate && <div style={{fontSize:10,color:"var(--muted)",marginBottom:2}}>Due: {dueDate}</div>}
+            {order.notes && <div style={{fontSize:11,color:"var(--muted)",fontStyle:"italic",lineHeight:1.5}}>{order.notes}</div>}
+            {done && order.report_summary && (
+              <div style={{fontSize:11,color:"var(--teal)",marginTop:5,lineHeight:1.5,fontStyle:"italic",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                "{order.report_summary}"
+              </div>
+            )}
+            {/* Schedule / Book — future features */}
+            {!done && (
+              <div style={{marginTop:8}}>
+                <div style={{display:"flex",gap:6,opacity:0.35,pointerEvents:"none",filter:"blur(0.6px)"}}>
+                  <div style={{fontSize:10,fontWeight:600,color:"var(--navy)",background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:100,padding:"3px 9px"}}>📅 Schedule</div>
+                  <div style={{fontSize:10,fontWeight:600,color:"var(--forest)",background:"var(--forest-pale)",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"3px 9px"}}>🏥 Book lab</div>
+                </div>
+                <div style={{fontSize:9,color:"var(--muted)",marginTop:4,letterSpacing:"0.04em"}}>Future features</div>
+              </div>
+            )}
+          </div>
+          <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,paddingTop:2}}>
+            {checking ? (
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:14,height:14,border:"2px solid var(--amber-pale)",borderTopColor:"var(--amber)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+                <span style={{fontSize:10,color:"var(--amber)"}}>Validating…</span>
+              </div>
+            ) : uploading ? (
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:14,height:14,border:"2px solid var(--teal-pale)",borderTopColor:"var(--teal)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+                <span style={{fontSize:10,color:"var(--muted)"}}>Reading…</span>
+              </div>
+            ) : done ? (
+              <span style={{fontSize:11,color:"var(--teal)",fontWeight:600}}>View ↗</span>
+            ) : (
+              <button onClick={e=>{e.stopPropagation();fileRef.current?.click();}}
+                style={{fontSize:10,fontWeight:600,color:"var(--navy)",background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:100,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                ⬆ Upload
+              </button>
+            )}
+            <button onClick={e=>{e.stopPropagation();setConfirmDelete(true);}}
+              style={{fontSize:10,fontWeight:600,color:"var(--rose)",background:"var(--rose-pale)",border:"none",borderRadius:100,padding:"3px 9px",cursor:"pointer",fontFamily:"inherit"}}>
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
+  const [orders,         setOrders]         = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [loadError,      setLoadError]      = useState(null);
+  const [uploadingId,    setUploadingId]    = useState(null);
+  const [checkingId,     setCheckingId]     = useState(null);
+  const [mismatchPrompt, setMismatchPrompt] = useState(null);
+
+  const load = async () => {
+    setLoadError(null);
+    try {
+      const resp = await authFetch("/api/test-orders");
+      if (resp.ok) {
+        const body = await resp.json();
+        setOrders(body.orders || []);
+      } else {
+        const body = await resp.json().catch(() => ({}));
+        setLoadError(`Error ${resp.status}: ${body.error || resp.statusText}`);
+      }
+    } catch (e) {
+      setLoadError(e.message || "Network error");
+    }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [reloadKey]);
+
+  const handleDelete = async (order) => {
+    try {
+      const resp = await authFetch("/api/test-orders", {
+        method: "DELETE",
+        body: JSON.stringify({ id: order.id }),
+      });
+      if (!resp.ok) throw new Error("Delete failed");
+      setOrders(prev => prev.filter(o => o.id !== order.id));
+    } catch {
+      alert("Could not remove test. Please try again.");
+    }
+  };
+
+  // Saves the report after user has confirmed (or validation passed)
+  const saveReport = async (order, file, base64) => {
+    setUploadingId(order.id);
+    try {
+      const resp = await authFetch("/api/infer", {
+        method: "POST",
+        body: JSON.stringify({ type:"lab_report", fileBase64:base64, mimeType:file.type, fileName:file.name, test_order_id:order.id }),
+      });
+      if (!resp.ok) throw new Error("Failed");
+      await load();
+    } catch {
+      alert("Could not process report. Please try a clearer photo or PDF.");
+    }
+    setUploadingId(null);
+  };
+
+  const handleUpload = async (order, file) => {
+    // Read file once — reused for both validation and save
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file);
+    });
+
+    // AI pre-check: does this report match the expected test?
+    setCheckingId(order.id);
+    let mismatch = null;
+    try {
+      const isImage = file.type.startsWith("image/");
+      const content = isImage
+        ? [{ type:"image", source:{ type:"base64", media_type:file.type, data:base64 } }, { type:"text", text:`The doctor ordered a test called: "${order.test_name}". Does this uploaded report match that test? Return ONLY JSON: {"match": true/false, "detected": "what test this report actually is", "confidence": "high/medium/low"}. If you cannot read the report clearly, set confidence to "low".` }]
+        : [{ type:"document", source:{ type:"base64", media_type:"application/pdf", data:base64 } }, { type:"text", text:`The doctor ordered a test called: "${order.test_name}". Does this uploaded report match that test? Return ONLY JSON: {"match": true/false, "detected": "what test this report actually is", "confidence": "high/medium/low"}. If you cannot read the report clearly, set confidence to "low".` }];
+      const resp = await authFetch("/api/chat", { method:"POST", body:JSON.stringify({ messages:[{ role:"user", content }], max_tokens:120 }) });
+      if (resp.ok) {
+        const data = await resp.json();
+        const parsed = JSON.parse((data.content?.[0]?.text || "{}").replace(/```json|```/g,"").trim());
+        // Only warn when AI is confident there's a real mismatch
+        if (parsed.match === false && parsed.confidence === "high") {
+          mismatch = parsed.detected || "a different test";
+        }
+      }
+    } catch { /* validation failed silently — proceed with upload */ }
+    setCheckingId(null);
+
+    if (mismatch) {
+      setMismatchPrompt({ order, file, base64, detected: mismatch });
+    } else {
+      await saveReport(order, file, base64);
+    }
+  };
+
+  if (loading) return <div style={{textAlign:"center",padding:"14px 0",color:"var(--muted)",fontSize:12}}>Loading tests…</div>;
+
+  if (loadError) return (
+    <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:14,padding:"14px 16px"}}>
+      <div style={{fontSize:12,color:"var(--rose)",marginBottom:8}}>Could not load tests: <strong>{loadError}</strong></div>
+      <button onClick={load} style={{fontSize:11,fontWeight:600,color:"var(--rose)",background:"#fff",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit"}}>Retry</button>
+    </div>
+  );
+
+  if (!orders.length) return (
+    <div style={{background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:14,padding:"14px 16px",textAlign:"center"}}>
+      <div style={{fontSize:22,opacity:0.4,marginBottom:6}}>🧪</div>
+      <div style={{fontSize:12,color:"var(--muted)",lineHeight:1.6}}>Tests ordered by your doctor will appear here automatically when you upload a prescription.</div>
+    </div>
+  );
+
+  return (
+    <>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {orders.map(order => (
+          <TestOrderRow key={order.id} order={order}
+            uploading={uploadingId === order.id}
+            checking={checkingId === order.id}
+            onUpload={file => handleUpload(order, file)}
+            onViewDetail={() => onViewDetail(order)}
+            onDelete={() => handleDelete(order)}/>
+        ))}
+      </div>
+
+      {/* ── Mismatch confirmation sheet ── */}
+      {mismatchPrompt && (
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(16,10,8,0.65)"}} onClick={()=>setMismatchPrompt(null)}/>
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:801,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+            <div style={{fontSize:22,marginBottom:10,textAlign:"center"}}>🤔</div>
+            <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--ink)",marginBottom:10,textAlign:"center"}}>
+              Report <em>mismatch?</em>
+            </div>
+            <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:14,padding:"13px 16px",fontSize:13,color:"var(--ink)",lineHeight:1.7,marginBottom:20}}>
+              This looks like a <strong>{mismatchPrompt.detected}</strong> report, but you're uploading for <strong>{mismatchPrompt.order.test_name}</strong>.<br/>
+              <span style={{fontSize:12,color:"var(--muted)"}}>Are you sure you want to upload this report here?</span>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button
+                onClick={()=>setMismatchPrompt(null)}
+                style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+                Cancel
+              </button>
+              <button
+                onClick={async ()=>{ const p=mismatchPrompt; setMismatchPrompt(null); await saveReport(p.order, p.file, p.base64); }}
+                style={{flex:2,padding:"13px",background:"var(--amber)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+                Upload anyway
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/* ─── TEST REPORT DETAIL SHEET ──────────────────────────────────────────── */
+function TestReportSheet({ order, onClose, onReportDeleted }) {
+  const [vis,             setVis]             = useState(false);
+  const [signedUrl,       setSignedUrl]       = useState(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting,         setDeleting]         = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => setVis(true));
+    if (order.file_url) {
+      authFetch("/api/storage/signed-url", { method:"POST", body:JSON.stringify({ file_url: order.file_url }) })
+        .then(r => r.ok ? r.json() : null).then(d => { if (d?.signedUrl) setSignedUrl(d.signedUrl); }).catch(() => {});
+    }
+  }, [order.id]);
+
+  const close = () => { setVis(false); setTimeout(onClose, 350); };
+
+  const downloadFile = async () => {
+    if (!signedUrl) return;
+    try {
+      const blob = await fetch(signedUrl).then(r => r.blob());
+      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `lab-report-${order.test_name||"report"}` });
+      a.click(); URL.revokeObjectURL(a.href);
+    } catch { window.open(signedUrl, "_blank"); }
+  };
+
+  const ev = order.extracted_values || {};
+  const CORE = [
+    { key:"hemoglobin",          label:"Haemoglobin",     unit:"g/dL",  range:[11,14]   },
+    { key:"tsh",                 label:"TSH",              unit:"mIU/L", range:[0.1,4]   },
+    { key:"blood_sugar_fasting", label:"Blood Sugar (F)",  unit:"mg/dL", range:[70,95]   },
+    { key:"blood_sugar_pp",      label:"Blood Sugar (PP)", unit:"mg/dL", range:[70,140]  },
+    { key:"blood_group",         label:"Blood Group",      unit:"",      range:null      },
+  ];
+  const dueDate    = order.due_date   ? new Date(order.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"}) : null;
+  const reportDate = ev.report_date   ? new Date(ev.report_date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"}) : null;
+  const hasValues  = CORE.some(c => ev[c.key] != null) || (ev.extras||[]).length > 0;
+
+  return (
+    <>
+      <div style={{position:"fixed",inset:0,zIndex:700,background:vis?"rgba(16,10,8,0.78)":"rgba(16,10,8,0)",transition:"background 0.3s",pointerEvents:vis?"all":"none"}} onClick={close}/>
+      <div onClick={e=>e.stopPropagation()} style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:701,background:"var(--cream)",borderRadius:"28px 28px 0 0",transform:`translateY(${vis?0:102}%)`,transition:"transform 0.36s cubic-bezier(0.3,0.72,0,1)",maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Header */}
+        <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
+          <div>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--teal)",marginBottom:4}}>Lab Report</div>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{order.test_name}</div>
+            {dueDate && <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>Due: {dueDate}</div>}
+          </div>
+          <button onClick={close} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div style={{overflowY:"auto",padding:"18px 20px 40px",scrollbarWidth:"none",flex:1}}>
+          {order.report_summary && (
+            <div style={{background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:14,padding:"13px 16px",fontSize:13,color:"var(--ink)",lineHeight:1.65,marginBottom:14,fontStyle:"italic"}}>
+              "{order.report_summary}"
+            </div>
+          )}
+          {reportDate && (
+            <div style={{fontSize:11,color:"var(--muted)",marginBottom:14}}>Report date: <strong style={{color:"var(--ink)"}}>{reportDate}</strong></div>
+          )}
+
+          {/* View / Download / Delete */}
+          {signedUrl && (
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <a href={signedUrl} target="_blank" rel="noopener noreferrer"
+                style={{flex:1,padding:"11px",background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:14,fontSize:12,fontWeight:600,color:"var(--teal)",display:"flex",alignItems:"center",justifyContent:"center",gap:6,textDecoration:"none"}}>
+                👁 View
+              </a>
+              <button onClick={downloadFile}
+                style={{flex:1,padding:"11px",background:"var(--teal)",border:"none",borderRadius:14,fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                ⬇ Download
+              </button>
+              <button onClick={()=>setConfirmingDelete(true)}
+                style={{flex:1,padding:"11px",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:14,fontSize:12,fontWeight:600,color:"var(--rose)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                🗑 Delete
+              </button>
+            </div>
+          )}
+
+          {/* Extracted values */}
+          {hasValues && (
+            <>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--muted)",marginBottom:10}}>Extracted values</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+                {CORE.map(({key,label,unit,range}) => {
+                  const val = ev[key]; if (val == null) return null;
+                  const low  = range && typeof val==="number" && val < range[0];
+                  const high = range && typeof val==="number" && val > range[1];
+                  const status = !range ? null : low ? "Low" : high ? "High" : "Normal";
+                  return (
+                    <div key={key} style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div>
+                        <div style={{fontSize:11,color:"var(--muted)",marginBottom:3}}>{label}</div>
+                        <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)"}}>
+                          {val}{unit && <span style={{fontSize:11,color:"var(--muted)",fontFamily:"inherit",marginLeft:4}}>{unit}</span>}
+                        </div>
+                      </div>
+                      {status && (
+                        <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",
+                          color:status==="Normal"?"var(--teal)":"var(--rose)",background:status==="Normal"?"var(--teal-pale)":"var(--rose-pale)",
+                          border:`1px solid ${status==="Normal"?"var(--teal-bdr)":"var(--rose-bdr)"}`,borderRadius:100,padding:"3px 10px"}}>
+                          {status==="Normal"?"✓ Normal":"⚠️ "+status}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+                {(ev.extras||[]).map((ex,i) => (
+                  <div key={i} style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div>
+                      <div style={{fontSize:11,color:"var(--muted)",marginBottom:3}}>{ex.name}</div>
+                      <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)"}}>
+                        {ex.value}{ex.unit && <span style={{fontSize:11,color:"var(--muted)",fontFamily:"inherit",marginLeft:4}}>{ex.unit}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {order.notes && (
+            <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:12,padding:"12px 14px",fontSize:12,color:"var(--amber)",lineHeight:1.6}}>
+              📋 <strong>Doctor's note:</strong> {order.notes}
+            </div>
+          )}
+
+          {/* Schedule / Book — future features */}
+          <div style={{marginTop:16}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--muted)",marginBottom:8}}>Future features</div>
+            <div style={{display:"flex",gap:8,opacity:0.35,pointerEvents:"none",filter:"blur(0.8px)"}}>
+              <div style={{flex:1,padding:"12px",background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:14,textAlign:"center",fontSize:12,fontWeight:600,color:"var(--navy)"}}>📅 Schedule</div>
+              <div style={{flex:1,padding:"12px",background:"var(--forest-pale)",border:"1px solid var(--forest-bdr)",borderRadius:14,textAlign:"center",fontSize:12,fontWeight:600,color:"var(--forest)"}}>🏥 Book lab</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Delete report confirmation sheet ── */}
+      {confirmingDelete && (
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:702,background:"rgba(16,10,8,0.5)"}}
+            onClick={()=>{ if(!deleting) setConfirmingDelete(false); }}/>
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:703,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Delete this <em>report?</em></div>
+            <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:12,padding:"12px 14px",fontSize:12,color:"var(--rose)",marginBottom:20,lineHeight:1.65}}>
+              This will remove the uploaded file and all extracted values from your history. The test will go back to <strong>Ordered</strong> status. <strong>This cannot be undone.</strong>
+            </div>
+            {deleting ? (
+              <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,padding:"14px 0",color:"var(--muted)",fontSize:13,fontStyle:"italic"}}>
+                <div style={{width:18,height:18,border:"2px solid var(--rose-pale)",borderTopColor:"var(--rose)",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>
+                Deleting report and clearing values…
+              </div>
+            ) : (
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>setConfirmingDelete(false)}
+                  style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      const resp = await authFetch("/api/test-orders/delete-report", {
+                        method: "DELETE",
+                        body: JSON.stringify({ test_order_id: order.id }),
+                      });
+                      if (!resp.ok) throw new Error("Delete failed");
+                      setConfirmingDelete(false);
+                      onReportDeleted && onReportDeleted();
+                      close();
+                    } catch {
+                      alert("Could not delete report. Please try again.");
+                    }
+                    setDeleting(false);
+                  }}
+                  style={{flex:2,padding:"13px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+                  Yes, delete
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/* ─── LABS EDITOR ─────────────────────────────────────────────────────────── */
+function LabsEditor({ editData, setEditData, hideTitle = false }) {
+  const [file,       setFile]       = useState(null);
+  const [inferring,  setInferring]  = useState(false);
+  const [inferred,   setInferred]   = useState(null);
+  const [inferError, setInferError] = useState(null);
+  const [showAddExtra, setShowAddExtra] = useState(false);
+  const [newExtraName, setNewExtraName] = useState("");
+  const [newExtraUnit, setNewExtraUnit] = useState("");
+  const fileRef = useRef();
+
+  // Lab data is now stored as { key: [{value, date},...] }
+  // and extras as { "TestName": { unit, entries:[{value,date}] } }
+  const labData   = editData.lab_data   || {};
+  const labExtras = editData.lab_extras_v2 || {};
+
+  const updateLabData = (key, entries) => {
+    setEditData(d => ({ ...d, lab_data: { ...d.lab_data||{}, [key]: entries } }));
+  };
+  const addEntry = (key, entry) => {
+    const current = labData[key] || [];
+    updateLabData(key, [...current, entry].sort((a,b)=>a.date.localeCompare(b.date)));
+  };
+  const removeEntry = (key, idx) => {
+    const current = labData[key] || [];
+    updateLabData(key, current.filter((_,i)=>i!==idx));
+  };
+
+  const updateExtra = (name, entries) => {
+    setEditData(d => ({
+      ...d,
+      lab_extras_v2: { ...d.lab_extras_v2||{}, [name]: { ...d.lab_extras_v2?.[name], entries } }
+    }));
+  };
+  const addExtraEntry = (name, entry) => {
+    const current = (labExtras[name]?.entries) || [];
+    updateExtra(name, [...current, entry].sort((a,b)=>a.date.localeCompare(b.date)));
+  };
+  const removeExtraEntry = (name, idx) => {
+    const remaining = (labExtras[name]?.entries || []).filter((_,i)=>i!==idx);
+    if (remaining.length === 0) {
+      // Drop the key entirely — no ghost rows
+      setEditData(d => {
+        const { [name]: _, ...rest } = d.lab_extras_v2 || {};
+        return { ...d, lab_extras_v2: rest };
+      });
+    } else {
+      updateExtra(name, remaining);
+    }
+  };
+  const addNewExtra = () => {
+    if (!newExtraName.trim()) return;
+    setEditData(d => ({
+      ...d,
+      lab_extras_v2: { ...d.lab_extras_v2||{}, [newExtraName.trim()]: { unit: newExtraUnit.trim(), entries: [] } }
+    }));
+    setNewExtraName(""); setNewExtraUnit(""); setShowAddExtra(false);
+  };
+
+  const handleFile = e => { const f = e.target.files?.[0]; if (f) { setFile(f); setInferred(null); setInferError(null); } };
+
+  const inferFromReport = async () => {
+    if (!file) return;
+    setInferring(true); setInferError(null);
+    const today = new Date().toISOString().split("T")[0];
+    try {
+      const base64 = await new Promise((res,rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      const isImage = file.type.startsWith("image/");
+      const prompt = `This is a pregnancy lab report. Extract ALL lab values including any report date. Return ONLY a JSON object with: hemoglobin (number g/dL or null), tsh (number mIU/L or null), blood_sugar_fasting (number mg/dL or null), blood_sugar_pp (number mg/dL or null), blood_group (string or null), report_date (string YYYY-MM-DD or today if not found), extras (array of {name, value (number), unit} for ALL other values), summary (2-3 plain-language sentences for a pregnant woman). No markdown, pure JSON.`;
+      const content = isImage
+        ? [{ type:"image", source:{ type:"base64", media_type:file.type, data:base64 } }, { type:"text", text:prompt }]
+        : [{ type:"document", source:{ type:"base64", media_type:"application/pdf", data:base64 } }, { type:"text", text:prompt }];
+
+      const resp = await authFetch("/api/chat", { method:"POST",
+        body:JSON.stringify({ system:"Extract lab values and return pure JSON only.", messages:[{ role:"user", content }] }) });
+      if (!resp.ok) throw new Error("Server error");
+      const data = await resp.json();
+      const parsed = JSON.parse((data.content?.[0]?.text||"").replace(/```json|```/g,"").trim());
+      const rDate = parsed.report_date || today;
+      setInferred(parsed);
+
+      // Merge into timeline arrays
+      const CORE = [["hemoglobin","hemoglobin"],["tsh","tsh"],["blood_sugar_fasting","blood_sugar_fasting"],["blood_sugar_pp","blood_sugar_pp"]];
+      const updates = {};
+      CORE.forEach(([pk]) => {
+        if (parsed[pk] != null) {
+          const existing = labData[pk] || [];
+          const alreadyHas = existing.some(e => e.date === rDate);
+          updates[pk] = alreadyHas ? existing : [...existing, { value: parsed[pk], date: rDate }].sort((a,b)=>a.date.localeCompare(b.date));
+        }
+      });
+
+      // Extras — skip anything that's just a renamed version of a core test
+      const newExtras = { ...labExtras };
+      (parsed.extras||[]).forEach(ex => {
+        if (isCoreLabAlias(ex.name)) return;
+        const existing = newExtras[ex.name]?.entries || [];
+        const alreadyHas = existing.some(e => e.date === rDate);
+        newExtras[ex.name] = {
+          unit: ex.unit || newExtras[ex.name]?.unit || "",
+          entries: alreadyHas ? existing : [...existing, { value: ex.value, date: rDate }].sort((a,b)=>a.date.localeCompare(b.date))
+        };
+      });
+
+      if (parsed.blood_group) updates.blood_group = parsed.blood_group;
+
+      setEditData(d => ({
+        ...d,
+        lab_data: { ...(d.lab_data||{}), ...updates },
+        lab_extras_v2: newExtras,
+        ...(parsed.blood_group && { blood_group: parsed.blood_group }),
+      }));
+    } catch(e) {
+      setInferError("Couldn't read the report. Try a clearer image.");
+    }
+    setInferring(false);
+  };
+
+  const CORE_TESTS = [
+    { key:"hemoglobin",          label:"Haemoglobin",    unit:"g/dL",  range:[11,14] },
+    { key:"tsh",                 label:"TSH",            unit:"mIU/L", range:[0.1,4] },
+    { key:"blood_sugar_fasting", label:"Blood Sugar (F)", unit:"mg/dL", range:[70,95] },
+    { key:"blood_sugar_pp",      label:"Blood Sugar (PP)",unit:"mg/dL", range:[70,140] },
+  ];
+
+  return (
+    <>
+      {!hideTitle && <div className="pedit-title">Lab <em>results</em></div>}
+
+      {/* ── PREMIUM AI CARD ── */}
+      <div className="lab-premium-card">
+        <div className="lab-premium-glow"/>
+        <div className="lab-premium-glow2"/>
+        <div className="lab-premium-badge">✦ Smart read</div>
+        <div className="lab-premium-title">Let Matri <em>read</em> your report</div>
+        <div className="lab-premium-sub">Upload a photo or PDF — values get added to your test history automatically.</div>
+
+        <div className={`lab-upload-zone-dark${file?" has-file":""}`} onClick={() => fileRef.current?.click()}>
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}} onChange={handleFile}/>
+          {file
+            ? <><div style={{fontSize:18,marginBottom:3}}>📄</div><div style={{fontSize:12,fontWeight:600,color:"rgba(200,160,255,0.9)"}}>{file.name}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginTop:2}}>Tap to change</div></>
+            : <><div style={{fontSize:18,marginBottom:3}}>📎</div><div style={{fontSize:12,fontWeight:500,color:"rgba(255,255,255,0.5)"}}>Attach lab report</div><div style={{fontSize:10,color:"rgba(255,255,255,0.28)",marginTop:2}}>Photo or PDF</div></>
+          }
+        </div>
+
+        <button className="lab-infer-btn" onClick={inferFromReport} disabled={inferring || !file}>
+          {inferring ? <><span>⏳</span> Reading your report…</> : <><span>✦</span> Read & add to history</>}
+        </button>
+
+        {inferError && <div style={{fontSize:11,color:"#ff9090",marginTop:10,textAlign:"center"}}>{inferError}</div>}
+        {inferred?.summary && (
+          <div className="lab-infer-result">
+            <div className="lab-infer-title">✦ Matri's read</div>
+            {inferred.summary}
+          </div>
+        )}
+      </div>
+
+      {/* ── CORE TEST TIMELINES ── */}
+      <div className="lab-divider">
+        <div className="lab-divider-line"/>
+        <div className="lab-divider-text">test history</div>
+        <div className="lab-divider-line"/>
+      </div>
+
+      {CORE_TESTS.map(t => (
+        <LabTimelineRow
+          key={t.key}
+          name={t.label}
+          unit={t.unit}
+          entries={labData[t.key] || []}
+          normalRange={t.range}
+          onAdd={entry => addEntry(t.key, entry)}
+          onRemove={idx => removeEntry(t.key, idx)}
+        />
+      ))}
+
+      {/* ── EXTRA TESTS ── */}
+      {Object.entries(labExtras).filter(([,d]) => d?.entries?.length > 0).map(([name, data]) => (
+        <LabTimelineRow
+          key={name}
+          name={name}
+          unit={data.unit}
+          entries={data.entries || []}
+          normalRange={null}
+          onAdd={entry => addExtraEntry(name, entry)}
+          onRemove={idx => removeExtraEntry(name, idx)}
+        />
+      ))}
+
+      {/* Add new extra test */}
+      {showAddExtra ? (
+        <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:14,padding:14,marginTop:4}}>
+          <div className="pedit-label" style={{marginBottom:8}}>New test</div>
+          <div style={{display:"flex",gap:8,marginBottom:8}}>
+            <input className="pedit-input" placeholder="Test name (e.g. Ferritin)" value={newExtraName} onChange={e=>setNewExtraName(e.target.value)} style={{flex:2}}/>
+            <input className="pedit-input" placeholder="Unit" value={newExtraUnit} onChange={e=>setNewExtraUnit(e.target.value)} style={{flex:1}}/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="lab-add-confirm" style={{flex:1,borderRadius:100,padding:"10px"}} onClick={addNewExtra}>Add test</button>
+            <button onClick={()=>setShowAddExtra(false)} style={{flex:1,background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,padding:"10px",fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={()=>setShowAddExtra(true)} style={{width:"100%",padding:"10px",background:"transparent",border:"1.5px dashed var(--bdr)",borderRadius:12,fontSize:12,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",marginTop:4}}>
+          + Add another test
+        </button>
+      )}
+    </>
+  );
+}
+
+/* ─── TEST SUGGESTIONS STRIP ─────────────────────────────────────────────── */
+const TRIMESTER_TESTS = {
+  1: [
+    { id:"hb",    icon:"🩸", name:"HB test",      week:"Wk 8-10",  urgent:true,
+      what:"A complete blood count to check haemoglobin levels.", why:"Anaemia is common in early pregnancy and can cause fatigue and affect the baby's growth.", normal:"HB should be above 11 g/dL in pregnancy.", expect:"A simple blood draw, usually at a lab. Results within 24 hours.", ifAbnormal:"Low HB means iron supplements and diet changes. Very low levels may need IV iron." },
+    { id:"tsh",   icon:"🦋", name:"TSH",           week:"Wk 8-10",  urgent:true,
+      what:"Thyroid stimulating hormone test.", why:"Thyroid disorders are common and can affect baby's brain development if untreated.", normal:"TSH should be between 0.1–2.5 mIU/L in first trimester.", expect:"Blood draw, results within 24–48 hours.", ifAbnormal:"Hypothyroidism is managed with Thyronorm. Hyperthyroidism needs specialist care." },
+    { id:"urine", icon:"🧫", name:"Urine test",    week:"Wk 8-12",  urgent:false,
+      what:"Checks for UTI, protein, and glucose in urine.", why:"UTIs are very common in pregnancy and can cause premature labour if untreated.", normal:"Should show no significant bacteria, protein, or glucose.", expect:"Simple urine sample, results within a day.", ifAbnormal:"If UTI found, antibiotics safe in pregnancy are prescribed." },
+    { id:"blood_grp", icon:"🩺", name:"Blood group", week:"First visit", urgent:true,
+      what:"Blood group and Rh factor test.", why:"Critical if you are Rh negative — you may need anti-D injections during pregnancy.", normal:"Any blood group is normal. Rh factor is either positive or negative.", expect:"Simple blood draw, usually done at first antenatal visit.", ifAbnormal:"If Rh negative, your doctor will monitor antibody levels and give anti-D at key points." },
+    { id:"double", icon:"🧬", name:"Double marker", week:"Wk 11-13",  urgent:false,
+      what:"Blood test screening for chromosomal conditions.", why:"Along with NT scan, helps assess risk of Down syndrome and other conditions.", normal:"Risk ratio below 1:250 is generally considered low risk.", expect:"A blood draw, combined with NT scan measurements for final risk score.", ifAbnormal:"A high risk result leads to further testing like NIPT — it is not a diagnosis." },
+  ],
+  2: [
+    { id:"gdm",   icon:"🍬", name:"GDM test",      week:"Wk 24-28", urgent:true,
+      what:"Glucose challenge test to screen for gestational diabetes.", why:"GDM affects 10–14% of Indian pregnancies and can cause large baby, difficult birth, and complications.", normal:"Fasting glucose below 92 mg/dL; 1-hour below 180 mg/dL.", expect:"Usually a fasting blood draw, then drink a glucose solution, then another blood draw after 1–2 hours.", ifAbnormal:"Diet, exercise, and sometimes insulin. Managed carefully for rest of pregnancy." },
+    { id:"hb2",   icon:"🩸", name:"HB repeat",     week:"Wk 24-28", urgent:false,
+      what:"Repeat haemoglobin check mid-pregnancy.", why:"Iron deficiency often worsens in the second trimester as baby's demands increase.", normal:"Should be above 11 g/dL.", expect:"Simple blood draw.", ifAbnormal:"Iron supplements dosage may be increased. IV iron occasionally needed." },
+    { id:"urine2",icon:"🧫", name:"Urine test",     week:"Wk 24-28", urgent:false,
+      what:"Repeat urine test for protein and glucose.", why:"Protein in urine mid-pregnancy can be an early sign of pre-eclampsia.", normal:"No significant protein or glucose.", expect:"Simple urine sample.", ifAbnormal:"Protein detected triggers further monitoring for pre-eclampsia risk." },
+  ],
+  3: [
+    { id:"gbs",   icon:"🧬", name:"GBS swab",      week:"Wk 35-37", urgent:false,
+      what:"Group B Streptococcus swab test.", why:"GBS can be passed to baby during birth and cause serious infection.", normal:"Most women are GBS negative.", expect:"Vaginal and rectal swab, quick and painless.", ifAbnormal:"If positive, IV antibiotics given during labour — protects the baby effectively." },
+    { id:"hb3",   icon:"🩸", name:"HB repeat",     week:"Wk 34-36", urgent:true,
+      what:"Final haemoglobin check before delivery.", why:"Low HB before birth increases risk of complications during delivery.", normal:"Should be above 11 g/dL.", expect:"Simple blood draw.", ifAbnormal:"May need IV iron or in severe cases, blood transfusion before delivery." },
+    { id:"urine3",icon:"🧫", name:"Urine test",     week:"Wk 36-40", urgent:false,
+      what:"Final urine check for protein.", why:"Pre-eclampsia can develop late in pregnancy — protein in urine is a key warning sign.", normal:"No significant protein.", expect:"Simple urine sample at each antenatal visit.", ifAbnormal:"Immediate monitoring and possible early delivery may be recommended." },
+  ],
+};
+
+function TestDetailPanel({ test, onClose, isDone, onMarkComplete }) {
+  const [vis, setVis] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiDetail, setAiDetail]   = useState(null);
+
+  useEffect(() => { requestAnimationFrame(() => setVis(true)); }, []);
+  const close = () => { setVis(false); setTimeout(onClose, 350); };
+
+  const askAI = async () => {
+    setAiLoading(true);
+    try {
+      const resp = await authFetch("/api/chat", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          system:"You are Matri, a warm pregnancy companion. Answer in simple, reassuring language. Be concise — 3-4 sentences max per point.",
+          messages:[{ role:"user", content:`Tell me more about the ${test.name} test during pregnancy in the Indian context. Include: what to eat/avoid before the test, which types of labs in India offer it, approximate cost range, and one thing most women worry about that is actually fine. Keep it warm and practical.` }]
+        })
+      });
+      const data = await resp.json();
+      setAiDetail(data.content?.[0]?.text || "");
+    } catch(e) { setAiDetail("Couldn't load extra details right now. Try again in a moment."); }
+    setAiLoading(false);
+  };
+
+  return (
+    <>
+      <div className={`test-detail-backdrop${vis?" open":""}`} onClick={close}/>
+      <div className={`test-detail-sheet${vis?" open":""}`}>
+        <div className="pedit-handle" style={{margin:"16px auto 0"}}/>
+        <div className="test-detail-hero">
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:4}}>
+            <div style={{width:48,height:48,borderRadius:14,background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{test.icon}</div>
+            <div>
+              <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{test.name}</div>
+              <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>{test.week} · {test.urgent?"⚡ Recommended now":"Upcoming"}</div>
+            </div>
+          </div>
+        </div>
+        <div className="test-detail-body">
+          {[["What is this?",test.what],["Why it matters",test.why],["Normal range",test.normal],["What to expect",test.expect],["If results are abnormal",test.ifAbnormal]].map(([title,text])=>(
+            <div className="test-detail-section" key={title}>
+              <div className="test-detail-section-title">{title}</div>
+              <div className="test-detail-text">{text}</div>
+            </div>
+          ))}
+          {!aiDetail ? (
+            <button onClick={askAI} disabled={aiLoading} style={{width:"100%",padding:"13px",background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:16,fontSize:13,fontWeight:600,color:"var(--teal)",cursor:"pointer",fontFamily:"inherit",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              {aiLoading?"✨ Loading…":"✨ Ask Matri for more details"}
+            </button>
+          ) : (
+            <div style={{background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:16,padding:16,marginBottom:16}}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--teal)",marginBottom:8}}>✨ Matri's tips</div>
+              <div style={{fontSize:13,color:"var(--ink)",lineHeight:1.65}}>{aiDetail}</div>
+            </div>
+          )}
+          {/* Mark done / Book */}
+          <div style={{display:"flex",gap:10,marginTop:4}}>
+            {!isDone && onMarkComplete && (
+              <button
+                onClick={() => { onMarkComplete(test.id); close(); }}
+                style={{flex:1,padding:"13px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:13,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}
+              >✓ Mark as done</button>
+            )}
+            <div className="test-book-soon" style={{flex:1}}>📅 Book — coming soon</div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function TestSuggestionsStrip({ week = 8, completedTests = {}, onMarkComplete }) {
+  const trimester = week <= 13 ? 1 : week <= 26 ? 2 : 3;
+  const tests = TRIMESTER_TESTS[trimester] || [];
+  const [selected, setSelected] = useState(null);
+  return (
+    <>
+      <div className="test-strip">
+        {tests.map(t => {
+          const done = !!completedTests[t.id];
+          return (
+            <div key={t.id} className={`test-chip${t.urgent&&!done?" due":""}`}
+              style={done?{opacity:0.5,background:"var(--cream2)"}:{}}
+              onClick={() => setSelected(t)}>
+              <div className="test-chip-icon">{done?"✓":t.icon}</div>
+              <div className="test-chip-name">{t.name}</div>
+              <div className="test-chip-week">{done?"Done":t.week}</div>
+            </div>
+          );
+        })}
+      </div>
+      {selected && (
+        <TestDetailPanel
+          test={selected}
+          isDone={!!completedTests[selected.id]}
+          onMarkComplete={onMarkComplete}
+          onClose={() => setSelected(null)}
+        />
+      )}
+    </>
+  );
+}
+
+/* ─── DOCTOR INSIGHT ─────────────────────────────────────────────────────── */
+function DoctorInsight({ profile }) {
+  const p = profile || {};
+  const [insight, setInsight] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Build a cache key from health data so we re-generate if data changes
+  const cacheKey = JSON.stringify({
+    rx: (p.prescriptions||[]).map(r=>r.name),
+    cond: p.conditions,
+    bg: p.blood_group,
+    hb: p.lab_data?.hemoglobin?.slice(-1),
+    tsh: p.lab_data?.tsh?.slice(-1),
+    notes: p.visit_notes?.slice(0,50),
+  });
+
+  useEffect(() => {
+    // Only generate if there's something to work with
+    const hasData = (p.prescriptions||[]).length > 0
+      || (p.conditions||[]).length > 0
+      || p.lab_data?.hemoglobin?.length
+      || p.visit_notes;
+    if (!hasData) return;
+
+    // Check sessionStorage cache first
+    const cached = sessionStorage.getItem("matri_doc_insight_" + cacheKey);
+    if (cached) { setInsight(JSON.parse(cached)); return; }
+
+    setLoading(true);
+    const context = [
+      p.conditions?.length ? `Conditions: ${p.conditions.join(", ")}` : null,
+      p.blood_group ? `Blood group: ${p.blood_group}` : null,
+      (p.prescriptions||[]).length ? `Prescribed medicines: ${p.prescriptions.map(r=>`${r.name}${r.dosage?" "+r.dosage:""}`).join(", ")}` : null,
+      p.lab_data?.hemoglobin?.length ? `HB: ${p.lab_data.hemoglobin.slice(-1)[0]?.value} g/dL` : null,
+      p.lab_data?.tsh?.length ? `TSH: ${p.lab_data.tsh.slice(-1)[0]?.value} mIU/L` : null,
+      p.visit_notes ? `Doctor's notes: "${p.visit_notes}"` : null,
+    ].filter(Boolean).join(". ");
+
+    authFetch("/api/chat", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        system: "You are Matri, a pregnancy wellness companion. Return ONLY a JSON array of 2-3 short insight strings (max 5 words each) summarising the woman's health status from her medical data. Focus on overall wellbeing, not medicine names. Examples: 'Iron levels low', 'Thyroid being monitored', 'Blood pressure normal'. No markdown, pure JSON array.",
+        messages:[{ role:"user", content:`Health data for week ${p.week||8} pregnancy: ${context}` }]
+      })
+    })
+    .then(r=>r.json())
+    .then(data => {
+      const text = data.content?.[0]?.text || "[]";
+      const bullets = JSON.parse(text.replace(/```json|```/g,"").trim());
+      setInsight(bullets);
+      sessionStorage.setItem("matri_doc_insight_" + cacheKey, JSON.stringify(bullets));
+    })
+    .catch(() => setInsight(null))
+    .finally(() => setLoading(false));
+  }, [cacheKey]);
+
+  if (loading) return (
+    <div style={{fontSize:9,color:"var(--muted)",fontStyle:"italic"}}>✨ Generating insight…</div>
+  );
+
+  if (!insight?.length) {
+    // Fallback — show visit notes trimmed if no AI insight
+    return p.visit_notes ? (
+      <div style={{fontSize:10,color:"var(--muted)",fontStyle:"italic",lineHeight:1.4,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+        "{p.visit_notes}"
+      </div>
+    ) : null;
+  }
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:3,maxHeight:54,overflow:"hidden"}}>
+      {insight.map((b, i) => (
+        <div key={i} style={{display:"flex",alignItems:"center",gap:5}}>
+          <div style={{width:3,height:3,borderRadius:"50%",background:"var(--navy)",flexShrink:0,marginTop:1}}/>
+          <span style={{fontSize:10,color:"var(--navy)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProfilePage({ profile, onClose, onProfileUpdate, weekProp = 8, onOpenMedical, completedTests = {}, onMarkTestComplete, appMedHandlers = {}, onRxUpload }) {
+  const [editSection, setEditSection] = useState(null);
+  const [editVis,     setEditVis]     = useState(false);
+  const [editData,    setEditData]    = useState({});
+  const [saving,      setSaving]      = useState(false);
+  const [detailRx,        setDetailRx]        = useState(null);
+  const [testOrderDetail,   setTestOrderDetail]   = useState(null);
+  const [testOrdersReload,  setTestOrdersReload]  = useState(0);
+  const [showAboutSheet,  setShowAboutSheet]  = useState(false);
+  const [aboutSheetVis,   setAboutSheetVis]   = useState(false);
+
+  const p = profile || {};
+  const firstName = (p.name||"").split(" ")[0] || "Mama";
+  const initial   = firstName[0]?.toUpperCase() || "M";
+
+  const getWeek = () => {
+    if (!p.due_date) return weekProp;
+    const weeksLeft = Math.round((new Date(p.due_date) - new Date()) / (7*24*60*60*1000));
+    const w = 40 - weeksLeft;
+    return w > 0 && w <= 42 ? w : weekProp;
+  };
+  const week = getWeek();
+  const trimester = !week ? null : week <= 13 ? "First Trimester" : week <= 26 ? "Second Trimester" : "Third Trimester";
+
+  const fields = [p.name, p.due_date, p.diet_type, p.age, p.city, p.doctor_name, p.blood_group, p.conception_type];
+  const pct = Math.round((fields.filter(Boolean).length / fields.length) * 100);
+
+  const openEdit = (section, data) => { setEditData(data); setEditSection(section); requestAnimationFrame(() => setEditVis(true)); };
+
+  // Special handler for doctor section — syncs next_appointment_date from latest prescription follow_up_date
+  const openDoctorEdit = async () => {
+    const baseData = {doctor_name:p.doctor_name||"",clinic_name:p.clinic_name||"",clinic_city:p.clinic_city||"",next_appointment_date:p.next_appointment_date||"",visit_notes:p.visit_notes||"",prescriptions:p.prescriptions||[]};
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: rxRows } = await supabase
+          .from("prescriptions")
+          .select("follow_up_date")
+          .eq("user_id", user.id)
+          .not("follow_up_date", "is", null)
+          .order("follow_up_date", { ascending: false })
+          .limit(1);
+        if (rxRows?.[0]?.follow_up_date) {
+          const latestFollowUp = rxRows[0].follow_up_date;
+          // Always prefer prescription follow_up_date — authoritative source
+          baseData.next_appointment_date = latestFollowUp;
+          await supabase.from("profiles").update({ next_appointment_date: latestFollowUp }).eq("id", user.id);
+          onProfileUpdate && onProfileUpdate({...p, next_appointment_date: latestFollowUp});
+        }
+      }
+    } catch {}
+    openEdit("doctor", baseData);
+  };
+  const closeEdit = () => { setEditVis(false); setTimeout(() => setEditSection(null), 350); };
+  const saveEdit = async (updates) => {
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Strip internal UI state flags before saving
+    const { _editingDetails, _editing, ...cleanUpdates } = updates;
+    let medsToInsert = [];
+    if (cleanUpdates.prescriptions?.length) {
+      const existingMeds = p.medications || [];
+      const existingNames = existingMeds.map(m => (typeof m==="object"?m.name:m).toLowerCase());
+      medsToInsert = cleanUpdates.prescriptions
+        .filter(rx => !existingNames.includes(rx.name?.toLowerCase()))
+        .map(rx => ({ name: rx.name, dosage: rx.dosage||"", frequency: rx.frequency||"", duration: rx.duration||"", notes: rx.notes||"", active: true, source:"prescription", added_date: new Date().toISOString().split("T")[0] }));
+      cleanUpdates.medications = [...existingMeds, ...medsToInsert];
+    }
+
+    await supabase.from("profiles").update(cleanUpdates).eq("id", user.id);
+
+    // Mirror manually-added medicines into the medicines table
+    if (medsToInsert.length) {
+      await supabase.from("medicines").insert(
+        medsToInsert.map(m => ({
+          user_id: user.id,
+          name: m.name,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          duration: m.duration,
+          notes: m.notes,
+          active: true,
+          low_confidence: false,
+          start_date: m.added_date,
+        }))
+      );
+    }
+
+    onProfileUpdate({ ...p, ...cleanUpdates });
+    setSaving(false);
+    closeEdit();
+  };
+
+  const dietLabel = { veg:"Vegetarian 🥦", nonveg:"Non-veg 🍗", vegan:"Vegan 🌱", eggetarian:"Eggetarian 🥚" };
+  const workLabel = { wfh:"Work from home 💻", office:"Office 🏢", not_working:"Not working 🌿" };
+  const conceptionLabel = { natural:"Natural ✨", ivf:"IVF 💉", iui:"IUI 🌱" };
+
+  // Helper: empty state for a widget
+  const EmptyState = ({icon, text, cta}) => (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"10px 4px 4px",gap:5}}>
+      <div style={{fontSize:26,opacity:0.3}}>{icon}</div>
+      <div style={{fontSize:11,color:"var(--muted)",textAlign:"center",lineHeight:1.5}}>{text}</div>
+      <div style={{fontSize:11,fontWeight:600,color:"var(--rose)",marginTop:2}}>{cta}</div>
+    </div>
+  );
+
+  // Helper: edit pill button
+  const EditBtn = ({onClick, isEmpty}) => (
+    <button
+      style={{fontSize:10,fontWeight:600,color:isEmpty?"var(--muted)":"var(--rose)",background:isEmpty?"var(--cream2)":"var(--rose-pale)",border:isEmpty?"1px dashed var(--bdr)":"none",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}
+      onClick={e=>{e.stopPropagation();onClick();}}
+    >{isEmpty?"+ Add":"Edit"}</button>
+  );
+
+  return (
+    <>
+      <div className="profile-screen open">
+
+        {/* ── HERO ── */}
+        <div className="profile-hero">
+          <div style={{position:"absolute",width:220,height:220,borderRadius:"50%",background:"#9a3020",top:-90,right:-60,opacity:0.28,filter:"blur(50px)",pointerEvents:"none"}}/>
+          <div style={{position:"absolute",width:130,height:130,borderRadius:"50%",background:"#c05840",bottom:10,left:-30,opacity:0.18,filter:"blur(40px)",pointerEvents:"none"}}/>
+          <button className="profile-hero-close" onClick={onClose}>✕</button>
+
+          {/* Avatar with ring */}
+          <div className="profile-avatar-wrap">
+            <div className="profile-avatar-circle" style={{fontSize:40}}>
+              🤰
+            </div>
+            <svg className="profile-ring-svg" viewBox="0 0 90 90" fill="none">
+              <circle cx="45" cy="45" r="41" stroke="rgba(255,255,255,0.1)" strokeWidth="3"/>
+              <circle cx="45" cy="45" r="41" stroke="#f0a07a" strokeWidth="3"
+                strokeDasharray={`${2.576*pct} 257.6`}
+                strokeLinecap="round" transform="rotate(-90 45 45)"
+                style={{transition:"stroke-dasharray 0.7s ease"}}/>
+            </svg>
+          </div>
+
+          <div className="profile-name">{p.name || "Your Profile"}</div>
+          {week
+            ? <div className="profile-week-line">Week {week} · {trimester}</div>
+            : <div className="profile-week-line">Add your due date to see your week</div>
+          }
+
+          <div className="profile-badges">
+            {p.due_date && <div className="profile-badge">Due {new Date(p.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</div>}
+            {p.diet_type && <div className="profile-badge">{dietLabel[p.diet_type]}</div>}
+            {p.is_first_pregnancy === true  && <div className="profile-badge">First pregnancy 🌱</div>}
+            {p.is_first_pregnancy === false && <div className="profile-badge">Experienced mama ⭐</div>}
+            {p.conception_type === "ivf"    && <div className="profile-badge">IVF journey 💪</div>}
+          </div>
+
+          {pct < 100 && (
+          <div className="profile-complete-row">
+            <span className="profile-complete-label">Profile {pct}% complete</span>
+            <div className="profile-complete-track">
+              <div className="profile-complete-fill" style={{width:`${pct}%`}}/>
+            </div>
+            <span className="profile-complete-pct">{pct}%</span>
+          </div>
+          )}
+        </div>
+
+        {/* ── WIDGET GRID ── */}
+        <div className="profile-scroll">
+          <div className="profile-grid">
+
+            {/* ── COMBINED: About you ── */}
+            <div className="w w-full wc-dark3" style={{minHeight:150,cursor:"pointer"}} onClick={()=>{setShowAboutSheet(true);requestAnimationFrame(()=>setAboutSheetVis(true));}}>
+              <span className="w-bg-e" style={{color:"#60cccc",fontSize:110}}>🤰</span>
+              <div className="win-lg">
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <div className="w-lbl" style={{color:"#60cccc",marginBottom:0}}><div className="w-lbl-dot" style={{background:"#60cccc"}}/>About you</div>
+                  <span style={{fontSize:10,color:"rgba(96,204,204,0.65)",fontWeight:600,letterSpacing:"0.05em"}}>View all →</span>
+                </div>
+                {(p.name||p.due_date) ? <>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:19,color:"#fff",lineHeight:1.25,marginBottom:8}}>
+                    {p.name ? p.name.split(" ")[0] : ""}
+                    {week ? <> · Week <em style={{color:"#60cccc",fontStyle:"italic"}}>{week}</em></> : null}
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {trimester && <span className="chip" style={{background:"rgba(96,204,204,0.15)",color:"#60cccc",fontSize:10}}>{trimester}</span>}
+                    {p.diet_type && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>{dietLabel[p.diet_type]}</span>}
+                    {p.baby_nickname && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>🍼 "{p.baby_nickname}"</span>}
+                    {p.partner_name && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>🤝 {p.partner_name.split(" ")[0]}</span>}
+                  </div>
+                </> : <div style={{fontFamily:"'Lora',serif",fontSize:15,color:"rgba(255,255,255,0.4)",fontStyle:"italic",marginTop:4}}>Tell Matri about yourself →</div>}
+              </div>
+            </div>
+
+            {/* ── DOCTOR'S AREA — navy full width ── */}
+            <div className="w pg-full wc-navy" style={{minHeight:130}} onClick={()=>openDoctorEdit()}>
+              <span className="w-bg-e" style={{color:"var(--navy)",fontSize:90}}>👩‍⚕️</span>
+              <div className="win-lg">
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <div className="w-lbl" style={{color:"var(--navy)",marginBottom:0}}><div className="w-lbl-dot" style={{background:"var(--navy)"}}/>Doctor's area</div>
+                  <EditBtn onClick={()=>openDoctorEdit()} isEmpty={!p.doctor_name}/>
+                </div>
+                {p.doctor_name ? (
+                  <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+
+                    {/* Left — doctor details + AI health insight */}
+                    <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
+                      <div style={{fontFamily:"'Lora',serif",fontSize:17,color:"var(--ink)",lineHeight:1.2,marginBottom:5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.doctor_name}</div>
+                      {p.clinic_name && (
+                        <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
+                          <span style={{fontSize:10}}>🏥</span>
+                          <span style={{fontSize:11,color:"var(--muted)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.clinic_name}{p.clinic_city?`, ${p.clinic_city}`:""}</span>
+                        </div>
+                      )}
+                      <DoctorInsight profile={p}/>
+                    </div>
+
+                    {/* Right — next appointment big display */}
+                    {p.next_appointment_date && (() => {
+                      const d = new Date(p.next_appointment_date);
+                      const day   = d.toLocaleDateString("en-IN", { day:"numeric" });
+                      const month = d.toLocaleDateString("en-IN", { month:"short" });
+                      const year  = d.toLocaleDateString("en-IN", { year:"numeric" });
+                      const daysLeft = Math.ceil((d - new Date()) / (1000*60*60*24));
+                      const isClose  = daysLeft >= 0 && daysLeft <= 7;
+                      const isPast   = daysLeft < 0;
+                      return (
+                        <div style={{flexShrink:0,background:isClose?"var(--rose-pale)":isPast?"var(--cream2)":"var(--navy-pale)",border:`1px solid ${isClose?"var(--rose-bdr)":isPast?"var(--bdr)":"var(--navy-bdr)"}`,borderRadius:16,padding:"12px 14px",textAlign:"center",minWidth:72}}>
+                          <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:isClose?"var(--rose)":isPast?"var(--muted)":"var(--navy)",marginBottom:4}}>
+                            {isPast ? "Appointment" : "Next visit"}
+                          </div>
+                          <div style={{fontFamily:"'Lora',serif",fontSize:28,fontWeight:400,color:isClose?"var(--rose)":isPast?"var(--muted)":"var(--navy)",lineHeight:1}}>{day}</div>
+                          <div style={{fontSize:11,fontWeight:600,color:isClose?"var(--rose)":isPast?"var(--muted)":"var(--navy)",marginTop:2}}>{month}</div>
+                          <div style={{fontSize:10,color:"var(--muted)",marginTop:1}}>{year}</div>
+                          {!isPast && daysLeft <= 30 && (
+                            <div style={{
+                              fontSize: daysLeft<=3?11:9,
+                              fontWeight: 700,
+                              color: isClose ? "#fff" : "var(--navy)",
+                              marginTop:6,
+                              background: isClose ? "var(--rose)" : "transparent",
+                              borderRadius: isClose ? 100 : 0,
+                              padding: isClose ? "2px 8px" : "0",
+                              display:"inline-block",
+                            }}>
+                              {daysLeft === 0 ? "Today! 🎯" : daysLeft === 1 ? "Tomorrow!" : `in ${daysLeft} days`}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                  </div>
+                ) : <EmptyState icon="🏥" text={"Add your doctor, prescriptions\n& appointment details"} cta="+ Add doctor"/>}
+              </div>
+            </div>
+
+            {/* ── HEALTH & MEDICINES — compact summary tile ── */}
+            <div className="pg-full" style={{gridColumn:"1/-1"}}>
+              <MedHealthWidget
+                profile={p}
+                compact={true}
+                onEditHealth={() => onOpenMedical && onOpenMedical()}
+                onMedsUpdate={newMeds => onProfileUpdate && onProfileUpdate({...p, medications: newMeds})}
+                {...appMedHandlers}
+              />
+            </div>
+
+            {/* ── LAB RESULTS — full width with suggestions ── */}
+            <div className="w pg-full wc-amber" style={{minHeight:140}} onClick={()=>openEdit("labs",{lab_data:p.lab_data||{},lab_extras_v2:Object.fromEntries(Object.entries(p.lab_extras_v2||{}).filter(([,v])=>v?.entries?.length)),blood_group:p.blood_group||""})}>
+              <span className="w-bg-e" style={{color:"var(--amber)",fontSize:110}}>🧪</span>
+              <div className="win-lg">
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <div className="w-lbl" style={{color:"var(--amber)",marginBottom:0}}><div className="w-lbl-dot" style={{background:"var(--amber)"}}/>Lab results</div>
+                  <EditBtn onClick={()=>openEdit("labs",{lab_data:p.lab_data||{},lab_extras_v2:Object.fromEntries(Object.entries(p.lab_extras_v2||{}).filter(([,v])=>v?.entries?.length)),blood_group:p.blood_group||""})} isEmpty={!p.lab_data?.hemoglobin?.length}/>
+                </div>
+                {(() => {
+                  const ld = p.lab_data || {};
+                  const latest = arr => arr?.[arr.length-1];
+                  const hb  = latest(ld.hemoglobin);
+                  const tsh = latest(ld.tsh);
+                  const sugar = latest(ld.blood_sugar_fasting);
+                  const totalTests = Object.keys(ld).filter(k=>ld[k]?.length).length + Object.values(p.lab_extras_v2||{}).filter(v=>v?.entries?.length).length;
+                  return hb ? (
+                    <div style={{display:"flex",gap:16,marginBottom:12,flexWrap:"wrap"}}>
+                      <div>
+                        <span style={{fontFamily:"'Lora',serif",fontSize:22,color:hb.value<11?"var(--rose)":"var(--ink)"}}>{hb.value}</span>
+                        <span style={{fontSize:10,color:"var(--muted)",marginLeft:4}}>g/dL HB {hb.value<11?"⚠️":"✓"}</span>
+                        {(ld.hemoglobin||[]).length>1&&<div style={{fontSize:9,color:"var(--amber)",marginTop:1}}>{ld.hemoglobin.length} readings</div>}
+                      </div>
+                      {tsh&&<div style={{borderLeft:"1px solid var(--bdr)",paddingLeft:16}}>
+                        <span style={{fontFamily:"'Lora',serif",fontSize:22,color:(tsh.value<0.1||tsh.value>4)?"var(--rose)":"var(--ink)"}}>{tsh.value}</span>
+                        <span style={{fontSize:10,color:"var(--muted)",marginLeft:4}}>mIU/L TSH</span>
+                      </div>}
+                      {sugar&&<div style={{borderLeft:"1px solid var(--bdr)",paddingLeft:16}}>
+                        <span style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)"}}>{sugar.value}</span>
+                        <span style={{fontSize:10,color:"var(--muted)",marginLeft:4}}>mg/dL sugar</span>
+                      </div>}
+                      <div style={{marginLeft:"auto",fontSize:10,color:"var(--muted)",alignSelf:"center"}}>{totalTests} test{totalTests!==1?"s":""} tracked · ✨ AI reads reports</div>
+                    </div>
+                  ) : (
+                    <div style={{marginBottom:12}}>
+                      <div style={{fontFamily:"'Lora',serif",fontSize:15,color:"var(--ink)",marginBottom:4}}>Track your tests over time</div>
+                      <div style={{fontSize:11,fontWeight:600,color:"var(--amber)"}}>✨ Upload a report — Matri reads & fills values automatically</div>
+                    </div>
+                  );
+                })()}
+                {/* Compact test suggestions strip */}
+                <div style={{borderTop:"1px solid var(--amber-bdr)",paddingTop:10,marginTop:2}} onClick={e=>e.stopPropagation()}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--amber)",marginBottom:8}}>Recommended this trimester</div>
+                  <TestSuggestionsStrip week={week||8} completedTests={completedTests} onMarkComplete={onMarkTestComplete}/>
+                </div>
+              </div>
+            </div>
+
+            {/* ── SCANS — left ── */}
+            <div className="w pg-full wc-plum" style={{minHeight:110}}>
+              <span className="w-bg-e" style={{color:"var(--plum)",fontSize:90}}>🔬</span>
+              <div className="win-lg">
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <div className="w-lbl" style={{color:"var(--plum)",marginBottom:0}}><div className="w-lbl-dot" style={{background:"var(--plum)"}}/>Scans</div>
+                  <span style={{fontSize:9,fontWeight:600,color:"var(--muted)",background:"var(--cream2)",border:"1px dashed var(--bdr)",borderRadius:100,padding:"2px 8px"}}>Soon</span>
+                </div>
+                <EmptyState icon="🤱" text={"NT, anomaly, growth scans — tracked automatically from your prescriptions"} cta="Coming soon"/>
+              </div>
+            </div>
+
+            {/* ── SIGN OUT — full width ── */}
+            <div className="w pg-full" style={{background:"#fff",minHeight:0}}>
+              <div style={{padding:"16px 18px"}}>
+                <button
+                  style={{width:"100%",padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,fontWeight:500,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit"}}
+                  onClick={async()=>{ await supabase.auth.signOut(); }}
+                >Sign out</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* ── ABOUT YOU SHEET ── */}
+      {showAboutSheet && (
+        <>
+          <div
+            style={{position:"fixed",inset:0,zIndex:300,background:aboutSheetVis?"rgba(16,10,8,0.6)":"rgba(16,10,8,0)",transition:"background 0.3s",pointerEvents:aboutSheetVis?"all":"none"}}
+            onClick={()=>{setAboutSheetVis(false);setTimeout(()=>setShowAboutSheet(false),350);}}
+          />
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:301,background:"var(--cream)",borderRadius:"28px 28px 0 0",transform:`translateY(${aboutSheetVis?0:102}%)`,transition:"transform 0.36s cubic-bezier(0.3,0.72,0,1)",maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            {/* Handle + header */}
+            <div style={{padding:"14px 20px 16px",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
+              <div style={{width:36,height:4,borderRadius:100,background:"var(--bdr)",margin:"0 auto 16px"}}/>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)",fontWeight:400}}>About <em style={{color:"var(--rose)"}}>you</em></div>
+                <button onClick={()=>{setAboutSheetVis(false);setTimeout(()=>setShowAboutSheet(false),350);}} style={{width:32,height:32,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
+              </div>
+            </div>
+
+            {/* Scrollable sections */}
+            <div style={{overflowY:"auto",padding:"16px 18px 48px",scrollbarWidth:"none",flex:1,display:"flex",flexDirection:"column",gap:12}}>
+
+              {/* ── My Pregnancy ── */}
+              <div style={{background:"linear-gradient(135deg,var(--teal-pale),#f0fafa)",border:"1px solid var(--teal-bdr)",borderRadius:20,padding:"16px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.due_date?14:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <span style={{fontSize:16}}>🤰</span>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--teal)"}}>My Pregnancy</span>
+                  </div>
+                  <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})} style={{fontSize:10,fontWeight:600,color:"var(--teal)",background:"#fff",border:"1px solid var(--teal-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.due_date?"Edit":"+ Add"}</button>
+                </div>
+                {p.due_date ? <>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:26,color:"var(--teal)",lineHeight:1,marginBottom:4}}>Week <em style={{fontStyle:"italic"}}>{week}</em></div>
+                  {trimester && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--teal)",opacity:0.6,marginBottom:12}}>{trimester}</div>}
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {[
+                      {icon:"📅",label:"Due date",value:new Date(p.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})},
+                      p.conception_type && {icon:p.conception_type==="ivf"?"💉":"🌱",label:"Conception",value:conceptionLabel[p.conception_type]},
+                      p.is_first_pregnancy!=null && {icon:p.is_first_pregnancy?"🌱":"⭐",label:"Pregnancy",value:p.is_first_pregnancy?"First time":"Been here before"},
+                    ].filter(Boolean).map((c,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                        <span style={{fontSize:16}}>{c.icon}</span>
+                        <div>
+                          <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>{c.label}</div>
+                          <div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{c.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </> : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
+              </div>
+
+              {/* ── About me ── */}
+              <div style={{background:"linear-gradient(135deg,var(--rose-pale),#fff9f8)",border:"1px solid var(--rose-bdr)",borderRadius:20,padding:"16px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.name?14:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <span style={{fontSize:16}}>👤</span>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--rose)"}}>About me</span>
+                  </div>
+                  <button onClick={()=>openEdit("about",{name:p.name||"",age:p.age||"",city:p.city||""})} style={{fontSize:10,fontWeight:600,color:"var(--rose)",background:"#fff",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.name?"Edit":"+ Add"}</button>
+                </div>
+                {p.name ? <>
+                  <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2,marginBottom:10}}>{p.name}</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {p.age && <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                      <span style={{fontSize:16}}>🎂</span>
+                      <div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Age</div><div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{p.age} years</div></div>
+                    </div>}
+                    {p.city && <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                      <span style={{fontSize:16}}>📍</span>
+                      <div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>City</div><div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{p.city}</div></div>
+                    </div>}
+                  </div>
+                </> : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
+              </div>
+
+              {/* ── Lifestyle ── */}
+              <div style={{background:"linear-gradient(135deg,var(--forest-pale),#f8fdf8)",border:"1px solid var(--forest-bdr)",borderRadius:20,padding:"16px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:(p.diet_type||p.work_type)?14:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <span style={{fontSize:16}}>🥗</span>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--forest)"}}>Lifestyle</span>
+                  </div>
+                  <button onClick={()=>openEdit("lifestyle",{diet_type:p.diet_type||"",work_type:p.work_type||""})} style={{fontSize:10,fontWeight:600,color:"var(--forest)",background:"#fff",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.diet_type?"Edit":"+ Add"}</button>
+                </div>
+                {(p.diet_type||p.work_type) ? <>
+                  {p.diet_type && <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2,marginBottom:p.work_type?10:0}}>{dietLabel[p.diet_type]}</div>}
+                  {p.work_type && <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                    <span style={{fontSize:16}}>💼</span>
+                    <div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Work</div><div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{workLabel[p.work_type]}</div></div>
+                  </div>}
+                </> : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
+              </div>
+
+              {/* ── Partner ── */}
+              <div style={{background:"linear-gradient(135deg,var(--slate-pale),#f5f7fa)",border:"1px solid var(--slate-bdr)",borderRadius:20,padding:"16px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.partner_name?14:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <span style={{fontSize:16}}>🤝</span>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--slate)"}}>Partner</span>
+                  </div>
+                  <button onClick={()=>openEdit("partner",{partner_name:p.partner_name||"",has_partner:p.has_partner})} style={{fontSize:10,fontWeight:600,color:"var(--slate)",background:"#fff",border:"1px solid var(--slate-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.partner_name?"Edit":"+ Add"}</button>
+                </div>
+                {p.partner_name
+                  ? <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{p.partner_name}</div>
+                  : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
+              </div>
+
+              {/* ── Baby's nickname ── */}
+              <div style={{background:"linear-gradient(135deg,var(--plum-pale),#fdf5ff)",border:"1px solid var(--plum-bdr)",borderRadius:20,padding:"16px 18px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.baby_nickname?14:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7}}>
+                    <span style={{fontSize:16}}>🍼</span>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--plum)"}}>Baby's nickname</span>
+                  </div>
+                  <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})} style={{fontSize:10,fontWeight:600,color:"var(--plum)",background:"#fff",border:"1px solid var(--plum-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.baby_nickname?"Edit":"+ Add"}</button>
+                </div>
+                {p.baby_nickname
+                  ? <div style={{fontFamily:"'Lora',serif",fontSize:24,color:"var(--plum)",lineHeight:1.2}}>"{p.baby_nickname}"</div>
+                  : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>What are you calling them?</div>}
+              </div>
+
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── EDIT SHEET ── */}
+      <div className={`pedit-backdrop${editVis?" open":""}`} onClick={closeEdit}/>
+      {editSection && (
+        <div className={`pedit-sheet${editVis?" open":""}`}>
+          <div className="pedit-handle"/>
+
+          {editSection === "about" && <>
+            <div className="pedit-title">About <em>you</em></div>
+            {(editData.name || editData.age || editData.city) && !editData._editing ? (
+              <div style={{background:"linear-gradient(135deg,var(--rose-pale),#fff9f8)",border:"1px solid var(--rose-bdr)",borderRadius:20,padding:"20px 18px 16px",marginBottom:16,position:"relative"}}>
+                <button
+                  onClick={() => setEditData(d => ({...d, _editing:true}))}
+                  style={{position:"absolute",top:14,right:14,fontSize:10,fontWeight:600,color:"var(--rose)",background:"#fff",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                  Edit
+                </button>
+                {editData.name && <div style={{fontFamily:"'Lora',serif",fontSize:24,color:"var(--ink)",lineHeight:1.2,marginBottom:12,paddingRight:52}}>{editData.name}</div>}
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {editData.age && (
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                      <span style={{fontSize:18}}>🎂</span>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Age</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{editData.age} years</div>
+                      </div>
+                    </div>
+                  )}
+                  {editData.city && (
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                      <span style={{fontSize:18}}>📍</span>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>City</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{editData.city}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {editData._editing && (
+                  <button onClick={() => setEditData(d => ({...d, _editing:false}))}
+                    style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",fontSize:11,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",marginBottom:12,padding:0}}>
+                    ← Back to summary
+                  </button>
+                )}
+                {[["Name","name","text","Priya"],["Age","age","number","28"],["City","city","text","Mumbai"]].map(([lbl,key,type,ph])=>(
+                  <div className="pedit-field" key={key}>
+                    <div className="pedit-label">{lbl}</div>
+                    <input className="pedit-input" type={type} placeholder={ph} value={editData[key]||""} onChange={e=>setEditData(d=>({...d,[key]:e.target.value}))}/>
+                  </div>
+                ))}
+              </>
+            )}
+          </>}
+
+          {editSection === "pregnancy" && <>
+            <div className="pedit-title">Your <em>pregnancy</em></div>
+            {editData.due_date && !editData._editing ? (
+              <div style={{background:"linear-gradient(135deg,var(--teal-pale),#f8fffe)",border:"1px solid var(--teal-bdr)",borderRadius:20,padding:"20px 18px 16px",marginBottom:16,position:"relative"}}>
+                <button
+                  onClick={() => setEditData(d => ({...d, _editing:true}))}
+                  style={{position:"absolute",top:14,right:14,fontSize:10,fontWeight:600,color:"var(--teal)",background:"#fff",border:"1px solid var(--teal-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                  Edit
+                </button>
+                {(() => {
+                  const weeksLeft = Math.round((new Date(editData.due_date) - new Date()) / (7*24*60*60*1000));
+                  const w = 40 - weeksLeft;
+                  const validWeek = w > 0 && w <= 42 ? w : null;
+                  const tri = !validWeek ? null : validWeek <= 13 ? "First Trimester" : validWeek <= 26 ? "Second Trimester" : "Third Trimester";
+                  return <>
+                    <div style={{fontFamily:"'Lora',serif",fontSize:30,color:"var(--teal)",lineHeight:1,marginBottom:4,paddingRight:52}}>
+                      {validWeek ? <>Week <em style={{fontStyle:"italic"}}>{validWeek}</em></> : "Due soon"}
+                    </div>
+                    {tri && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--teal)",opacity:0.65,marginBottom:14}}>{tri}</div>}
+                  </>;
+                })()}
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                    <span style={{fontSize:18}}>📅</span>
+                    <div>
+                      <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Due date</div>
+                      <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{new Date(editData.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}</div>
+                    </div>
+                  </div>
+                  {editData.conception_type && (
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                      <span style={{fontSize:18}}>{editData.conception_type==="ivf"?"💉":"🌱"}</span>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Conception</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{conceptionLabel[editData.conception_type]}</div>
+                      </div>
+                    </div>
+                  )}
+                  {editData.is_first_pregnancy != null && (
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                      <span style={{fontSize:18}}>{editData.is_first_pregnancy ? "🌱" : "⭐"}</span>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Pregnancy</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{editData.is_first_pregnancy ? "First time" : "Been here before"}</div>
+                      </div>
+                    </div>
+                  )}
+                  {editData.baby_nickname && (
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
+                      <span style={{fontSize:18}}>🍼</span>
+                      <div>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Nickname</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>"{editData.baby_nickname}"</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                {editData._editing && (
+                  <button onClick={() => setEditData(d => ({...d, _editing:false}))}
+                    style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",fontSize:11,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",marginBottom:12,padding:0}}>
+                    ← Back to summary
+                  </button>
+                )}
+                <div className="pedit-field">
+                  <div className="pedit-label">Due date</div>
+                  <input className="pedit-input" type="date" value={editData.due_date||""} onChange={e=>setEditData(d=>({...d,due_date:e.target.value}))}/>
+                </div>
+                <div className="pedit-field">
+                  <div className="pedit-label">Baby's nickname</div>
+                  <input className="pedit-input" type="text" placeholder="Peanut, Little one…" value={editData.baby_nickname||""} onChange={e=>setEditData(d=>({...d,baby_nickname:e.target.value}))}/>
+                </div>
+                <div className="pedit-field">
+                  <div className="pedit-label">Conception type</div>
+                  <select className="pedit-input" value={editData.conception_type||""} onChange={e=>setEditData(d=>({...d,conception_type:e.target.value}))}>
+                    <option value="">Select…</option>
+                    <option value="natural">Natural</option>
+                    <option value="ivf">IVF</option>
+                    <option value="iui">IUI</option>
+                  </select>
+                </div>
+                <div className="pedit-field">
+                  <div className="pedit-label">First pregnancy?</div>
+                  <select className="pedit-input" value={editData.is_first_pregnancy===true?"yes":editData.is_first_pregnancy===false?"no":""} onChange={e=>setEditData(d=>({...d,is_first_pregnancy:e.target.value==="yes"?true:e.target.value==="no"?false:null}))}>
+                    <option value="">Select…</option>
+                    <option value="yes">Yes, first time 🌱</option>
+                    <option value="no">No, been here before ⭐</option>
+                  </select>
+                </div>
+              </>
+            )}
+          </>}
+
+          {editSection === "doctor" && <>
+            <div className="pedit-title">Doctor's <em>area</em></div>
+
+            {/* Visual doctor card — shows when data exists, tapping Edit switches to inputs */}
+            {(editData.doctor_name || editData.clinic_name) && !editData._editingDetails ? (
+              <div style={{background:"linear-gradient(135deg,var(--navy-pale),#f0f4ff)",border:"1px solid var(--navy-bdr)",borderRadius:20,padding:"18px 18px 14px",marginBottom:16,position:"relative"}}>
+                {/* Edit details button */}
+                <button
+                  onClick={()=>setEditData(d=>({...d,_editingDetails:true}))}
+                  style={{position:"absolute",top:14,right:14,fontSize:10,fontWeight:600,color:"var(--navy)",background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                  Edit
+                </button>
+                {/* Doctor name */}
+                <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2,marginBottom:4,paddingRight:48}}>
+                  {editData.doctor_name}
+                </div>
+                {/* Clinic + city */}
+                {(editData.clinic_name || editData.clinic_city) && (
+                  <div style={{fontSize:12,color:"var(--muted)",marginBottom:12,lineHeight:1.5}}>
+                    {[editData.clinic_name, editData.clinic_city].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+                {/* Next appointment */}
+                {editData.next_appointment_date && (() => {
+                  const d = new Date(editData.next_appointment_date);
+                  const today = new Date(); today.setHours(0,0,0,0);
+                  const days = Math.ceil((d - today) / (1000*60*60*24));
+                  const label = days === 0 ? "Today! 🎯" : days === 1 ? "Tomorrow" : days > 0 ? `in ${days} days` : "Past";
+                  return (
+                    <div style={{display:"flex",alignItems:"center",gap:10,background:"#fff",borderRadius:12,padding:"10px 14px",marginBottom:8}}>
+                      <div style={{fontSize:22}}>📅</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--muted)",marginBottom:2}}>Next appointment</div>
+                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>
+                          {d.toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})}
+                        </div>
+                      </div>
+                      <div style={{fontSize:11,fontWeight:700,color:days<=3&&days>=0?"var(--rose)":"var(--navy)",background:days<=3&&days>=0?"var(--rose-pale)":"var(--navy-pale)",border:`1px solid ${days<=3&&days>=0?"var(--rose-bdr)":"var(--navy-bdr)"}`,borderRadius:100,padding:"3px 10px",flexShrink:0}}>
+                        {label}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* Visit notes preview */}
+                {editData.visit_notes && (
+                  <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",lineHeight:1.6,marginTop:4,borderTop:"1px solid var(--bdr)",paddingTop:10}}>
+                    "{editData.visit_notes.slice(0,120)}{editData.visit_notes.length>120?"…":""}"
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Input form — shown when no data yet, or when editing
+              <>
+                {editData._editingDetails && (
+                  <button onClick={()=>setEditData(d=>({...d,_editingDetails:false}))}
+                    style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",fontSize:11,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",marginBottom:12,padding:0}}>
+                    ← Back to summary
+                  </button>
+                )}
+                {[["Doctor's name","doctor_name","text","Dr. Sharma"],["Clinic / Hospital","clinic_name","text","Apollo Clinic"],["City","clinic_city","text","Mumbai"]].map(([lbl,key,type,ph])=>(
+                  <div className="pedit-field" key={key}>
+                    <div className="pedit-label">{lbl}</div>
+                    <input className="pedit-input" type={type} placeholder={ph} value={editData[key]||""} onChange={e=>setEditData(d=>({...d,[key]:e.target.value}))}/>
+                  </div>
+                ))}
+                <div className="pedit-field">
+                  <div className="pedit-label">Next appointment</div>
+                  <input className="pedit-input" type="date" value={editData.next_appointment_date||""} onChange={e=>setEditData(d=>({...d,next_appointment_date:e.target.value}))}/>
+                </div>
+                <div className="pedit-field">
+                  <div className="pedit-label">Visit notes</div>
+                  <textarea className="pedit-input" placeholder="What did the doctor say this visit…" rows={3} value={editData.visit_notes||""} onChange={e=>setEditData(d=>({...d,visit_notes:e.target.value}))} style={{resize:"none",lineHeight:1.5}}/>
+                </div>
+              </>
+            )}
+
+            {/* Prescriptions list */}
+            <div className="lab-divider">
+              <div className="lab-divider-line"/>
+              <div className="lab-divider-text">prescriptions</div>
+              <div className="lab-divider-line"/>
+            </div>
+            <PrescriptionsList
+              prescriptions={editData.prescriptions || []}
+              onViewDetail={rx=>setDetailRx(rx)}
+              onDeleted={async () => {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+                if (data) {
+                  setEditData(d => ({...d, prescriptions: data.prescriptions || []}));
+                  onProfileUpdate && onProfileUpdate(data);
+                }
+              }}
+            />
+            <button
+              onClick={()=>{ closeEdit(); setTimeout(()=> onRxUpload && onRxUpload(), 400); }}
+              style={{width:"100%",padding:"11px",background:"var(--navy-pale)",border:"1.5px dashed var(--navy-bdr)",borderRadius:14,fontSize:12,fontWeight:600,color:"var(--navy)",cursor:"pointer",fontFamily:"inherit",marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              + Upload new prescription
+            </button>
+          </>}
+
+          {editSection === "lifestyle" && <>
+            <div className="pedit-title">Your <em>lifestyle</em></div>
+            {(editData.diet_type || editData.work_type) && !editData._editing ? (
+              <div style={{background:"linear-gradient(135deg,var(--forest-pale),#f8fdf8)",border:"1px solid var(--forest-bdr)",borderRadius:20,padding:"20px 18px 16px",marginBottom:16,position:"relative"}}>
+                <button
+                  onClick={() => setEditData(d => ({...d, _editing:true}))}
+                  style={{position:"absolute",top:14,right:14,fontSize:10,fontWeight:600,color:"var(--forest)",background:"#fff",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                  Edit
+                </button>
+                {editData.diet_type && (
+                  <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2,marginBottom:12,paddingRight:52}}>
+                    {dietLabel[editData.diet_type]}
+                  </div>
+                )}
+                {editData.work_type && (
+                  <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 14px"}}>
+                    <div>
+                      <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Work</div>
+                      <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{workLabel[editData.work_type]}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {editData._editing && (
+                  <button onClick={() => setEditData(d => ({...d, _editing:false}))}
+                    style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",fontSize:11,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",marginBottom:12,padding:0}}>
+                    ← Back to summary
+                  </button>
+                )}
+                <div className="pedit-field">
+                  <div className="pedit-label">Diet type</div>
+                  <select className="pedit-input" value={editData.diet_type||""} onChange={e=>setEditData(d=>({...d,diet_type:e.target.value}))}>
+                    <option value="">Select…</option>
+                    <option value="veg">Vegetarian 🥦</option>
+                    <option value="nonveg">Non-veg 🍗</option>
+                    <option value="vegan">Vegan 🌱</option>
+                    <option value="eggetarian">Eggetarian 🥚</option>
+                  </select>
+                </div>
+                <div className="pedit-field">
+                  <div className="pedit-label">Work situation</div>
+                  <select className="pedit-input" value={editData.work_type||""} onChange={e=>setEditData(d=>({...d,work_type:e.target.value}))}>
+                    <option value="">Select…</option>
+                    <option value="wfh">Work from home 💻</option>
+                    <option value="office">Office 🏢</option>
+                    <option value="not_working">Not working 🌿</option>
+                  </select>
+                </div>
+              </>
+            )}
+          </>}
+
+          {editSection === "health" && <>
+            <div className="pedit-title">Your <em>health</em></div>
+            <div className="pedit-field">
+              <div className="pedit-label">Blood group</div>
+              <select className="pedit-input" value={editData.blood_group||""} onChange={e=>setEditData(d=>({...d,blood_group:e.target.value}))}>
+                <option value="">Select…</option>
+                {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(g=><option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+          </>}
+
+          {editSection === "labs" && <>
+            <div className="pedit-title">Tests &amp; <em>results</em></div>
+
+            {/* Tests ordered by your doctor */}
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--teal)",marginBottom:10}}>Tests from your doctor</div>
+            <TestOrdersSection onViewDetail={order => setTestOrderDetail(order)} reloadKey={testOrdersReload} />
+
+            <div className="lab-divider" style={{margin:"20px 0 4px"}}>
+              <div className="lab-divider-line"/>
+              <div className="lab-divider-text">lab values</div>
+              <div className="lab-divider-line"/>
+            </div>
+
+            <LabsEditor editData={editData} setEditData={setEditData} hideTitle />
+          </>}
+
+          {editSection === "partner" && <>
+            <div className="pedit-title">Your <em>partner</em></div>
+            <div className="pedit-field">
+              <div className="pedit-label">Partner's name</div>
+              <input className="pedit-input" type="text" placeholder="Rahul" value={editData.partner_name||""} onChange={e=>setEditData(d=>({...d,partner_name:e.target.value,has_partner:true}))}/>
+            </div>
+          </>}
+
+          <button className="pedit-save" onClick={() => saveEdit(editData)} disabled={saving}>
+            {saving ? "Saving…" : "Save ✓"}
+          </button>
+          <button className="pedit-cancel" onClick={closeEdit}>Cancel</button>
+        </div>
+      )}
+
+      {/* ── TEST REPORT SHEET — root level to escape pedit-sheet stacking context ── */}
+      {testOrderDetail && (
+        <TestReportSheet
+          order={testOrderDetail}
+          onClose={() => setTestOrderDetail(null)}
+          onReportDeleted={async () => {
+            setTestOrderDetail(null);
+            setTestOrdersReload(k => k + 1);
+            // Re-fetch profile so LabsEditor shows the cleared values immediately
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data } = await supabase.from("profiles").select("lab_data, lab_extras_v2, blood_group").eq("id", user.id).single();
+                if (data) {
+                  // Strip empty extra keys so LabsEditor doesn't show ghost rows
+                  const cleanExtras = Object.fromEntries(
+                    Object.entries(data.lab_extras_v2 || {}).filter(([, v]) => v?.entries?.length)
+                  );
+                  setEditData(d => ({ ...d, lab_data: data.lab_data || {}, lab_extras_v2: cleanExtras }));
+                  onProfileUpdate && onProfileUpdate({ ...p, lab_data: data.lab_data, lab_extras_v2: cleanExtras });
+                }
+              }
+            } catch {}
+          }}
+        />
+      )}
+
+      {/* ── PRESCRIPTION DETAIL SHEET — rendered here (root level) to escape pedit-sheet stacking context ── */}
+      {detailRx && (
+        <PrescriptionDetailSheet
+          rx={detailRx}
+          onClose={() => setDetailRx(null)}
+          onDelete={async (rx) => {
+            try {
+              if (rx.id) {
+                const resp = await authFetch("/api/prescription/delete", {
+                  method: "DELETE",
+                  body: JSON.stringify({ prescription_id: rx.id }),
+                });
+                if (!resp.ok) throw new Error("Delete failed");
+              } else {
+                const { data: { user: u } } = await supabase.auth.getUser();
+                if (!u) throw new Error("Not logged in");
+                const { data: prof } = await supabase.from("profiles").select("prescriptions").eq("id", u.id).single();
+                const existing = prof?.prescriptions || [];
+                const updated = existing.filter(p =>
+                  !(p.doctor === rx.doctor && p.date === rx.date && p.summary === rx.summary)
+                );
+                await supabase.from("profiles").update({ prescriptions: updated }).eq("id", u.id);
+              }
+              setDetailRx(null);
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+                if (data) {
+                  setEditData(d => ({ ...d, prescriptions: data.prescriptions || [] }));
+                  onProfileUpdate && onProfileUpdate(data);
+                }
+              }
+            } catch {
+              alert("Could not delete prescription. Please try again.");
+            }
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/* ─── PREGNANT ICON ─────────────────────────────────────────────────────── */
+function PregnantIcon({ size = 20, opacity = 1 }) {
+  // Clean minimal line-art style — works at small and large sizes
+  const s = size;
+  return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" style={{opacity, flexShrink:0}}>
+      {/* Head */}
+      <circle cx="12" cy="5.5" r="2.5" fill="currentColor"/>
+      {/* Body */}
+      <path d="M9 9.5C7.5 9.5 7 10.5 7 12V18H9.5V14C9.5 14 10 17 12.5 17C15 17 16.5 15 16.5 12.5C16.5 10.5 15 9.5 13 9.5H9Z" fill="currentColor"/>
+      {/* Arm resting on bump */}
+      <path d="M7 11.5C5.5 12 5 13.5 5.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Legs */}
+      <rect x="7" y="17.5" width="3" height="5" rx="1.5" fill="currentColor"/>
+      <rect x="10.5" y="17.5" width="3" height="5" rx="1.5" fill="currentColor" opacity="0.7"/>
+    </svg>
+  );
+}
+
+/* ─── AUTH SCREEN ─────────────────────────────────────────────────────────── */
+function AuthScreen() {
+  const [loading, setLoading] = useState(false);
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+  };
+
+  return (
+    <div className="auth-screen">
+
+      {/* Top wordmark */}
+      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:0}}>
+        <div style={{width:7,height:7,borderRadius:"50%",background:"#f0a07a"}}/>
+        <span style={{fontSize:12,fontWeight:700,letterSpacing:"0.28em",textTransform:"uppercase",color:"rgba(255,255,255,0.55)"}}>matri</span>
+      </div>
+
+      {/* Centre — illustration + copy */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",width:"100%"}}>
+
+        {/* Pregnant lady hero illustration */}
+        <div style={{position:"relative",marginBottom:32}}>
+          <div style={{position:"absolute",inset:-28,borderRadius:"50%",background:"radial-gradient(circle,rgba(240,160,122,0.15),transparent 70%)",pointerEvents:"none"}}/>
+          <div style={{width:100,height:100,borderRadius:"50%",background:"linear-gradient(145deg,rgba(255,255,255,0.1),rgba(255,255,255,0.05))",border:"1.5px solid rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:50}}>
+            🤰
+          </div>
+          <div style={{position:"absolute",top:-4,right:-4,width:22,height:22,borderRadius:"50%",background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12}}>🌸</div>
+          <div style={{position:"absolute",bottom:2,left:-6,width:18,height:18,borderRadius:"50%",background:"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>✨</div>
+        </div>
+
+        <div className="auth-headline">
+          Hello, <em>mama.</em><br/>We've been waiting.
+        </div>
+        <div className="auth-sub">
+          Your pregnancy companion.<br/>Week by week. Feeling by feeling.
+        </div>
+
+        <button className="auth-google-btn" onClick={handleGoogle} disabled={loading}>
+          <svg className="auth-google-icon" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          {loading ? "Signing in…" : "Continue with Google"}
+        </button>
+      </div>
+
+      <div className="auth-footer">
+        By continuing, you agree to Matri's terms.<br/>
+        Your data is private and encrypted.
+      </div>
+    </div>
+  );
+}
+
+
+/* ─── AUTH GATE — wraps the whole app ────────────────────────────────────── */
+function AuthGate() {
+  const [session,    setSession]    = useState(undefined); // undefined = loading
+  const [profile,    setProfile]    = useState(null);
+  const [needsOnboard, setNeedsOnboard] = useState(false);
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) loadProfile(session.user);
+    });
+    // Listen for auth changes (e.g. after Google redirect)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) loadProfile(session.user);
+      else { setProfile(null); setNeedsOnboard(false); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadProfile = async (user) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    if (!data || !data.onboarding_complete) {
+      // Pass whatever we have (name from Google metadata as fallback)
+      setProfile(data || { name: user.user_metadata?.full_name || "" });
+      setNeedsOnboard(true);
+    } else {
+      setProfile(data);
+      setNeedsOnboard(false);
+    }
+  };
+
+  const handleOnboardComplete = (profileData) => {
+    setProfile(profileData);
+    setNeedsOnboard(false);
+  };
+
+  // Loading state
+  if (session === undefined) {
+    return (
+      <div style={{position:"fixed",inset:0,background:"linear-gradient(160deg,#6a2e20,#1a6060)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#f0a07a"}}/>
+          <span style={{fontSize:13,fontWeight:700,letterSpacing:"0.28em",textTransform:"uppercase",color:"rgba(255,255,255,0.5)"}}>matri</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) return <AuthScreen />;
+  if (needsOnboard) return <OnboardingFlow user={session.user} onComplete={handleOnboardComplete} />;
+  return <App profile={profile} />;
+}
+
 /* ─── MAIN APP ───────────────────────────────────────────────────────── */
-export default function App() {
+function App({ profile: initialProfile }) {
+  const [profileData,    setProfileData]    = useState(initialProfile);
+  const [profileOpen,    setProfileOpen]    = useState(false);
+  const [profileVis,     setProfileVis]     = useState(false);
+  const { healthContext, refreshContext }   = useHealthContext();
+
+  // Keep profileData in sync if initialProfile changes (e.g. after onboarding)
+  useEffect(() => { if (initialProfile) setProfileData(initialProfile); }, [initialProfile]);
   const [active,  setActive]  = useState(null);
   const [visible, setVisible] = useState(false);
   const [checked, setChecked] = useState(() => loadChecked());
@@ -4506,6 +6480,83 @@ export default function App() {
   const [mainTab, setMainTab] = useState("week");
   const [quickAdd, setQuickAdd] = useState(false);
   const [quickAddVis, setQuickAddVis] = useState(false);
+  const [completedTests, setCompletedTests] = useState(
+    () => JSON.parse(localStorage.getItem("matri-completed-tests") || "{}")
+  );
+  const [doctorPrepOpen, setDoctorPrepOpen] = useState(false);
+  const [rxUploadOpen,   setRxUploadOpen]   = useState(false);
+
+  // ── Medicine dialog state — lives here so MedDialogs renders at app root, escaping all stacking contexts ──
+  const [medPauseMed,  setMedPauseMed]  = useState(null);
+  const [medEditMed,   setMedEditMed]   = useState(null);
+  const [medDeleteMed, setMedDeleteMed] = useState(null);
+
+  const updateMedsFromApp = async (newMeds) => {
+    setProfileData(p => ({...p, medications: newMeds}));
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await supabase.from("profiles").update({ medications: newMeds }).eq("id", user.id);
+    } catch {}
+  };
+
+  // Keeps medicines table in sync with profile.medications changes made from the UI.
+  // Fire-and-forget — never blocks the UI. Pass updates=null to delete the row.
+  const syncMedicineTable = (name, updates) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      if (updates === null) {
+        supabase.from("medicines").delete().eq("user_id", user.id).ilike("name", name).then(() => {});
+      } else {
+        supabase.from("medicines").update(updates).eq("user_id", user.id).ilike("name", name).then(() => {});
+      }
+    }).catch(() => {});
+  };
+
+  const appMedHandlers = {
+    onPause: (med) => {
+      if (med.paused) {
+        const newMeds = (profileData?.medications||[]).map(m =>
+          parseMed(m).name===med.name ? {...(typeof m==="object"?m:parseMed(m)), paused:false, pause_reason:null} : m
+        );
+        updateMedsFromApp(newMeds);
+        syncMedicineTable(med.name, { active: true });
+      } else {
+        setMedPauseMed({...med, reason:""});
+      }
+    },
+    onEdit:   (med) => setMedEditMed({...med, _origName: med.name}),
+    onDelete: (med) => setMedDeleteMed(med),
+  };
+
+  const appConfirmPause = async () => {
+    const newMeds = (profileData?.medications||[]).map(m =>
+      parseMed(m).name===medPauseMed.name
+        ? {...(typeof m==="object"?m:parseMed(m)), paused:true, pause_reason:medPauseMed.reason}
+        : m
+    );
+    await updateMedsFromApp(newMeds);
+    syncMedicineTable(medPauseMed.name, { active: false });
+    setMedPauseMed(null);
+  };
+
+  const appConfirmEdit = async () => {
+    const { dosage, frequency, duration, notes, _origName } = medEditMed;
+    const newMeds = (profileData?.medications||[]).map(m =>
+      parseMed(m).name===_origName
+        ? {...(typeof m==="object"?m:parseMed(m)), dosage, frequency, duration, notes}
+        : m
+    );
+    await updateMedsFromApp(newMeds);
+    syncMedicineTable(_origName, { dosage, frequency, duration, notes });
+    setMedEditMed(null);
+  };
+
+  const appConfirmDelete = async () => {
+    const newMeds = (profileData?.medications||[]).filter(m => parseMed(m).name !== medDeleteMed.name);
+    await updateMedsFromApp(newMeds);
+    syncMedicineTable(medDeleteMed.name, null);
+    setMedDeleteMed(null);
+  };
 
   const setJournalEntriesPersist = (updater) => {
     setJournalEntries((prev) => {
@@ -4515,10 +6566,32 @@ export default function App() {
     });
   };
 
+  const markTestComplete = async (testId) => {
+    const updated = { ...completedTests, [testId]: new Date().toISOString().split("T")[0] };
+    setCompletedTests(updated);
+    localStorage.setItem("matri-completed-tests", JSON.stringify(updated));
+    // Also save to Supabase
+    await supabase.from("profiles").update({ completed_tests: updated })
+      .eq("id", profileData?.id);
+  };
+
   // open/close helpers
   const open  = id => { analytics.panelOpened(id); setActive(id); requestAnimationFrame(() => setVisible(true)); };
   const close = ()  => { setVisible(false); setTimeout(() => setActive(null), 390); };
   const openSymptom = (q) => { setSymptomQuery(q||""); setSymptomInput(q||""); open("symptom"); };
+
+  const openProfile  = () => {
+    // Re-fetch latest profile from Supabase every time we open
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.from("profiles").select("*").eq("id", user.id).single()
+          .then(({ data }) => { if (data) setProfileData(data); });
+      }
+    });
+    setProfileOpen(true);
+    requestAnimationFrame(() => setProfileVis(true));
+  };
+  const closeProfile = () => { setProfileVis(false); setTimeout(() => setProfileOpen(false), 390); };
 
   // Mood log helpers
   const logMood = (emoji) => {
@@ -4569,7 +6642,6 @@ export default function App() {
 
   return (
     <div className="app" style={{display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
-      <style>{css}</style>
 
       {/* ── SCROLLABLE CONTENT AREA ── */}
       <div style={{flex:1,overflowY:"auto",scrollbarWidth:"none",WebkitOverflowScrolling:"touch"}}>
@@ -4584,9 +6656,20 @@ export default function App() {
             <div className="hero-grad"/>
 
             {/* Matri wordmark — top left, before content */}
-            <div style={{position:"relative",zIndex:2,padding:"18px 22px 0",display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:"#f0a07a",flexShrink:0}}/>
-              <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(255,255,255,0.55)"}}>matri</span>
+            <div style={{position:"relative",zIndex:2,padding:"18px 22px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#f0a07a",flexShrink:0}}/>
+                <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(255,255,255,0.55)"}}>matri</span>
+              </div>
+              {/* Profile chip — always show if logged in */}
+              <div className="profile-chip" onClick={e => { e.stopPropagation(); openProfile(); }}>
+                <div className="profile-chip-avatar" style={{fontSize:16}}>
+                  🤰
+                </div>
+                {profileData?.name && (
+                  <span className="profile-chip-name">{profileData.name.split(" ")[0]}</span>
+                )}
+              </div>
             </div>
 
             <div className="hero-inner" style={{paddingTop:14}}>
@@ -4628,6 +6711,33 @@ export default function App() {
             </div>
             <button className="week-nav-btn">Wk 9 →</button>
           </div>
+
+          {/* PAUSED MEDICINE REMINDER STRIP */}
+          {(() => {
+            const pausedMeds = (profileData?.medications || [])
+              .map(parseMed)
+              .filter(m => m.paused && (m.pause_reason === "Ran out" || m.pause_reason === "About to run out"));
+            if (!pausedMeds.length) return null;
+            return (
+              <div style={{margin:"8px 12px 0",background:"linear-gradient(135deg,var(--amber-pale),#fff8e4)",border:"1px solid var(--amber-bdr)",borderRadius:16,padding:"12px 16px"}}>
+                <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--amber)",marginBottom:8}}>⚠️ Medicines needing attention</div>
+                {pausedMeds.map((m, i) => (
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,paddingBottom:i<pausedMeds.length-1?8:0,marginBottom:i<pausedMeds.length-1?8:0,borderBottom:i<pausedMeds.length-1?"1px solid var(--amber-bdr)":"none"}}>
+                    <div style={{width:30,height:30,borderRadius:9,background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>💊</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{m.name}</div>
+                      <div style={{fontSize:10,color:"var(--amber)"}}>{m.pause_reason} — let your doctor know</div>
+                    </div>
+                    <button
+                      onClick={()=>open("medical")}
+                      style={{fontSize:10,fontWeight:600,color:"var(--amber)",background:"transparent",border:"1px solid var(--amber-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+                      View
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* SYMPTOM CHIP GRID */}
           <div className="symptom-section">
@@ -4697,6 +6807,13 @@ export default function App() {
               </div>
               <div className="w-tap w-tap-dk">Tap to explore ↗</div>
             </div>
+
+            {/* MATRI INSIGHTS FEED */}
+            <InsightFeedWidget
+              healthContext={healthContext}
+              profileData={profileData}
+              onOpenDoctorPrep={() => setDoctorPrepOpen(true)}
+            />
 
             {/* STORYBOOK PREVIEW — second, high visibility */}
             <StorybookPreviewWidget entries={journalEntries} onOpenAlbum={openLibAlbum} onOpenJournal={()=>setMainTab("journal")}/>
@@ -4783,20 +6900,13 @@ export default function App() {
             </div>
 
             {/* MEDICAL — left + NUTRITION — right */}
-            <div className="w w-left wc-slate w-sm" onClick={()=>open("medical")}>
-              <span className="w-bg-e" style={{color:"var(--slate)",fontSize:60}}>🩺</span>
-              <div className="win">
-                <div className="w-lbl" style={{color:"var(--slate)"}}><div className="w-lbl-dot" style={{background:"var(--slate)"}}/>Medical</div>
-                <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>
-                  {["Book TVS scan","CBC + TSH","NT scan wk 11"].map(t=>(
-                    <div key={t} style={{fontSize:10,color:"var(--slate)",display:"flex",alignItems:"center",gap:5}}>
-                      <div style={{width:3,height:3,borderRadius:"50%",background:"var(--slate)",flexShrink:0}}/>{t}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="w-tap w-tap-dk">Tap to explore ↗</div>
-            </div>
+            <MedHealthWidget
+              profile={profileData}
+              compact={true}
+              onEditHealth={() => open("medical")}
+              onMedsUpdate={newMeds => setProfileData(p => ({...p, medications: newMeds}))}
+              {...appMedHandlers}
+            />
 
             <div className="w w-right wc-forest w-sm" onClick={()=>open("food")}>
               <span className="w-bg-e" style={{color:"var(--forest)",fontSize:60}}>🥥</span>
@@ -4834,13 +6944,15 @@ export default function App() {
             onDeleteMood={deleteMood}
             onViewAlbum={openLibAlbum}
             onViewTimeline={goToJournalTimeline}
+            onOpenProfile={openProfile}
+            profileData={profileData}
           />
         )}
 
         {/* ══ JOURNAL TAB ══ */}
         {mainTab==="journal" && (
           <div style={{minHeight:"calc(100vh - 64px)",display:"flex",flexDirection:"column"}}>
-            <JournalTab entries={journalEntries} setEntries={setJournalEntriesPersist} onOpenAlbum={openLibAlbum} moodLog={moodLog}/>
+            <JournalTab entries={journalEntries} setEntries={setJournalEntriesPersist} onOpenAlbum={openLibAlbum} moodLog={moodLog} onOpenProfile={openProfile} profileData={profileData}/>
           </div>
         )}
       </div>
@@ -4880,16 +6992,29 @@ export default function App() {
                   : active==="journal"
                   ? <JournalPanel entries={journalEntries} setEntries={setJournalEntriesPersist} initialTab="timeline" moodLog={moodLog}/>
                   : active==="symptomDetail"
-                  ? <SymptomDetailPanel symptomKey={symptomKey} week={8}/>
+                  ? <SymptomDetailPanel
+                  symptomKey={symptomKey}
+                  week={8}
+                  COMMON_SYMPTOMS={COMMON_SYMPTOMS}
+                  analytics={analytics}
+                  authFetch={authFetch}
+                />
                   : pd.Panel ? <pd.Panel/> : null}
               </div>
             ) : (
               <div className="panel-scroll">
                 {active==="checklist" ? <CheckPanel checked={checked} toggle={toggleCheck}/>
-                  : active==="symptom" ? <SymptomPanel initialQuery={symptomQuery}/>
+                  : active==="symptom" ? <SymptomPanel
+                  initialQuery={symptomQuery}
+                  analytics={analytics}
+                  authFetch={authFetch}
+                  COMMON_SYMPTOMS={COMMON_SYMPTOMS}
+                  week={profileData?.due_date ? Math.round(40-(new Date(profileData.due_date)-new Date())/(7*24*60*60*1000)) : 8}
+                />
                   : active==="body" ? <BodyPanel onLogMood={logMood}/>
                   : active==="food" ? <FoodPanel/>
                   : active==="moment" ? <MatriMomentPanel week={8} entries={journalEntries} setEntries={setJournalEntriesPersist}/>
+                  : active==="medical" ? <MedPanel profileData={profileData} completedTests={completedTests} onMarkTestComplete={markTestComplete} onRxUpload={()=>setRxUploadOpen(true)} {...appMedHandlers}/>
                   : pd.Panel ? <pd.Panel/> : null}
               </div>
             )}
@@ -4899,7 +7024,7 @@ export default function App() {
 
       {/* ── LIBRARY ALBUM OVERLAY ── */}
       {libAlbumOpen && (
-        <div className={`album-screen${libAlbumVis?" open":""}`} style={{position:"fixed",inset:0,zIndex:200,maxWidth:430,left:"50%",marginLeft:-215}}>
+        <div className={`album-screen${libAlbumVis?" open":""}`} style={{position:"fixed",inset:0,zIndex:200}}>
           <AlbumView entries={journalEntries} onClose={closeLibAlbum}/>
         </div>
       )}
@@ -4940,6 +7065,70 @@ export default function App() {
           ))}
         </div>
       </div>
+      {/* ── DOCTOR PREP SHEET ── */}
+      {doctorPrepOpen && (
+        <DoctorPrepSheet
+          healthContext={healthContext}
+          profileData={profileData}
+          onClose={() => setDoctorPrepOpen(false)}
+        />
+      )}
+
+      {/* ── PRESCRIPTION UPLOAD FLOW ── */}
+      {rxUploadOpen && (
+        <PrescriptionUploadFlow
+          onComplete={async (result) => {
+            refreshContext();
+            setRxUploadOpen(false);
+            // If prescription has a follow-up date, save it as next appointment
+            if (result?.follow_up_date) {
+              try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  await supabase.from("profiles")
+                    .update({ next_appointment_date: result.follow_up_date })
+                    .eq("id", user.id);
+                  setProfileData(p => ({...p, next_appointment_date: result.follow_up_date}));
+                }
+              } catch {}
+            }
+            // Re-fetch profile to pick up new prescriptions list saved by infer.js
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+                if (data) setProfileData(data);
+              }
+            } catch {}
+          }}
+          onClose={() => setRxUploadOpen(false)}
+        />
+      )}
+
+      {/* ── PROFILE PAGE ── */}
+      {profileOpen && (
+        <ProfilePage
+          profile={profileData}
+          onClose={closeProfile}
+          onProfileUpdate={setProfileData}
+          weekProp={8}
+          onOpenMedical={() => { closeProfile(); setTimeout(() => open("medical"), 400); }}
+          completedTests={completedTests}
+          onMarkTestComplete={markTestComplete}
+          appMedHandlers={appMedHandlers}
+          onRxUpload={() => { closeProfile(); setTimeout(() => setRxUploadOpen(true), 400); }}
+        />
+      )}
+
+      {/* ── MED DIALOGS — at app root, outside all transforms/stacking contexts ── */}
+      <MedDialogs
+        pauseMed={medPauseMed}   setPauseMed={setMedPauseMed}   confirmPause={appConfirmPause}
+        editMed={medEditMed}     setEditMed={setMedEditMed}     confirmEdit={appConfirmEdit}
+        deleteMed={medDeleteMed} setDeleteMed={setMedDeleteMed} confirmDelete={appConfirmDelete}
+      />
+
     </div>
   );
 }
+
+export default AuthGate;
