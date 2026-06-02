@@ -834,7 +834,7 @@ export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenPr
               {/* placeholder thumbs if fewer than 3 real photos */}
               {allPhotos.length < 3 && Array.from({length:3-allPhotos.length}).map((_,i)=>(
                 <div key={"ph"+i} style={{width:52,height:52,borderRadius:12,flexShrink:0,
-                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(112,200,184,0.3)",
+                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(224,168,192,0.3)",
                   display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:0.5}}>📷</div>
               ))}
             </div>
@@ -845,7 +845,7 @@ export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenPr
             <div style={{display:"flex",gap:8,marginBottom:14}}>
               {[0,1,2].map(i=>(
                 <div key={i} style={{width:52,height:52,borderRadius:12,flexShrink:0,
-                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(112,200,184,0.3)",
+                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(224,168,192,0.3)",
                   display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:0.5}}>📷</div>
               ))}
             </div>

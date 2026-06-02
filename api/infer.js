@@ -263,6 +263,9 @@ export default async function handler(req, res) {
         monitoring_instructions: monitoringInstructions,
         doctor_advice: doctorAdvice,
         summary: parsed.summary,
+        medicine_count: medicines.length,
+        test_count: testsOrdered.length,
+        scan_count: scansAdvised.length,
       }).select().single();
 
       // Fetch existing records to deduplicate against (each query is isolated — a table error won't abort the whole upload)
@@ -379,11 +382,14 @@ export default async function handler(req, res) {
         await supabase.from("scans").insert(
           newScans.map(s => ({
             user_id: user.id,
+            prescription_id: rx.id,
+            scan_name: s.type || null,
             scan_date: s.date || null,
             scan_type: normScanType(s),
             week_number: week,
             findings: { notes: s.notes },
             ai_summary: s.notes,
+            status: "scheduled",
           }))
         );
       }
@@ -526,16 +532,31 @@ export default async function handler(req, res) {
       }
 
     } else if (type === "scan") {
-      await supabase.from("scans").insert({
-        user_id: user.id,
-        upload_id: upload?.id,
-        scan_date: parsed.scan_date,
-        scan_type: parsed.scan_type || "other",
-        week_number: parsed.week_number || week,
-        findings: parsed.findings,
-        image_url: fileUrl,
-        ai_summary: parsed.summary,
-      });
+      const { scan_id } = req.body;
+      if (scan_id) {
+        await supabase.from("scans").update({
+          upload_id: upload?.id,
+          scan_date: parsed.scan_date || null,
+          scan_type: parsed.scan_type || "other",
+          week_number: parsed.week_number || week || null,
+          findings: parsed.findings,
+          image_url: fileUrl,
+          ai_summary: parsed.summary,
+          status: "completed",
+        }).eq("id", scan_id).eq("user_id", user.id);
+      } else {
+        await supabase.from("scans").insert({
+          user_id: user.id,
+          upload_id: upload?.id,
+          scan_date: parsed.scan_date,
+          scan_type: parsed.scan_type || "other",
+          week_number: parsed.week_number || week,
+          findings: parsed.findings,
+          image_url: fileUrl,
+          ai_summary: parsed.summary,
+          status: "completed",
+        });
+      }
     }
 
     // 6. Trigger health context refresh
@@ -591,6 +612,8 @@ async function refreshHealthContext(userId) {
       ? Math.round(40 - (new Date(p.due_date) - new Date()) / (7 * 24 * 60 * 60 * 1000))
       : null;
 
+    const completedScans = (scans || []).filter(s => s.status === "completed");
+
     const parts = [
       week ? `Week ${week} pregnancy` : null,
       p.is_first_pregnancy ? "first pregnancy" : p.is_first_pregnancy === false ? "not first pregnancy" : null,
@@ -607,6 +630,17 @@ async function refreshHealthContext(userId) {
         ? `next appointment: ${new Date(p.next_appointment_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
         : null,
       (testOrders || []).length ? `tests ordered but not done: ${testOrders.map(t => t.test_name).join(", ")}` : null,
+      completedScans.length ? `recent scan findings: ${completedScans.slice(0, 3).map(s => {
+        const f = s.findings || {};
+        return [
+          s.scan_name || s.scan_type,
+          f.heartbeat_bpm ? `HR ${f.heartbeat_bpm}bpm` : null,
+          f.position || null,
+          f.fluid_level && f.fluid_level !== "normal" ? `fluid ${f.fluid_level}` : null,
+          f.nt_measurement ? `NT ${f.nt_measurement}mm` : null,
+          f.weight_grams ? `${Math.round(f.weight_grams)}g` : null,
+        ].filter(Boolean).join(", ");
+      }).join("; ")}` : null,
     ].filter(Boolean);
 
     const summary = parts.join(". ");

@@ -278,7 +278,7 @@ export function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
               fontSize:13,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit"}}>
               No, continue
             </button>
-            <button onClick={goToAlbum} style={{flex:1,background:"var(--teal)",
+            <button onClick={goToAlbum} style={{flex:1,background:"var(--rose)",
               border:"none",borderRadius:14,padding:"13px",
               fontSize:13,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
               Yes, crop album
@@ -413,7 +413,7 @@ export function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
   const save = () => {
     if (!text.trim() && pendingPhotos.length === 0) return;
     const photos = [...pendingPhotos];
-    setEntries(p => [{id:Date.now(),week:8,date:today,mood:mood||"😊",text:text.trim(),photos,isShared,heroBg:"linear-gradient(135deg,#e8f5f5,#d0ecec)",heroEmoji:"📝",heroBgColor:"#e0f5f5"},...p]);
+    setEntries(p => [{id:Date.now(),week:8,date:today,mood:mood||"😊",text:text.trim(),photos,isShared,heroBg:"linear-gradient(135deg,#fdf0ec,#f8ddd8)",heroEmoji:"📝",heroBgColor:"#fdeae6"},...p]);
     setText(""); setMood(null); setPendingPhotos([]); setIsShared(false); setTab("timeline");
   };
 

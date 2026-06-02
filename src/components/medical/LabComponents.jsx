@@ -49,12 +49,17 @@ export function LabTimelineRow({ name, unit, entries=[], normalRange, onAdd, onR
       {/* Timeline dots */}
       <div className="lab-timeline-scroll">
         {entries.map((e, i) => (
-          <div key={i} className="lab-timeline-entry" onDoubleClick={()=>onRemove(i)} title="Double tap to remove">
+          <div key={i} className="lab-timeline-entry" style={{position:"relative"}}>
             <div className="lab-timeline-dot" style={{background:dotBg(e.value),borderColor:dotBorder(e.value),color:statusColor(e.value)}}>
               <span>{e.value}</span>
             </div>
             <div className="lab-timeline-val">{e.value}</div>
             <div className="lab-timeline-date">{new Date(e.date).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</div>
+            <button
+              onClick={() => onRemove(i)}
+              title="Remove this reading"
+              style={{position:"absolute",top:-6,right:-4,width:16,height:16,borderRadius:"50%",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",color:"var(--rose)",fontSize:9,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,padding:0,fontFamily:"inherit"}}
+            >×</button>
           </div>
         ))}
         {/* Add button inline */}
@@ -79,88 +84,106 @@ export function LabTimelineRow({ name, unit, entries=[], normalRange, onAdd, onR
 
 /* ─── TEST ORDERS ────────────────────────────────────────────────────────── */
 
-export function TestOrderRow({ order, uploading, checking, onUpload, onViewDetail, onDelete }) {
+export function TestOrderRow({ order, uploading, checking, onUpload, onMarkDone, onViewDetail, onDelete }) {
   const fileRef = useRef();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const done = order.status === "completed";
-  const dueDate = order.due_date
-    ? new Date(order.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"short"})
+  const done      = order.status === "completed";
+  const hasReport = done && !!order.file_url;
+  const dueDate   = order.due_date
+    ? new Date(order.due_date).toLocaleDateString("en-IN", {day:"numeric", month:"short"})
     : null;
+
+  if (confirmDelete) {
+    return (
+      <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:13,padding:"11px 14px",marginBottom:8}}>
+        <div style={{fontSize:13,color:"var(--ink)",marginBottom:10}}>Remove <strong>{order.test_name}</strong>?</div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setConfirmDelete(false)}
+            style={{flex:1,padding:"8px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+            Cancel
+          </button>
+          <button onClick={()=>{setConfirmDelete(false);onDelete();}}
+            style={{flex:2,padding:"8px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+            Yes, remove
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      onClick={done && !confirmDelete ? onViewDetail : undefined}
-      style={{background:"#fff",border:`1px solid ${confirmDelete?"var(--rose-bdr)":done?"var(--teal-bdr)":"var(--bdr)"}`,borderRadius:16,padding:"13px 16px",cursor:done&&!confirmDelete?"pointer":"default",transition:"border-color 0.2s"}}>
+    <div style={{background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:13,padding:"11px 14px",marginBottom:8}}>
       <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}}
         onChange={e=>{const f=e.target.files?.[0];if(f)onUpload(f);e.target.value="";}}/>
 
-      {confirmDelete ? (
-        /* ── Inline delete confirmation ── */
-        <div onClick={e=>e.stopPropagation()}>
-          <div style={{fontSize:13,color:"var(--ink)",marginBottom:10}}>Remove <strong>{order.test_name}</strong>?</div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setConfirmDelete(false)}
-              style={{flex:1,padding:"8px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
-              Cancel
-            </button>
-            <button onClick={()=>{setConfirmDelete(false);onDelete();}}
-              style={{flex:2,padding:"8px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
-              Yes, remove
-            </button>
+      <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+        <span style={{fontSize:20,flexShrink:0,marginTop:1}}>🧪</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:2}}>
+            <span style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{order.test_name}</span>
+            <span style={{
+              fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:100,textTransform:"uppercase",letterSpacing:"0.1em",
+              background: done ? "var(--teal-pale)" : "rgba(200,160,60,0.12)",
+              color:       done ? "var(--teal)"      : "#8a6800",
+              border:     `1px solid ${done ? "var(--teal-bdr)" : "rgba(200,160,60,0.3)"}`,
+            }}>
+              {done ? "Done" : "Ordered"}
+            </span>
           </div>
+          {dueDate && <div style={{fontSize:10,color:"var(--teal)",fontWeight:500,marginBottom:3}}>Due: {dueDate}</div>}
+          {done && order.report_summary && (
+            <div style={{fontSize:11,color:"var(--muted)",fontStyle:"italic",lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+              "{order.report_summary}"
+            </div>
+          )}
+          {!done && order.notes && (
+            <div style={{fontSize:11,color:"var(--muted)",fontStyle:"italic",lineHeight:1.45}}>{order.notes}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      {(uploading || checking) ? (
+        <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10,padding:"6px 0"}}>
+          <div style={{width:14,height:14,border:`2px solid ${checking?"var(--amber-pale)":"var(--teal-pale)"}`,borderTopColor:checking?"var(--amber)":"var(--teal)",borderRadius:"50%",animation:"spin 0.8s linear infinite",flexShrink:0}}/>
+          <span style={{fontSize:11,color:"var(--muted)"}}>{checking?"Validating report…":"Reading report…"}</span>
+        </div>
+      ) : !done ? (
+        <div style={{display:"flex",gap:8,marginTop:10}}>
+          <button onClick={()=>fileRef.current?.click()}
+            style={{flex:1,padding:"8px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:11,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+            Upload
+          </button>
+          <button onClick={onMarkDone}
+            style={{flex:1,padding:"8px",background:"transparent",border:"1.5px solid var(--teal-bdr)",borderRadius:100,fontSize:11,color:"var(--teal)",cursor:"pointer",fontFamily:"inherit"}}>
+            Mark done
+          </button>
+          <button onClick={()=>setConfirmDelete(true)}
+            style={{flex:1,padding:"8px",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:100,fontSize:11,fontWeight:600,color:"var(--rose)",cursor:"pointer",fontFamily:"inherit"}}>
+            Remove
+          </button>
+        </div>
+      ) : !hasReport ? (
+        <div style={{display:"flex",gap:8,marginTop:10}}>
+          <button onClick={()=>fileRef.current?.click()}
+            style={{flex:2,padding:"8px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:11,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+            Upload report
+          </button>
+          <button onClick={()=>setConfirmDelete(true)}
+            style={{flex:1,padding:"8px",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:100,fontSize:11,fontWeight:600,color:"var(--rose)",cursor:"pointer",fontFamily:"inherit"}}>
+            Remove
+          </button>
         </div>
       ) : (
-        <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",marginBottom:3}}>
-              <span style={{fontFamily:"'Lora',serif",fontSize:15,color:"var(--ink)"}}>{order.test_name}</span>
-              <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",
-                color:done?"var(--teal)":"var(--amber)",background:done?"var(--teal-pale)":"var(--amber-pale)",
-                border:`1px solid ${done?"var(--teal-bdr)":"var(--amber-bdr)"}`,borderRadius:100,padding:"2px 7px",flexShrink:0}}>
-                {done ? "✓ Done" : "Ordered"}
-              </span>
-            </div>
-            {dueDate && <div style={{fontSize:10,color:"var(--muted)",marginBottom:2}}>Due: {dueDate}</div>}
-            {order.notes && <div style={{fontSize:11,color:"var(--muted)",fontStyle:"italic",lineHeight:1.5}}>{order.notes}</div>}
-            {done && order.report_summary && (
-              <div style={{fontSize:11,color:"var(--teal)",marginTop:5,lineHeight:1.5,fontStyle:"italic",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
-                "{order.report_summary}"
-              </div>
-            )}
-            {/* Schedule / Book — future features */}
-            {!done && (
-              <div style={{marginTop:8}}>
-                <div style={{display:"flex",gap:6,opacity:0.35,pointerEvents:"none",filter:"blur(0.6px)"}}>
-                  <div style={{fontSize:10,fontWeight:600,color:"var(--navy)",background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:100,padding:"3px 9px"}}>📅 Schedule</div>
-                  <div style={{fontSize:10,fontWeight:600,color:"var(--forest)",background:"var(--forest-pale)",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"3px 9px"}}>🏥 Book lab</div>
-                </div>
-                <div style={{fontSize:9,color:"var(--muted)",marginTop:4,letterSpacing:"0.04em"}}>Future features</div>
-              </div>
-            )}
-          </div>
-          <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,paddingTop:2}}>
-            {checking ? (
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:14,height:14,border:"2px solid var(--amber-pale)",borderTopColor:"var(--amber)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-                <span style={{fontSize:10,color:"var(--amber)"}}>Validating…</span>
-              </div>
-            ) : uploading ? (
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:14,height:14,border:"2px solid var(--teal-pale)",borderTopColor:"var(--teal)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
-                <span style={{fontSize:10,color:"var(--muted)"}}>Reading…</span>
-              </div>
-            ) : done ? (
-              <span style={{fontSize:11,color:"var(--teal)",fontWeight:600}}>View ↗</span>
-            ) : (
-              <button onClick={e=>{e.stopPropagation();fileRef.current?.click();}}
-                style={{fontSize:10,fontWeight:600,color:"var(--navy)",background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:100,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
-                ⬆ Upload
-              </button>
-            )}
-            <button onClick={e=>{e.stopPropagation();setConfirmDelete(true);}}
-              style={{fontSize:10,fontWeight:600,color:"var(--rose)",background:"var(--rose-pale)",border:"none",borderRadius:100,padding:"3px 9px",cursor:"pointer",fontFamily:"inherit"}}>
-              Remove
-            </button>
-          </div>
+        <div style={{display:"flex",gap:8,marginTop:10}}>
+          <button onClick={onViewDetail}
+            style={{flex:2,padding:"8px",background:"transparent",border:"1.5px solid var(--teal-bdr)",borderRadius:100,fontSize:11,fontWeight:600,color:"var(--teal)",cursor:"pointer",fontFamily:"inherit"}}>
+            View report →
+          </button>
+          <button onClick={()=>setConfirmDelete(true)}
+            style={{flex:1,padding:"8px",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:100,fontSize:11,fontWeight:600,color:"var(--rose)",cursor:"pointer",fontFamily:"inherit"}}>
+            Remove
+          </button>
         </div>
       )}
     </div>
@@ -203,6 +226,15 @@ export function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
       setOrders(prev => prev.filter(o => o.id !== order.id));
     } catch {
       alert("Could not remove test. Please try again.");
+    }
+  };
+
+  const handleMarkDone = async (order) => {
+    try {
+      await supabase.from("test_orders").update({ status: "completed" }).eq("id", order.id);
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: "completed" } : o));
+    } catch {
+      alert("Could not update test status. Please try again.");
     }
   };
 
@@ -279,6 +311,7 @@ export function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
             uploading={uploadingId === order.id}
             checking={checkingId === order.id}
             onUpload={file => handleUpload(order, file)}
+            onMarkDone={() => handleMarkDone(order)}
             onViewDetail={() => onViewDetail(order)}
             onDelete={() => handleDelete(order)}/>
         ))}

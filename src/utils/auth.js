@@ -20,14 +20,20 @@ export function useHealthContext() {
   const refresh = useCallback(async () => {
     try {
       const resp = await authFetch("/api/health-context");
-      if (resp.ok) {
-        const data = await resp.json();
-        setHealthContext(data);
-      }
-    } catch { /* silent */ }
+      if (resp.ok) setHealthContext(await resp.json());
+    } catch {}
+  }, []);
+
+  // Force-rebuilds the health context on the server (bypasses 1-hour cache).
+  // Call this after any client-side deletion that changes lab/scan data.
+  const forceRefresh = useCallback(async () => {
+    try {
+      const resp = await authFetch("/api/health-context", { method: "POST" });
+      if (resp.ok) setHealthContext(await resp.json());
+    } catch {}
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { healthContext, refreshContext: refresh };
+  return { healthContext, refreshContext: refresh, forceRefresh };
 }

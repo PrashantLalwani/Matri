@@ -44,11 +44,11 @@ import { JournalCameraCapture, JournalPhotoCrop, JournalPanel } from "./componen
 import { StoriesPanel, STORIES, STORY_TAG_SUGGESTIONS } from "./components/journal/StoriesPanel";
 import { MedicineCard, MedHealthWidget, MedHealthWidgetFull, MedDialogs, MedPanel } from "./components/medical/MedicineComponents";
 import { PrescriptionUploadFlow, PrescriptionsList, PrescriptionDetailSheet, PrescriptionEditor } from "./components/medical/PrescriptionComponents";
-import { LabTimelineRow, TestOrderRow, TestOrdersSection, TestReportSheet, LabsEditor, TestDetailPanel, TestSuggestionsStrip, DoctorInsight, TRIMESTER_TESTS } from "./components/medical/LabComponents";
+import { LabTimelineRow, TestOrderRow, TestOrdersSection, TestReportSheet, LabsEditor, TestDetailPanel, TestSuggestionsStrip, DoctorInsight } from "./components/medical/LabComponents";
 import ProfilePage from "./components/profile/ProfilePage";
+import HealthTab from "./components/medical/HealthTab";
 import { PregnantIcon, AuthScreen } from "./components/auth/AuthGate";
 import { StorybookPreviewWidget, HeroMoodStrip, InsightFeedWidget, QuickAddEntry, FriendsCard, MoodSummary, MatriMomentWidget, MatriMomentPanel, ShareableStrip, LibraryView, JournalTab } from "./components/dashboard/Widgets";
-import { MILESTONES } from "./constants/milestones";
 
 // Matri v2.1 — build 2026-05-24
 
@@ -109,7 +109,9 @@ function App({ profile: initialProfile }) {
   const [profileData,    setProfileData]    = useState(initialProfile);
   const [profileOpen,    setProfileOpen]    = useState(false);
   const [profileVis,     setProfileVis]     = useState(false);
-  const { healthContext, refreshContext }   = useHealthContext();
+  const [ranOutMeds,     setRanOutMeds]     = useState([]);
+  const [healthTabCounts, setHealthTabCounts] = useState(null);
+  const { healthContext, refreshContext, forceRefresh } = useHealthContext();
 
   // Keep profileData in sync if initialProfile changes (e.g. after onboarding)
   useEffect(() => { if (initialProfile) setProfileData(initialProfile); }, [initialProfile]);
@@ -494,13 +496,11 @@ function App({ profile: initialProfile }) {
               );
             }
 
-            const meds   = (profileData?.medications||[]).map(parseMed).filter(m=>!m.paused);
             const conds  = conditions;
-            const hbData = profileData?.lab_data?.hemoglobin||[];
-            const hasHealthSummary = meds.length||conds.length||hbData.length||profileData?.prescriptions?.length;
-            const t1Tests = TRIMESTER_TESTS[1]||[];
-            const pendingTests = t1Tests.filter(t=>!completedTests[t.id]).length;
-            const nextScan = MILESTONES.filter(m=>!m.done&&!m.current&&(m.name||"").toLowerCase().includes("scan"))[0];
+            const counts = healthTabCounts;
+            const hasHealthSummary = counts
+              ? (counts.medicines > 0 || counts.tests > 0 || counts.scans > 0 || conds.length > 0)
+              : !!(profileData?.prescriptions?.length || conds.length);
 
             return (
               <div style={{margin:"8px 12px 0",background:"linear-gradient(160deg,#261530 0%,#301a3c 50%,#281535 100%)",borderRadius:20,overflow:"hidden",border:"1px solid rgba(200,160,255,0.1)",position:"relative"}}>
@@ -523,17 +523,14 @@ function App({ profile: initialProfile }) {
                         {conds.length > 0 && (
                           <span style={{fontSize:12,fontWeight:600,color:"rgba(220,180,255,0.9)",background:"rgba(200,160,255,0.1)",borderRadius:100,padding:"2px 9px"}}>{conds[0]}</span>
                         )}
-                        {meds.length > 0 && (
-                          <span style={{fontSize:12,color:"rgba(255,255,255,0.6)"}}>{meds.length} medicine{meds.length>1?"s":""}</span>
+                        {counts?.medicines > 0 && (
+                          <span style={{fontSize:12,color:"rgba(255,255,255,0.6)"}}>{counts.medicines} medicine{counts.medicines>1?"s":""}</span>
                         )}
-                        {hbData.length > 0 && (
-                          <span style={{fontSize:12,color:"rgba(255,255,255,0.6)"}}>HB {hbData[hbData.length-1].value}</span>
+                        {counts?.tests > 0 && (
+                          <span style={{fontSize:12,fontWeight:600,color:"rgba(255,190,90,0.9)",background:"rgba(255,180,80,0.1)",borderRadius:100,padding:"2px 9px"}}>{counts.tests} test{counts.tests>1?"s":""} due</span>
                         )}
-                        {pendingTests > 0 && (
-                          <span style={{fontSize:12,fontWeight:600,color:"rgba(255,190,90,0.9)",background:"rgba(255,180,80,0.1)",borderRadius:100,padding:"2px 9px"}}>{pendingTests} tests due</span>
-                        )}
-                        {nextScan && (
-                          <span style={{fontSize:12,color:"rgba(130,185,255,0.75)",background:"rgba(120,170,255,0.08)",borderRadius:100,padding:"2px 9px"}}>Scan · Wk {nextScan.wk}</span>
+                        {counts?.scans > 0 && (
+                          <span style={{fontSize:12,color:"rgba(130,185,255,0.75)",background:"rgba(120,170,255,0.08)",borderRadius:100,padding:"2px 9px"}}>{counts.scans} scan{counts.scans>1?"s":""}</span>
                         )}
                       </div>
                     ) : (
@@ -562,6 +559,29 @@ function App({ profile: initialProfile }) {
                   embedded
                 />
 
+              </div>
+            );
+          })()}
+
+          {/* ── RAN OUT BANNER ── */}
+          {(() => {
+            const ranOut = ranOutMeds.filter(m => m.name);
+            if (!ranOut.length) return null;
+            return (
+              <div style={{margin:"8px 12px 0",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:16,padding:"14px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
+                  <div style={{width:6,height:6,borderRadius:"50%",background:"var(--rose)",flexShrink:0}}/>
+                  <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--rose)"}}>Medicine reminder</span>
+                </div>
+                {ranOut.map((m, i) => (
+                  <div key={i} style={{fontSize:13,color:"var(--ink)",marginBottom:i<ranOut.length-1?6:0,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:15}}>💊</span>
+                    <span><strong>{m.name}</strong> — you marked this as ran out</span>
+                  </div>
+                ))}
+                <div style={{fontSize:11,color:"var(--muted)",marginTop:8,fontStyle:"italic"}}>
+                  Go to My Health → Medicines to restock
+                </div>
               </div>
             );
           })()}
@@ -725,75 +745,45 @@ function App({ profile: initialProfile }) {
 
         {/* ══ MY HEALTH TAB ══ */}
         {mainTab==="library" && (
-          <div style={{display:"flex",flexDirection:"column",minHeight:"calc(100vh - 64px)"}}>
-
-            {/* HERO */}
-            <div style={{background:"linear-gradient(150deg,#1a1228,#241838,#2e1e48)",flexShrink:0,position:"relative",overflow:"hidden"}}>
-              <span style={{position:"absolute",fontSize:220,right:-20,bottom:-30,opacity:0.06,pointerEvents:"none",userSelect:"none",transform:"rotate(-12deg)"}}>🧬</span>
-              <div style={{position:"relative",zIndex:2,padding:"18px 20px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{width:6,height:6,borderRadius:"50%",background:"rgba(200,160,255,0.6)",flexShrink:0}}/>
-                  <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(255,255,255,0.4)"}}>My Health</span>
-                </div>
-                <div className="profile-chip" onClick={e=>{e.stopPropagation();openProfile();}}>
-                  <div className="profile-chip-avatar" style={{fontSize:14}}>🤰</div>
-                  {profileData?.name && <span className="profile-chip-name">{profileData.name.split(" ")[0]}</span>}
-                </div>
-              </div>
-              <div style={{position:"relative",zIndex:2,padding:"18px 20px 24px"}}>
-                <div style={{fontFamily:"'Lora',serif",fontSize:30,fontWeight:400,color:"#fff",lineHeight:1.05,marginBottom:8}}>
-                  Everything Matri<br/><em style={{fontStyle:"italic",color:"rgba(200,160,255,0.85)"}}>knows about you.</em>
-                </div>
-                <div style={{fontSize:13,color:"rgba(255,255,255,0.36)",lineHeight:1.65,marginBottom:healthContext?.summary?14:0}}>
-                  Prescriptions, medicines, tests — all remembered.
-                </div>
-                {healthContext?.summary && (
-                  <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(200,160,255,0.12)",borderRadius:14,padding:"10px 14px"}}>
-                    <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"rgba(200,160,255,0.5)",marginBottom:5}}>Matri's current understanding</div>
-                    <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",lineHeight:1.65}}>{healthContext.summary}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* SCROLLABLE CONTENT */}
-            <div style={{flex:1,overflowY:"auto",padding:"16px 16px 110px",scrollbarWidth:"none"}}>
-
-              {/* UPLOAD PRESCRIPTION — always prominent */}
-              <button onClick={()=>setRxUploadOpen(true)}
-                style={{width:"100%",padding:"14px 16px",background:"linear-gradient(135deg,rgba(200,160,255,0.14),rgba(200,160,255,0.07))",border:"1px solid rgba(200,160,255,0.22)",borderRadius:16,fontSize:13,fontWeight:600,color:"rgba(200,160,255,0.9)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:6}}>
-                ✦ Upload a prescription
-              </button>
-              <div style={{fontSize:11,color:"var(--muted)",textAlign:"center",marginBottom:12,lineHeight:1.55,fontStyle:"italic"}}>
-                Share your prescription. Matri will understand and remember, so you don't have to.
-              </div>
-
-              {/* LAB RESULTS ENTRY POINT */}
-              <button onClick={openLabsEditor}
-                style={{width:"100%",padding:"12px 16px",background:"rgba(96,144,200,0.08)",border:"1px solid rgba(96,144,200,0.18)",borderRadius:16,fontSize:13,fontWeight:600,color:"rgba(96,144,200,0.85)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:10,marginBottom:20}}>
-                <span style={{fontSize:17}}>🔬</span>
-                <div style={{flex:1,textAlign:"left"}}>
-                  <div>View &amp; update lab results</div>
-                  {(profileData?.lab_data?.hemoglobin||[]).length > 0 && (
-                    <div style={{fontSize:11,fontWeight:400,color:"rgba(96,144,200,0.6)",marginTop:1}}>
-                      HB {profileData.lab_data.hemoglobin[profileData.lab_data.hemoglobin.length-1].value} g/dL · tap to edit
-                    </div>
-                  )}
-                </div>
-                <span style={{opacity:0.5,fontSize:14}}>→</span>
-              </button>
-
-              {/* MED PANEL */}
-              <MedPanel
-                profileData={profileData}
-                completedTests={completedTests}
-                onMarkTestComplete={markTestComplete}
-                onRxUpload={()=>setRxUploadOpen(true)}
-                {...appMedHandlers}
-              />
-
-            </div>
-          </div>
+          <HealthTab
+            profileData={profileData}
+            healthContext={healthContext}
+            onOpenProfile={openProfile}
+            onOpenLabsEditor={openLabsEditor}
+            onRanOutChange={setRanOutMeds}
+            onCountsChange={setHealthTabCounts}
+            onDataChange={async () => {
+              forceRefresh();
+              try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+                  if (data) setProfileData(data);
+                }
+              } catch {}
+            }}
+            onUploadComplete={async (result) => {
+              forceRefresh();
+              if (result?.follow_up_date) {
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) {
+                    await supabase.from("profiles")
+                      .update({ next_appointment_date: result.follow_up_date })
+                      .eq("id", user.id);
+                    setProfileData(p => ({...p, next_appointment_date: result.follow_up_date}));
+                  }
+                } catch {}
+              }
+              try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+                  if (data) setProfileData(data);
+                }
+              } catch {}
+            }}
+          />
         )}
 
         {/* ══ JOURNAL TAB ══ */}
@@ -989,7 +979,7 @@ function App({ profile: initialProfile }) {
       {rxUploadOpen && (
         <PrescriptionUploadFlow
           onComplete={async (result) => {
-            refreshContext();
+            forceRefresh();
             setRxUploadOpen(false);
             // If prescription has a follow-up date, save it as next appointment
             if (result?.follow_up_date) {
