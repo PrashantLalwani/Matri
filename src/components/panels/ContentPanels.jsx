@@ -33,7 +33,7 @@ export function MythPanel() {
   </>;
 }
 
-export function PlanningPanel() {
+export function PlanningPanel({ week }) {
   const [profile, setProfile] = useState(null);
   const profiles = [
     {id:"working",label:"Working full-time",icon:"💼"},
@@ -44,7 +44,7 @@ export function PlanningPanel() {
   const content = {
     working: {
       title:"You're working full-time",
-      intro:"Week 8 is one of the hardest weeks to be in an office. You're exhausted, nauseated, and keeping the biggest secret of your life.",
+      intro:`Week ${week ?? 8} is one of the hardest weeks to be in an office. You're exhausted, nauseated, and keeping the biggest secret of your life.`,
       sections:[
         {head:"This week at work",col:"var(--navy)",items:[
           "Keep crackers in your desk drawer. Eating every 90 minutes reduces nausea significantly.",

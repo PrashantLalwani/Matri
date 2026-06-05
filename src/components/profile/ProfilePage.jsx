@@ -127,8 +127,8 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
 
         {/* ── HERO ── */}
         <div className="profile-hero">
-          <div style={{position:"absolute",width:220,height:220,borderRadius:"50%",background:"#9a3020",top:-90,right:-60,opacity:0.28,filter:"blur(50px)",pointerEvents:"none"}}/>
-          <div style={{position:"absolute",width:130,height:130,borderRadius:"50%",background:"#c05840",bottom:10,left:-30,opacity:0.18,filter:"blur(40px)",pointerEvents:"none"}}/>
+          <div style={{position:"absolute",width:220,height:220,borderRadius:"50%",background:"#a040c0",top:-90,right:-60,opacity:0.25,filter:"blur(50px)",pointerEvents:"none"}}/>
+          <div style={{position:"absolute",width:130,height:130,borderRadius:"50%",background:"#e080d0",bottom:10,left:-30,opacity:0.15,filter:"blur(40px)",pointerEvents:"none"}}/>
           <button className="profile-hero-close" onClick={onClose}>✕</button>
 
           {/* Avatar with ring */}
@@ -138,7 +138,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
             </div>
             <svg className="profile-ring-svg" viewBox="0 0 90 90" fill="none">
               <circle cx="45" cy="45" r="41" stroke="rgba(255,255,255,0.1)" strokeWidth="3"/>
-              <circle cx="45" cy="45" r="41" stroke="#f0a07a" strokeWidth="3"
+              <circle cx="45" cy="45" r="41" stroke="#d080e0" strokeWidth="3"
                 strokeDasharray={`${2.576*pct} 257.6`}
                 strokeLinecap="round" transform="rotate(-90 45 45)"
                 style={{transition:"stroke-dasharray 0.7s ease"}}/>

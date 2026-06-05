@@ -1,7 +1,20 @@
 export const MILESTONES = [
-  {wk:6,name:"Heartbeat",done:true},{wk:7,name:"Dating scan",done:true},{wk:8,name:"You are here",current:true},
-  {wk:10,name:"Blood tests",done:false},{wk:12,name:"12-wk scan",done:false},{wk:14,name:"T2 begins",done:false},
-  {wk:16,name:"Movements",done:false},{wk:20,name:"Anomaly scan",done:false},{wk:24,name:"GTT test",done:false},
-  {wk:28,name:"T3 begins",done:false},{wk:32,name:"Growth scan",done:false},{wk:36,name:"Final prep",done:false},
-  {wk:40,name:"Due date",done:false},
+  {wk:6,name:"Heartbeat"},{wk:7,name:"Dating scan"},{wk:8,name:"8-wk check"},
+  {wk:10,name:"Blood tests"},{wk:12,name:"12-wk scan"},{wk:14,name:"T2 begins"},
+  {wk:16,name:"Movements"},{wk:20,name:"Anomaly scan"},{wk:24,name:"GTT test"},
+  {wk:28,name:"T3 begins"},{wk:32,name:"Growth scan"},{wk:36,name:"Final prep"},
+  {wk:40,name:"Due date"},
 ];
+
+/**
+ * Returns MILESTONES with `done` and `current` computed from the given week.
+ * Always use this instead of reading MILESTONES directly when rendering.
+ */
+export function getMilestones(week) {
+  if (!week) return MILESTONES.map(m => ({ ...m, done: false, current: false }));
+  return MILESTONES.map(m => ({
+    ...m,
+    done:    m.wk < week,
+    current: m.wk === week,
+  }));
+}

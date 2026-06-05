@@ -23,3 +23,32 @@ ALTER TABLE prescriptions
 -- Track ran-out status on medicines
 ALTER TABLE medicines
   ADD COLUMN IF NOT EXISTS ran_out boolean DEFAULT false;
+
+-- ── Week-aware content ────────────────────────────────────────────────────────
+-- Global per-week content precomputed by seed script (one row per week, 1–42).
+-- Public read, service-role write only.
+CREATE TABLE IF NOT EXISTS weekly_content (
+  week              integer PRIMARY KEY CHECK (week BETWEEN 1 AND 42),
+  baby_size         jsonb,   -- {compare, cm, fact, icon, hand_mm, foot_mm, bpm}
+  matri_moment      jsonb,   -- {question, pause}
+  journal_prompt    text,
+  wins_copy         jsonb,   -- {title_em, subtitle}
+  education         jsonb,   -- {baby_card_text, faq[], partner_tip, key_quote}
+  symptom_contexts  jsonb,   -- {cramping:{means,context}, nausea:{means,context}, …}
+  nutrition         jsonb,   -- {iron_mg, folate_mcg, calcium_mg, note}
+  updated_at        timestamptz DEFAULT now()
+);
+
+ALTER TABLE weekly_content ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename='weekly_content' AND policyname='public read weekly_content'
+  ) THEN
+    CREATE POLICY "public read weekly_content" ON weekly_content FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- Store computed week on health_insights so the GET cache can return it.
+ALTER TABLE health_insights
+  ADD COLUMN IF NOT EXISTS current_week integer;

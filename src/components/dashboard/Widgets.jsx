@@ -575,7 +575,7 @@ export function MoodSummary({ entries, moodLog, onDeleteMood, dark }) {
   });
   // From mood log (source: "body-panel" etc)
   (moodLog||[]).forEach(m => {
-    const k = `Wk ${m.week||8}`;
+    const k = m.week ? `Wk ${m.week}` : "Wk ??";
     if (!byWeek[k]) byWeek[k] = [];
     byWeek[k].push({ emoji: m.emoji, source: m.source, id: m.id });
   });
@@ -911,8 +911,8 @@ export function MatriMomentWidget({ onOpen, week }) {
 }
 
 /* ─── MATRI MOMENT PANEL ────────────────────────────────────────────────── */
-export function MatriMomentPanel({ week, entries, setEntries }) {
-  const moment  = getMatriMoment(week);
+export function MatriMomentPanel({ week, weeklyMoment, entries, setEntries }) {
+  const moment  = weeklyMoment || getMatriMoment(week);
   const saved   = loadMoments()[week];
   const [text,  setText]  = useState(saved?.text || "");
   const [saved2, setSaved] = useState(!!saved);
@@ -1128,10 +1128,7 @@ export function HeroMoodStrip({ journalEntries, moodLog, onTap }) {
 }
 
 /* ─── INSIGHT FEED WIDGET ────────────────────────────────────────────────── */
-export function InsightFeedWidget({ healthContext, profileData, onOpenDoctorPrep, onRxUpload, embedded = false }) {
-  const [insights, setInsights] = useState(null);
-  const [loading, setLoading]   = useState(false);
-
+export function InsightFeedWidget({ healthContext, profileData, currentWeek, onOpenDoctorPrep, onRxUpload, embedded = false }) {
   const activeMeds = (profileData?.medications || []).filter(m => !(typeof m === "object" ? m.paused : false));
   const hasHealthData = !!(
     activeMeds.length ||
@@ -1140,8 +1137,19 @@ export function InsightFeedWidget({ healthContext, profileData, onOpenDoctorPrep
     (profileData?.prescriptions || []).length
   );
 
+  // Use pre-generated insights from health_insights (persisted by health-context.js).
+  // Fall back to on-demand generation only if the cache row has no bullets yet.
+  const prebuilt = healthContext?.insightBullets;
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading]   = useState(false);
+
   React.useEffect(() => {
     if (!hasHealthData) return;
+
+    // Use pre-built insights from Supabase cache — no extra API call needed
+    if (prebuilt?.length) { setInsights(prebuilt); return; }
+
+    // First-ever load before server has generated them: fall back to on-demand
     const cacheKey = "matri_insights_" + (healthContext?.summary || "").slice(0, 40);
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) { setInsights(JSON.parse(cached)); return; }
@@ -1151,7 +1159,7 @@ export function InsightFeedWidget({ healthContext, profileData, onOpenDoctorPrep
       method: "POST",
       body: JSON.stringify({
         system: "You are Matri, a warm pregnancy companion. Based on the woman's health data, generate 2-3 personalised proactive insights. Return ONLY a JSON array of objects: [{text: string, type: 'info'|'nudge'|'prep', priority: 'high'|'medium'|'low'}]. Each text max 12 words. Warm, never alarming, never a verdict. No markdown.",
-        messages: [{ role: "user", content: `Health context: ${healthContext?.summary || "Week 8 pregnancy, first trimester"}. Generate 2-3 insights.` }],
+        messages: [{ role: "user", content: `Health context: ${healthContext?.summary || `Week ${currentWeek ?? 8} pregnancy`}. Generate 2-3 insights.` }],
         max_tokens: 300,
       })
     })
@@ -1164,7 +1172,7 @@ export function InsightFeedWidget({ healthContext, profileData, onOpenDoctorPrep
     })
     .catch(() => setInsights([]))
     .finally(() => setLoading(false));
-  }, [healthContext?.summary, hasHealthData]);
+  }, [prebuilt, healthContext?.summary, hasHealthData]);
 
   const dotColor = (type) => type === "prep" ? "var(--rose)" : type === "nudge" ? "var(--amber)" : "#c8a0ff";
 
@@ -1252,14 +1260,14 @@ export function InsightFeedWidget({ healthContext, profileData, onOpenDoctorPrep
 }
 
 /* ─── QUICK ADD ENTRY ─────────────────────────────────────────────────── */
-export function QuickAddEntry({ entries, setEntries, onClose }) {
+export function QuickAddEntry({ entries, setEntries, onClose, week }) {
   const [text, setText] = useState("");
   const [mood, setMood] = useState(null);
   const today = istDate();
   const save = () => {
     if (!text.trim()) return;
     analytics.journalCreated("quick_add");
-    setEntries(p => [{id:Date.now(),week:8,date:today,mood:mood||"😊",text:text.trim(),photos:[],heroBg:"linear-gradient(135deg,#e8f5f5,#d0ecec)",heroEmoji:"📝",heroBgColor:"#e0f5f5"},...p]);
+    setEntries(p => [{id:Date.now(),week:week??0,date:today,mood:mood||"😊",text:text.trim(),photos:[],heroBg:"linear-gradient(135deg,#e8f5f5,#d0ecec)",heroEmoji:"📝",heroBgColor:"#e0f5f5"},...p]);
     onClose();
   };
   return (

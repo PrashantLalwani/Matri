@@ -1,9 +1,11 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function getUser(req) {
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -74,14 +76,29 @@ async function buildFreshContext(userId) {
 
   const summary = parts.join(". ");
 
+  // Generate personalised insights via AI (fire-and-forget friendly — we await but keep it fast)
+  let insightBullets = [];
+  try {
+    const aiResp = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 300,
+      system: "You are Matri, a warm pregnancy companion. Based on the woman's health data, generate 2-3 personalised proactive insights. Return ONLY a JSON array: [{text: string, type: 'info'|'nudge'|'prep', priority: 'high'|'medium'|'low'}]. Each text max 12 words. Warm, never alarming. No markdown.",
+      messages: [{ role: "user", content: `Health context: ${summary}. Generate 2-3 insights.` }],
+    });
+    const raw = aiResp.content?.[0]?.text || "[]";
+    insightBullets = JSON.parse(raw.replace(/```json|```/g, "").trim());
+  } catch { insightBullets = []; }
+
   await supabase.from("health_insights").upsert({
     user_id:         userId,
     updated_at:      new Date().toISOString(),
     context_summary: summary,
     flags,
+    current_week:    week,
+    insight_bullets: insightBullets,
   }, { onConflict: "user_id" });
 
-  return { summary, flags, week, doctorPrep: [], insightBullets: [] };
+  return { summary, flags, week, doctorPrep: [], insightBullets };
 }
 
 export default async function handler(req, res) {
@@ -112,6 +129,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           summary:        insight.context_summary,
           flags:          insight.flags || [],
+          week:           insight.current_week ?? null,
           doctorPrep:     insight.doctor_prep_items || [],
           insightBullets: insight.insight_bullets   || [],
         });

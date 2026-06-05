@@ -1,12 +1,14 @@
 import "./styles/app.css";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { analytics } from "./analytics";
 import { supabase } from "./supabase";
 import OnboardingFlow from "./components/OnboardingFlow";
 import SymptomDetailPanel from "./components/SymptomDetailPanel";
 import SymptomPanel from "./components/SymptomPanel";
 import DoctorPrepSheet from "./components/DoctorPrepSheet";
+import WeekPickerSheet from "./components/WeekPickerSheet";
 import { COMMON_SYMPTOMS } from "./constants/symptoms";
+import { useWeeklyContent, mergeSymptomContexts } from "./utils/useWeeklyContent";
 import {
   WEEKLY_PROMPTS,
   getWeekPrompt
@@ -115,6 +117,30 @@ function App({ profile: initialProfile }) {
 
   // Keep profileData in sync if initialProfile changes (e.g. after onboarding)
   useEffect(() => { if (initialProfile) setProfileData(initialProfile); }, [initialProfile]);
+
+  // ── Week computation ──────────────────────────────────────────────────────
+  const currentWeek = useMemo(() => {
+    if (!profileData?.due_date) return null;
+    const w = Math.round(40 - (new Date(profileData.due_date) - new Date()) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(4, Math.min(42, w));
+  }, [profileData?.due_date]);
+
+  const [browseWeek, setBrowseWeek] = useState(null); // null = live (follow currentWeek)
+  const effectiveWeek = browseWeek ?? currentWeek;
+
+  const weeklyContent  = useWeeklyContent(effectiveWeek);
+  const enrichedSymptoms = useMemo(
+    () => mergeSymptomContexts(COMMON_SYMPTOMS, weeklyContent),
+    [weeklyContent]
+  );
+
+  const [weekPickerOpen, setWeekPickerOpen] = useState(false);
+
+  const trimester = !effectiveWeek ? null
+    : effectiveWeek <= 13 ? "First Trimester"
+    : effectiveWeek <= 26 ? "Second Trimester"
+    : "Third Trimester";
+
   const [active,  setActive]  = useState(null);
   const [visible, setVisible] = useState(false);
   const [checked, setChecked] = useState(() => loadChecked());
@@ -311,7 +337,7 @@ function App({ profile: initialProfile }) {
 
   // Mood log helpers
   const logMood = (emoji) => {
-    const entry = { id: Date.now(), emoji, week: 8, source: "body-panel", date: istDate() };
+    const entry = { id: Date.now(), emoji, week: effectiveWeek ?? 0, source: "body-panel", date: istDate() };
     setMoodLog(p => {
       const next = [entry, ...p];
       saveMoodLog(next);
@@ -404,17 +430,28 @@ function App({ profile: initialProfile }) {
             {/* ── ZONE 1: Week + dimensions ── */}
             <div className="hero-inner" style={{paddingBottom:10}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div>
+                <button
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); setWeekPickerOpen(true); }}
+                  style={{background:"transparent",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",textAlign:"left"}}>
                   <div style={{fontFamily:"'Lora',serif",fontSize:28,fontWeight:400,lineHeight:1,letterSpacing:"-0.02em",color:"#fff",marginBottom:5}}>
-                    Week <em style={{fontStyle:"italic",color:"#e0b0c0"}}>8</em>
+                    Week{" "}<em style={{fontStyle:"italic",color:"#e0b0c0",borderBottom:"1.5px dotted rgba(224,176,192,0.45)",paddingBottom:1}}>{effectiveWeek ?? "…"}</em>
                   </div>
-                  <span style={{fontSize:9,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase",color:"rgba(255,255,255,0.3)"}}>First Trimester</span>
-                </div>
+                  <span style={{fontSize:9,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase",color:"rgba(255,255,255,0.3)"}}>{trimester || "…"}</span>
+                </button>
                 <div style={{display:"flex",gap:5}}>
-                  <span style={{fontSize:9,color:"rgba(224,176,192,0.55)",background:"rgba(224,176,192,0.09)",border:"1px solid rgba(224,176,192,0.12)",borderRadius:100,padding:"2px 8px",display:"inline-flex",alignItems:"center",gap:3}}>
-                    <span style={{fontSize:10}}>🫘</span> 1.6cm
-                  </span>
-                  <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:100,padding:"2px 8px"}}>~160bpm</span>
+                  {(() => {
+                    const bs = weeklyContent?.baby_size;
+                    const staticBs = BABY_SIZES[effectiveWeek] || BABY_SIZES[8];
+                    const cm  = bs?.cm  || staticBs?.cm  || "…";
+                    const bpm = bs?.bpm || 160;
+                    return <>
+                      <span style={{fontSize:9,color:"rgba(224,176,192,0.55)",background:"rgba(224,176,192,0.09)",border:"1px solid rgba(224,176,192,0.12)",borderRadius:100,padding:"2px 8px",display:"inline-flex",alignItems:"center",gap:3}}>
+                        <span style={{fontSize:10}}>🫘</span> {cm}
+                      </span>
+                      <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:100,padding:"2px 8px"}}>~{bpm}bpm</span>
+                    </>;
+                  })()}
                 </div>
               </div>
             </div>
@@ -441,12 +478,39 @@ function App({ profile: initialProfile }) {
             {/* ── PROGRESS + TAP ── */}
             <div className="hero-tap">Tap to explore your baby ↗</div>
             <div className="prog-row">
-              <div className="prog-lbl">Wk 8</div>
-              <div className="prog-track"><div className="prog-fill"/></div>
+              <div className="prog-lbl">Wk {effectiveWeek ?? "…"}</div>
+              <div className="prog-track">
+                <div className="prog-fill" style={{width: effectiveWeek ? `${Math.min(100,(effectiveWeek/40)*100)}%` : "20%"}}/>
+              </div>
               <div className="prog-lbl">40</div>
-              <div className="t1-badge">T1</div>
+              <div className="t1-badge">{effectiveWeek ? (effectiveWeek<=13?"T1":effectiveWeek<=26?"T2":"T3") : "T1"}</div>
             </div>
           </div>
+
+          {/* ── BROWSE MODE BANNER ── */}
+          {browseWeek !== null && currentWeek && (
+            <div style={{margin:"8px 12px 0",background:"linear-gradient(135deg,#1e1530,#281940)",borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:12,border:"1px solid rgba(200,160,255,0.18)"}}>
+              <div style={{fontSize:10,color:"rgba(200,160,255,0.6)",flex:1,lineHeight:1.5}}>
+                Browsing <strong style={{color:"rgba(200,160,255,0.95)",fontWeight:600}}>Week {browseWeek}</strong>
+                <span style={{color:"rgba(200,160,255,0.35)"}}> · tap to return</span>
+              </div>
+              <button
+                onClick={() => setBrowseWeek(null)}
+                style={{
+                  background:"transparent",
+                  border:"1px solid rgba(200,160,255,0.22)",
+                  borderRadius:100,padding:"5px 14px",
+                  fontSize:10,fontWeight:600,
+                  color:"rgba(200,160,255,0.75)",
+                  cursor:"pointer",fontFamily:"inherit",
+                  WebkitTapHighlightColor:"transparent",
+                  whiteSpace:"nowrap",flexShrink:0,
+                  letterSpacing:"0.04em",
+                }}>
+                Wk {currentWeek}
+              </button>
+            </div>
+          )}
 
           {/* ══ MATRI AI CARD (AI headline + My Health + Insights) ══ */}
           {(() => {
@@ -554,6 +618,7 @@ function App({ profile: initialProfile }) {
                 <InsightFeedWidget
                   healthContext={healthContext}
                   profileData={profileData}
+                  currentWeek={currentWeek}
                   onOpenDoctorPrep={()=>setDoctorPrepOpen(true)}
                   onRxUpload={()=>setRxUploadOpen(true)}
                   embedded
@@ -676,8 +741,15 @@ function App({ profile: initialProfile }) {
               <span className="w-bg-e" style={{color:"#b0a0f0",fontSize:80}}>🏆</span>
               <div className="win">
                 <div className="w-lbl" style={{color:"#b0a0f0"}}><div className="w-lbl-dot" style={{background:"#b0a0f0"}}/>This week's win</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:15,color:"#fff",lineHeight:1.3,marginBottom:6}}>You made it to <em style={{fontStyle:"italic",color:"#b0a0f0"}}>week 8.</em></div>
-                <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",lineHeight:1.5}}>That heart hasn't stopped once.</div>
+                <div style={{fontFamily:"'Lora',serif",fontSize:15,color:"#fff",lineHeight:1.3,marginBottom:6}}>
+                  {weeklyContent?.wins_copy?.title_em
+                    ? <span dangerouslySetInnerHTML={{__html: weeklyContent.wins_copy.title_em}}/>
+                    : <>You made it to <em style={{fontStyle:"italic",color:"#b0a0f0"}}>week {effectiveWeek ?? 8}.</em></>
+                  }
+                </div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",lineHeight:1.5}}>
+                  {weeklyContent?.wins_copy?.subtitle || "That heart hasn't stopped once."}
+                </div>
               </div>
               <div className="w-tap w-tap-lt">Tap to explore ↗</div>
             </div>
@@ -727,7 +799,7 @@ function App({ profile: initialProfile }) {
             <div className="w wc-dark4" style={{minHeight:200,cursor:"pointer"}} onClick={()=>open("stories")}>
               <span style={{position:"absolute",fontSize:140,right:-10,bottom:-10,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",color:"#c8a0f0",userSelect:"none"}}>💬</span>
               <div className="win-lg">
-                <div className="w-lbl" style={{color:"#c8a0f0"}}><div className="w-lbl-dot" style={{background:"#c8a0f0"}}/>Stories from week 8</div>
+                <div className="w-lbl" style={{color:"#c8a0f0"}}><div className="w-lbl-dot" style={{background:"#c8a0f0"}}/>Stories from week {effectiveWeek ?? 8}</div>
                 <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:14}}>Women who've been <em style={{fontStyle:"italic",color:"#c8a0f0"}}>right here.</em></div>
                 <div style={{display:"flex",alignItems:"center"}}>
                   {STORIES.map(s=>(
@@ -810,13 +882,19 @@ function App({ profile: initialProfile }) {
               <div>
                 {active==="symptomDetail" && symptomKey && COMMON_SYMPTOMS[symptomKey] ? (
                   <>
-                    <div className="panel-head-lbl" style={{color:"var(--rose)"}}>Week 8 · {COMMON_SYMPTOMS[symptomKey].label}</div>
+                    <div className="panel-head-lbl" style={{color:"var(--rose)"}}>Week {effectiveWeek ?? 8} · {COMMON_SYMPTOMS[symptomKey].label}</div>
                     <div className="panel-head-title" style={{color:"var(--ink)"}}>Ask me anything <em>about this</em></div>
                   </>
                 ) : (
                   <>
                     <div className="panel-head-lbl" style={{color:pd.lblCol}}>{pd.label}</div>
-                    <div className="panel-head-title" style={{color:pd.titleCol}}>{pd.title}</div>
+                    <div className="panel-head-title" style={{color:pd.titleCol}}>
+                      {active==="wins"
+                        ? <>You made it to <em>week {effectiveWeek ?? 8}</em></>
+                        : active==="baby" && weeklyContent?.baby_size
+                        ? <>{weeklyContent.baby_size.cm} · <em>{weeklyContent.baby_size.compare}</em></>
+                        : pd.title}
+                    </div>
                   </>
                 )}
               </div>
@@ -825,18 +903,18 @@ function App({ profile: initialProfile }) {
             {pd.noScroll ? (
               <div style={{display:"flex",flexDirection:"column",flex:1,overflow:"hidden"}}>
                 {active==="baby"
-                  ? <BabyPanel/>
+                  ? <BabyPanel week={effectiveWeek} weeklyContent={weeklyContent}/>
                   : active==="journal"
-                  ? <JournalPanel entries={journalEntries} setEntries={setJournalEntriesPersist} initialTab="timeline" moodLog={moodLog}/>
+                  ? <JournalPanel entries={journalEntries} setEntries={setJournalEntriesPersist} initialTab="timeline" moodLog={moodLog} week={effectiveWeek}/>
                   : active==="symptomDetail"
                   ? <SymptomDetailPanel
                   symptomKey={symptomKey}
-                  week={8}
-                  COMMON_SYMPTOMS={COMMON_SYMPTOMS}
+                  week={effectiveWeek ?? 8}
+                  COMMON_SYMPTOMS={enrichedSymptoms}
                   analytics={analytics}
                   authFetch={authFetch}
                 />
-                  : pd.Panel ? <pd.Panel/> : null}
+                  : pd.Panel ? <pd.Panel week={effectiveWeek} weeklyContent={weeklyContent}/> : null}
               </div>
             ) : (
               <div className="panel-scroll">
@@ -845,14 +923,14 @@ function App({ profile: initialProfile }) {
                   initialQuery={symptomQuery}
                   analytics={analytics}
                   authFetch={authFetch}
-                  COMMON_SYMPTOMS={COMMON_SYMPTOMS}
-                  week={profileData?.due_date ? Math.round(40-(new Date(profileData.due_date)-new Date())/(7*24*60*60*1000)) : 8}
+                  COMMON_SYMPTOMS={enrichedSymptoms}
+                  week={effectiveWeek ?? 8}
                 />
-                  : active==="body" ? <BodyPanel onLogMood={logMood}/>
-                  : active==="food" ? <FoodPanel/>
-                  : active==="moment" ? <MatriMomentPanel week={8} entries={journalEntries} setEntries={setJournalEntriesPersist}/>
+                  : active==="body" ? <BodyPanel onLogMood={logMood} week={effectiveWeek}/>
+                  : active==="food" ? <FoodPanel week={effectiveWeek} weeklyContent={weeklyContent}/>
+                  : active==="moment" ? <MatriMomentPanel week={effectiveWeek ?? 8} weeklyMoment={weeklyContent?.matri_moment} entries={journalEntries} setEntries={setJournalEntriesPersist}/>
                   : active==="medical" ? <MedPanel profileData={profileData} completedTests={completedTests} onMarkTestComplete={markTestComplete} onRxUpload={()=>setRxUploadOpen(true)} {...appMedHandlers}/>
-                  : pd.Panel ? <pd.Panel/> : null}
+                  : pd.Panel ? <pd.Panel week={effectiveWeek} weeklyContent={weeklyContent}/> : null}
               </div>
             )}
           </div>
@@ -945,6 +1023,7 @@ function App({ profile: initialProfile }) {
               entries={journalEntries}
               setEntries={setJournalEntriesPersist}
               onClose={closeQuickAdd}
+              week={effectiveWeek}
             />
           </div>
         </div>
@@ -1051,7 +1130,7 @@ function App({ profile: initialProfile }) {
           profile={profileData}
           onClose={closeProfile}
           onProfileUpdate={setProfileData}
-          weekProp={8}
+          weekProp={effectiveWeek ?? 8}
           onOpenMedical={() => { closeProfile(); setTimeout(() => setMainTab("library"), 400); }}
           completedTests={completedTests}
           onMarkTestComplete={markTestComplete}
@@ -1059,6 +1138,18 @@ function App({ profile: initialProfile }) {
           onRxUpload={() => { closeProfile(); setTimeout(() => setRxUploadOpen(true), 400); }}
         />
       )}
+
+      {/* ── WEEK PICKER SHEET ── */}
+      <WeekPickerSheet
+        open={weekPickerOpen}
+        onClose={() => setWeekPickerOpen(false)}
+        currentWeek={currentWeek}
+        browseWeek={browseWeek}
+        onSelect={(w) => {
+          setBrowseWeek(w);
+          setWeekPickerOpen(false);
+        }}
+      />
 
       {/* ── MED DIALOGS — at app root, outside all transforms/stacking contexts ── */}
       <MedDialogs

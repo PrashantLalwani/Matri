@@ -2,7 +2,7 @@ export const COMMON_SYMPTOMS = {
     "cramping": {
       label: "Cramping", emoji: "😖",
       status: "Usually normal ✅",
-      means: "Round ligament pain or uterine stretching is very common in week 8. Your uterus is growing rapidly.",
+      means: "Round ligament pain or uterine stretching is very common in early pregnancy. Your uterus is growing rapidly.",
       tryThis: "Rest, change position, warm (not hot) water bottle on lower back. Gentle walking can help.",
       callIf: "Heavy bleeding, severe pain that doesn't ease, fever above 100.4°F, or pain on one side only.",
       questions: ["Is cramping normal this early?","What's the difference between round ligament pain and something serious?","Does cramping mean I should rest completely?"],
@@ -11,7 +11,7 @@ export const COMMON_SYMPTOMS = {
     "nausea": {
       label: "Nausea", emoji: "🤢",
       status: "Very common ✅",
-      means: "Week 8 is peak nausea for most women. HCG hormone levels are at their highest right now.",
+      means: "The first trimester is peak nausea time for most women. HCG hormone levels are surging right now.",
       tryThis: "Eat small amounts every 90 minutes. Keep crackers by the bed. Ginger biscuits, coconut water, cold foods smell less.",
       callIf: "Unable to keep any fluids down for 24 hours, signs of dehydration (dark urine, dizziness), weight loss.",
       questions: ["When will the nausea peak and stop?","What can I eat right now that won't make me sick?","Is my nausea worse than normal?"],
@@ -38,7 +38,7 @@ export const COMMON_SYMPTOMS = {
     "no movement": {
       label: "No movement felt", emoji: "👶",
       status: "Normal before week 18 ✅",
-      means: "You won't reliably feel movement until week 18–22. At week 8 baby is only 1.6cm — too small to feel.",
+      means: "You won't reliably feel movement until week 18–22. In early pregnancy the baby is still too small to feel.",
       tryThis: "Nothing to do right now. Start kick counting from week 28 when movements become regular.",
       callIf: "If you've been feeling movement and it suddenly stops after week 24, call your doctor the same day.",
       questions: ["When will I first feel movement?","What does movement feel like at first?","Should I be worried I don't feel anything?"],
@@ -92,7 +92,7 @@ export const COMMON_SYMPTOMS = {
     "mood swings": {
       label: "Mood swings", emoji: "🎭",
       status: "Very common ✅",
-      means: "HCG and progesterone surge causes rapid emotional shifts. Week 8 is one of the most emotionally volatile periods of pregnancy.",
+      means: "HCG and progesterone surge causes rapid emotional shifts. The first trimester is one of the most emotionally volatile periods of pregnancy.",
       tryThis: "Name what you're feeling without judging it. Short walks help regulate mood. Tell your partner it's hormonal, not personal.",
       callIf: "Persistent low mood lasting more than two weeks, inability to function, or thoughts of self-harm — speak to your doctor.",
       questions: ["Is it normal to cry for no reason?","How do I explain mood swings to my partner?","When do mood swings usually settle down?"],

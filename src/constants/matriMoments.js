@@ -9,5 +9,10 @@ export const MATRI_MOMENTS = {
     36: { question: "Almost time. If you could whisper one thing to your baby before they arrive — just one thing — what would it be?", pause: "Write it down. They'll read it someday." },
   };
   
+const GENERIC_MOMENT = {
+  question: "What's on your mind this week? Your baby is growing, and so are you.",
+  pause: "Take a breath. Write anything.",
+};
+
 export const getMatriMoment = (week) =>
-    MATRI_MOMENTS[week] || MATRI_MOMENTS[8];
+    MATRI_MOMENTS[week] || GENERIC_MOMENT;

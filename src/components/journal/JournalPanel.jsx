@@ -340,7 +340,7 @@ export function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
   );
 }
 
-export function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
+export function JournalPanel({ entries, setEntries, initialTab, moodLog, week }) {
   const [tab,       setTab]       = useState(initialTab || "write");
   const [text,      setText]      = useState("");
   const [mood,      setMood]      = useState(null);
@@ -413,7 +413,7 @@ export function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
   const save = () => {
     if (!text.trim() && pendingPhotos.length === 0) return;
     const photos = [...pendingPhotos];
-    setEntries(p => [{id:Date.now(),week:8,date:today,mood:mood||"😊",text:text.trim(),photos,isShared,heroBg:"linear-gradient(135deg,#fdf0ec,#f8ddd8)",heroEmoji:"📝",heroBgColor:"#fdeae6"},...p]);
+    setEntries(p => [{id:Date.now(),week:week??0,date:today,mood:mood||"😊",text:text.trim(),photos,isShared,heroBg:"linear-gradient(135deg,#fdf0ec,#f8ddd8)",heroEmoji:"📝",heroBgColor:"#fdeae6"},...p]);
     setText(""); setMood(null); setPendingPhotos([]); setIsShared(false); setTab("timeline");
   };
 
@@ -472,7 +472,7 @@ export function JournalPanel({ entries, setEntries, initialTab, moodLog }) {
         {tab==="write" && (
           <div className="j-add-prompt">
             <div className="j-prompt-top">
-              <div className="j-prompt-week">Week 8</div>
+              <div className="j-prompt-week">Week {week ?? "…"}</div>
               <div className="j-prompt-date">{today}</div>
             </div>
 

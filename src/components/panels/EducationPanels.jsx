@@ -24,8 +24,31 @@ export const BABY_SIZES = {
 
 export const MOODS = ["😊","😴","🤢","😭","😤","🥰"];
 
-export function BabyPanel() {
+export function BabyPanel({ week, weeklyContent }) {
   const [tab, setTab] = useState("size");
+
+  // Resolve size data: Supabase weekly_content first, then static BABY_SIZES, then week-8 fallback
+  const staticSize = BABY_SIZES[week] || BABY_SIZES[8];
+  const wc = weeklyContent?.baby_size;
+  const size = {
+    cm:      wc?.cm      || staticSize.cm,
+    compare: wc?.compare || staticSize.compare,
+    fact:    wc?.fact    || staticSize.fact,
+    icon:    wc?.icon    || staticSize.icon,
+    hand_mm: wc?.hand_mm ?? null,
+    foot_mm: wc?.foot_mm ?? null,
+    bpm:     wc?.bpm     ?? null,
+  };
+
+  const education = weeklyContent?.education;
+
+  const statCards = [
+    {icon:"✋",label:"Hand length",val:size.hand_mm ? `${size.hand_mm} mm` : "—",note:"Fingers forming"},
+    {icon:"🦶",label:"Foot length",val:size.foot_mm ? `${size.foot_mm} mm` : "—",note:"Tiny toes developing"},
+    {icon:"❤️",label:"Heart rate",val:size.bpm ? `~${size.bpm} bpm` : "~160 bpm",note:"Never stopped since week 6"},
+    {icon:"🧠",label:"Neurons/min",val:"~100",note:"New brain cells forming every minute"},
+  ];
+
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
       {/* Tab bar */}
@@ -62,20 +85,17 @@ export function BabyPanel() {
               </svg>
             </div>
             <div>
-              <div style={{fontSize:11,color:"rgba(240,160,122,0.7)",fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:6}}>Week 8</div>
-              <div style={{fontFamily:"'Lora',serif",fontSize:28,color:"#fff",lineHeight:1,marginBottom:6}}>1.6 cm</div>
-              <div style={{fontSize:13,color:"rgba(255,255,255,0.55)",lineHeight:1.5}}>About the size of the tip of your thumb. Hold your thumb up — that's your baby right now.</div>
+              <div style={{fontSize:11,color:"rgba(240,160,122,0.7)",fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:6}}>Week {week || 8}</div>
+              <div style={{fontFamily:"'Lora',serif",fontSize:28,color:"#fff",lineHeight:1,marginBottom:6}}>{size.cm}</div>
+              <div style={{fontSize:13,color:"rgba(255,255,255,0.55)",lineHeight:1.5}}>
+                {education?.baby_card_text || `About the size of ${size.compare}. Hold your thumb up — that's your baby right now.`}
+              </div>
             </div>
           </div>
 
           {/* Size comparison cards */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:16}}>
-            {[
-              {icon:"✋",label:"Hand length",val:"6 mm",note:"Fingers forming, still slightly webbed"},
-              {icon:"🦶",label:"Foot length",val:"5 mm",note:"Tiny toes just beginning to bud"},
-              {icon:"❤️",label:"Heart rate",val:"~160 bpm",note:"Nearly twice yours. Never stopped since week 6"},
-              {icon:"🧠",label:"Neurons/min",val:"~100",note:"New brain cells forming every minute"},
-            ].map((c,i)=>(
+            {statCards.map((c,i)=>(
               <div key={i} style={{background:"var(--cream2)",borderRadius:14,padding:"14px 13px",display:"flex",flexDirection:"column",gap:6}}>
                 <div style={{fontSize:22}}>{c.icon}</div>
                 <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)"}}>{c.label}</div>
@@ -87,21 +107,23 @@ export function BabyPanel() {
 
           {/* What's happening */}
           <div className="p-lbl" style={{color:"var(--rose)"}}>What's happening right now</div>
-          {["Heart beating 150–170 bpm — nearly twice yours. Started at week 6, never paused.",
+          {(education?.facts_list || [
+            "Heart beating 150–170 bpm — nearly twice yours. Started at week 6, never paused.",
             "Fingers and toes forming — still slightly webbed, like tiny paddles.",
             "Eyelids formed and fused shut. Won't open until week 27.",
             "The tail is almost completely gone. Looks unmistakably human.",
-            "Tiny spontaneous movements already happening — too small to feel yet."].map((t,i)=>(
+            "Tiny spontaneous movements already happening — too small to feel yet.",
+          ]).map((t,i)=>(
             <div key={i} className="p-fact"><div className="p-dot" style={{background:"var(--rose)"}}/><div style={{fontSize:13,lineHeight:1.6}}>{t}</div></div>
           ))}
 
           <div className="p-card pc-white" style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7,marginTop:8}}>
-            That heart started beating at week 6 and hasn't stopped once since. Through your nausea, your exhaustion, your fears — it just keeps going.
+            {education?.key_quote || "That heart started beating and hasn't stopped once since. Through your nausea, your exhaustion, your fears — it just keeps going."}
           </div>
         </>}
 
         {tab==="senses" && <>
-          <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:16}}>At week 8 your baby's sensory world is just beginning to form. Some are already active, others are wiring up.</div>
+          <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:16}}>At week {week || 8} your baby's sensory world is forming. Some are already active, others are wiring up.</div>
 
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:16}}>
             {[
@@ -147,7 +169,7 @@ export function BodyPanel({ onLogMood }) {
     <div className="p-story">
       <div className="p-story-tag">✦ First-hand</div>
       <div className="p-story-meta"><div className="p-story-av">👩</div><div className="p-story-name">Priya · Bengaluru · First pregnancy</div></div>
-      <div className="p-story-q">Week 8 was the hardest week for me. The nausea wasn't just morning — it was 3pm, 9pm, 2am. I couldn't stand the smell of my own kitchen. My MIL kept pushing khichdi. Some days it helped. Most days, plain toast was all I could manage. And I felt guilty about that. Nobody told me the guilt was part of it too.</div>
+      <div className="p-story-q">Early pregnancy was the hardest stretch for me. The nausea wasn't just morning — it was 3pm, 9pm, 2am. I couldn't stand the smell of my own kitchen. My MIL kept pushing khichdi. Some days it helped. Most days, plain toast was all I could manage. And I felt guilty about that. Nobody told me the guilt was part of it too.</div>
       <div className="p-story-foot">You are not alone in this. Not even a little bit.</div>
     </div>
     <div className="india-chip" style={{marginTop:16}}>🇮🇳 The Indian pregnancy experience</div>
@@ -176,16 +198,22 @@ export function BodyPanel({ onLogMood }) {
   </>;
 }
 
-export function ThreeAmPanel() {
+export function ThreeAmPanel({ week, weeklyContent }) {
+  const staticFaq = [
+    {q:`Is it normal to feel this way at week ${week ?? "…"}?`,a:"Yes — symptoms are often most intense in the first trimester and ease significantly after week 12. You're not sicker than others."},
+    {q:"I haven't felt nauseous at all — should I be worried?",a:"No. About 20–30% of women have little to no nausea and have completely healthy pregnancies."},
+    {q:"Is it safe to eat only toast and crackers for days?",a:"Yes. Surviving on bland food in the first trimester is fine. The baby takes what it needs."},
+    {q:"Why do I cry for no reason?",a:"Progesterone and hCG are surging to levels your body has never experienced. Completely hormonal."},
+    {q:"Can I eat paneer / curd / ghee?",a:"Yes, yes, and yes. These are excellent protein sources. The old advice to avoid dairy is not evidence-based."},
+    {q:"I haven't told anyone and I feel so alone",a:"One of the hardest parts of early pregnancy. Consider telling one trusted person."},
+  ];
+  const faq = weeklyContent?.education?.faq?.length
+    ? weeklyContent.education.faq
+    : staticFaq;
+
   return <>
     <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:18,fontStyle:"italic"}}>The searches everyone makes at 2am. You're not alone in any of these.</div>
-    {[{q:"Is it normal to feel this nauseous at week 8?",a:"Yes — this is peak nausea week. It typically eases significantly after week 12. You're not sicker than others."},
-      {q:"I haven't felt nauseous at all — should I be worried?",a:"No. About 20–30% of women have little to no nausea and have completely healthy pregnancies."},
-      {q:"Is it safe to eat only toast and crackers for days?",a:"Yes. Surviving on bland food in the first trimester is fine. The baby takes what it needs."},
-      {q:"Why do I cry for no reason?",a:"Progesterone and hCG are surging to levels your body has never experienced. Completely hormonal."},
-      {q:"Can I eat paneer / curd / ghee?",a:"Yes, yes, and yes. These are excellent protein sources. The old advice to avoid dairy is not evidence-based."},
-      {q:"I haven't told anyone and I feel so alone",a:"One of the hardest parts of the first trimester. Consider telling one trusted person."},
-    ].map((item,i)=>(
+    {faq.map((item,i)=>(
       <div key={i} className="p-card pc-white" style={{marginBottom:10}}>
         <div style={{fontSize:13,fontWeight:600,color:"var(--ink)",marginBottom:6,display:"flex",gap:8}}><span style={{color:"var(--rose)",flexShrink:0}}>?</span>{item.q}</div>
         <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,paddingLeft:20}}>{item.a}</div>
@@ -212,11 +240,11 @@ export function NobodyTellsPanel() {
   </>;
 }
 
-export function PartnerPanel() {
+export function PartnerPanel({ week }) {
   const [done, setDone] = useState({});
   const toggle = id => setDone(p=>({...p,[id]:!p[id]}));
   const missions = [
-    {id:1,title:"Stock ginger biscuits and coconut water at home",why:"Nausea peaks at week 8. Having these without being asked is worth more than you know.",tag:"Essential",col:"#c04040"},
+    {id:1,title:"Stock ginger biscuits and coconut water at home",why:"Nausea is intense in the first trimester. Having these without being asked is worth more than you know.",tag:"Essential",col:"#c04040"},
     {id:2,title:"Take over one meal this week — don't ask, just do it",why:"The smell of cooking is often unbearable right now. Doing this once, without prompting, feels enormous to her.",tag:"High impact",col:"#8a5010"},
     {id:3,title:"Ask her one real question tonight",why:"Not 'how are you?' Try: 'What's the scariest thing on your mind right now?' Then just listen. Don't fix.",tag:"Emotional",col:"var(--navy)"},
     {id:4,title:"Book the TVS dating scan if she hasn't already",why:"Should happen between weeks 7–10. Offer to make the call and come along.",tag:"Action",col:"var(--plum)"},
@@ -225,7 +253,7 @@ export function PartnerPanel() {
 
   return <>
     <div style={{background:"linear-gradient(135deg,#eaf2f8,#d8e8f5)",borderRadius:16,padding:"16px 18px",marginBottom:16}}>
-      <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--navy)",marginBottom:6}}>Week 8 · For partners</div>
+      <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--navy)",marginBottom:6}}>Week {week ?? 8} · For partners</div>
       <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#1a2a40",lineHeight:1.6,fontWeight:400}}>She's doing something extraordinary. Here's what actually matters this week — specific, not generic.</div>
     </div>
 
@@ -273,19 +301,26 @@ export function PartnerPanel() {
   </>;
 }
 
-export function WinsPanel() {
+export function WinsPanel({ week, weeklyContent }) {
+  const wc = weeklyContent?.wins_copy;
+  const subtitle = wc?.subtitle || "That heartbeat hasn't stopped once. Neither have you.";
+  const genericBullets = [
+    "You showed up for yourself and your baby today",
+    "You rested when your body asked you to, even if it felt lazy",
+    "You got through another day — and that counts more than you know",
+    "Your body is doing something extraordinary, quietly, every single minute",
+    "You are further along than you were last week",
+  ];
   return <>
     <div className="p-card pc-wins" style={{textAlign:"center",padding:"24px 20px",marginBottom:16}}>
       <div style={{fontSize:36,marginBottom:10}}>🎉</div>
-      <div style={{fontFamily:"'Lora',serif",fontSize:20,fontStyle:"italic",color:"#fff",lineHeight:1.5,marginBottom:8}}>You made it to week 8.</div>
-      <div style={{fontSize:13,color:"rgba(255,255,255,0.6)",lineHeight:1.7}}>That heart has been beating for two weeks without stopping. Through your nausea, your exhaustion, your 3am fears — it just keeps going. So do you.</div>
+      <div style={{fontFamily:"'Lora',serif",fontSize:20,fontStyle:"italic",color:"#fff",lineHeight:1.5,marginBottom:8}}>
+        You made it to week {week ?? "…"}.
+      </div>
+      <div style={{fontSize:13,color:"rgba(255,255,255,0.6)",lineHeight:1.7}}>{subtitle}</div>
     </div>
     <div className="p-lbl" style={{color:"var(--plum)"}}>This week's wins — however small</div>
-    {["You kept something down today, even if it was just crackers",
-      "You rested when your body asked you to, even if it felt lazy",
-      "You got through another day of feeling terrible without anyone knowing",
-      "Your baby grew actual fingers this week — you did that",
-      "You are 20% through your first trimester"].map((t,i)=>(
+    {genericBullets.map((t,i)=>(
       <div key={i} className="p-fact"><div className="p-dot" style={{background:"var(--plum)"}}/><div style={{fontSize:13,lineHeight:1.6}}>{t}</div></div>
     ))}
     <div className="p-card pc-white" style={{marginTop:8,fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7}}>
@@ -294,7 +329,7 @@ export function WinsPanel() {
   </>;
 }
 
-export function FoodPanel() {
+export function FoodPanel({ week, weeklyContent }) {
   const today = istDate();
 
   const loadNutr = () => {
@@ -353,7 +388,7 @@ export function FoodPanel() {
                 <div className="nutr-meter-icon">{m.icon}</div>
                 <div>
                   <div className="nutr-meter-name">{m.name}</div>
-                  <div className="nutr-meter-target">Week 8 · {m.target}</div>
+                  <div className="nutr-meter-target">Week {week ?? 8} · {m.target}</div>
                 </div>
               </div>
               {/* Status indicator */}
