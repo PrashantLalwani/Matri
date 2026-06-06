@@ -37,7 +37,7 @@ export function AuthScreen() {
 
       {/* Top wordmark */}
       <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:0}}>
-        <div style={{width:7,height:7,borderRadius:"50%",background:"#f0a07a"}}/>
+        <div style={{width:7,height:7,borderRadius:"50%",background:"#e8b8a8"}}/>
         <span style={{fontSize:12,fontWeight:700,letterSpacing:"0.28em",textTransform:"uppercase",color:"rgba(255,255,255,0.55)"}}>matri</span>
       </div>
 
@@ -46,7 +46,7 @@ export function AuthScreen() {
 
         {/* Pregnant lady hero illustration */}
         <div style={{position:"relative",marginBottom:32}}>
-          <div style={{position:"absolute",inset:-28,borderRadius:"50%",background:"radial-gradient(circle,rgba(240,160,122,0.15),transparent 70%)",pointerEvents:"none"}}/>
+          <div style={{position:"absolute",inset:-28,borderRadius:"50%",background:"radial-gradient(circle,rgba(232,184,168,0.15),transparent 70%)",pointerEvents:"none"}}/>
           <div style={{width:100,height:100,borderRadius:"50%",background:"linear-gradient(145deg,rgba(255,255,255,0.1),rgba(255,255,255,0.05))",border:"1.5px solid rgba(255,255,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:50}}>
             🤰
           </div>

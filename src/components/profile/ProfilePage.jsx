@@ -1,10 +1,62 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { supabase } from '../../supabase';
 import { authFetch } from '../../utils/auth';
 import { MedHealthWidget } from '../medical/MedicineComponents';
 import { PrescriptionsList, PrescriptionDetailSheet } from '../medical/PrescriptionComponents';
 import { LabsEditor, TestOrdersSection, TestReportSheet, TestSuggestionsStrip, DoctorInsight } from '../medical/LabComponents';
 import { parseMed } from '../../utils/medical';
+
+function DeleteAccountButton({ userId }) {
+  const [confirm, setConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!userId) return;
+    setDeleting(true);
+    try {
+      // Delete all user data then sign out (RLS cascades handle table rows)
+      await Promise.all([
+        supabase.from("medicines").delete().eq("user_id", userId),
+        supabase.from("test_orders").delete().eq("user_id", userId),
+        supabase.from("scans").delete().eq("user_id", userId),
+        supabase.from("prescriptions").delete().eq("user_id", userId),
+        supabase.from("health_insights").delete().eq("user_id", userId),
+      ]);
+      await supabase.from("profiles").delete().eq("id", userId);
+      localStorage.clear();
+      sessionStorage.clear();
+      await supabase.auth.signOut();
+    } catch {
+      setDeleting(false);
+      setConfirm(false);
+    }
+  };
+
+  if (confirm) return (
+    <div style={{flex:1,background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:16,padding:"12px 14px"}}>
+      <div style={{fontSize:12,color:"var(--ink)",marginBottom:10,lineHeight:1.5}}>
+        This will permanently delete your profile and all health data. Are you sure?
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={()=>setConfirm(false)}
+          style={{flex:1,padding:"8px",background:"#fff",border:"1px solid var(--bdr)",borderRadius:100,fontSize:12,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit"}}>
+          Cancel
+        </button>
+        <button onClick={handleDelete} disabled={deleting}
+          style={{flex:1,padding:"8px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit",opacity:deleting?0.6:1}}>
+          {deleting ? "Deleting…" : "Yes, delete"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <button onClick={()=>setConfirm(true)}
+      style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--rose-bdr)",borderRadius:100,fontSize:14,fontWeight:500,color:"var(--rose)",cursor:"pointer",fontFamily:"inherit"}}>
+      Delete profile
+    </button>
+  );
+}
 
 export default function ProfilePage({ profile, onClose, onProfileUpdate, weekProp = 8, onOpenMedical, completedTests = {}, onMarkTestComplete, appMedHandlers = {}, onRxUpload }) {
   const [editSection, setEditSection] = useState(null);
@@ -183,7 +235,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   <span style={{fontSize:10,color:"rgba(96,204,204,0.65)",fontWeight:600,letterSpacing:"0.05em"}}>View all →</span>
                 </div>
                 {(p.name||p.due_date) ? <>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:19,color:"#fff",lineHeight:1.25,marginBottom:8}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,color:"#fff",lineHeight:1.25,marginBottom:8}}>
                     {p.name ? p.name.split(" ")[0] : ""}
                     {week ? <> · Week <em style={{color:"#60cccc",fontStyle:"italic"}}>{week}</em></> : null}
                   </div>
@@ -193,7 +245,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                     {p.baby_nickname && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>🍼 "{p.baby_nickname}"</span>}
                     {p.partner_name && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>🤝 {p.partner_name.split(" ")[0]}</span>}
                   </div>
-                </> : <div style={{fontFamily:"'Lora',serif",fontSize:15,color:"rgba(255,255,255,0.4)",fontStyle:"italic",marginTop:4}}>Tell Matri about yourself →</div>}
+                </> : <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,color:"rgba(255,255,255,0.4)",fontStyle:"italic",marginTop:4}}>Tell Matri about yourself →</div>}
               </div>
             </div>
 
@@ -210,7 +262,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
 
                     {/* Left — doctor details + AI health insight */}
                     <div style={{flex:1,minWidth:0,overflow:"hidden"}}>
-                      <div style={{fontFamily:"'Lora',serif",fontSize:17,color:"var(--ink)",lineHeight:1.2,marginBottom:5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.doctor_name}</div>
+                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:"var(--ink)",lineHeight:1.2,marginBottom:5,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.doctor_name}</div>
                       {p.clinic_name && (
                         <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
                           <span style={{fontSize:10}}>🏥</span>
@@ -234,7 +286,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                           <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:isClose?"var(--rose)":isPast?"var(--muted)":"var(--navy)",marginBottom:4}}>
                             {isPast ? "Appointment" : "Next visit"}
                           </div>
-                          <div style={{fontFamily:"'Lora',serif",fontSize:28,fontWeight:400,color:isClose?"var(--rose)":isPast?"var(--muted)":"var(--navy)",lineHeight:1}}>{day}</div>
+                          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:400,color:isClose?"var(--rose)":isPast?"var(--muted)":"var(--navy)",lineHeight:1}}>{day}</div>
                           <div style={{fontSize:11,fontWeight:600,color:isClose?"var(--rose)":isPast?"var(--muted)":"var(--navy)",marginTop:2}}>{month}</div>
                           <div style={{fontSize:10,color:"var(--muted)",marginTop:1}}>{year}</div>
                           {!isPast && daysLeft <= 30 && (
@@ -261,25 +313,26 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
             </div>
 
             {/* ── MY HEALTH BRIDGE — links to the My Health tab ── */}
-            <div className="w pg-full" style={{background:"linear-gradient(135deg,#1a1228,#241838)",border:"1px solid rgba(200,160,255,0.15)",cursor:"pointer",minHeight:0}}
+            <div className="w pg-full" style={{background:"linear-gradient(135deg,#1e1230,#2c1840)",border:"1px solid rgba(232,184,200,0.15)",cursor:"pointer",minHeight:0}}
               onClick={()=>{ onOpenMedical && onOpenMedical(); }}>
               <div style={{padding:"16px 18px",display:"flex",alignItems:"center",gap:12}}>
-                <span style={{fontSize:18,color:"rgba(200,160,255,0.7)",flexShrink:0}}>✦</span>
+                <span style={{fontSize:18,color:"rgba(232,184,200,0.7)",flexShrink:0}}>✦</span>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"rgba(200,160,255,0.8)",marginBottom:3}}>My Health</div>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:"rgba(232,184,200,0.8)",marginBottom:3}}>My Health</div>
                   <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",lineHeight:1.5}}>Prescriptions, medicines, labs and tests</div>
                 </div>
-                <span style={{fontSize:16,color:"rgba(200,160,255,0.35)",flexShrink:0}}>→</span>
+                <span style={{fontSize:16,color:"rgba(232,184,200,0.35)",flexShrink:0}}>→</span>
               </div>
             </div>
 
-            {/* ── SIGN OUT — full width ── */}
+            {/* ── SIGN OUT + DELETE ── */}
             <div className="w pg-full" style={{background:"#fff",minHeight:0}}>
-              <div style={{padding:"16px 18px"}}>
+              <div style={{padding:"16px 18px",display:"flex",gap:10}}>
                 <button
-                  style={{width:"100%",padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,fontWeight:500,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit"}}
+                  style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,fontWeight:500,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit"}}
                   onClick={async()=>{ await supabase.auth.signOut(); }}
                 >Sign out</button>
+                <DeleteAccountButton userId={profile?.id} />
               </div>
             </div>
 
@@ -299,7 +352,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
             <div style={{padding:"14px 20px 16px",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
               <div style={{width:36,height:4,borderRadius:100,background:"var(--bdr)",margin:"0 auto 16px"}}/>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)",fontWeight:400}}>About <em style={{color:"var(--rose)"}}>you</em></div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",fontWeight:400}}>About <em style={{color:"var(--rose)"}}>you</em></div>
                 <button onClick={()=>{setAboutSheetVis(false);setTimeout(()=>setShowAboutSheet(false),350);}} style={{width:32,height:32,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
               </div>
             </div>
@@ -317,7 +370,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})} style={{fontSize:10,fontWeight:600,color:"var(--teal)",background:"#fff",border:"1px solid var(--teal-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.due_date?"Edit":"+ Add"}</button>
                 </div>
                 {p.due_date ? <>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:26,color:"var(--teal)",lineHeight:1,marginBottom:4}}>Week <em style={{fontStyle:"italic"}}>{week}</em></div>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,color:"var(--teal)",lineHeight:1,marginBottom:4}}>Week <em style={{fontStyle:"italic"}}>{week}</em></div>
                   {trimester && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--teal)",opacity:0.6,marginBottom:12}}>{trimester}</div>}
                   <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                     {[
@@ -347,7 +400,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   <button onClick={()=>openEdit("about",{name:p.name||"",age:p.age||"",city:p.city||""})} style={{fontSize:10,fontWeight:600,color:"var(--rose)",background:"#fff",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.name?"Edit":"+ Add"}</button>
                 </div>
                 {p.name ? <>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2,marginBottom:10}}>{p.name}</div>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2,marginBottom:10}}>{p.name}</div>
                   <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                     {p.age && <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
                       <span style={{fontSize:16}}>🎂</span>
@@ -371,7 +424,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   <button onClick={()=>openEdit("lifestyle",{diet_type:p.diet_type||"",work_type:p.work_type||""})} style={{fontSize:10,fontWeight:600,color:"var(--forest)",background:"#fff",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.diet_type?"Edit":"+ Add"}</button>
                 </div>
                 {(p.diet_type||p.work_type) ? <>
-                  {p.diet_type && <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2,marginBottom:p.work_type?10:0}}>{dietLabel[p.diet_type]}</div>}
+                  {p.diet_type && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2,marginBottom:p.work_type?10:0}}>{dietLabel[p.diet_type]}</div>}
                   {p.work_type && <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
                     <span style={{fontSize:16}}>💼</span>
                     <div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Work</div><div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{workLabel[p.work_type]}</div></div>
@@ -389,7 +442,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   <button onClick={()=>openEdit("partner",{partner_name:p.partner_name||"",has_partner:p.has_partner})} style={{fontSize:10,fontWeight:600,color:"var(--slate)",background:"#fff",border:"1px solid var(--slate-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.partner_name?"Edit":"+ Add"}</button>
                 </div>
                 {p.partner_name
-                  ? <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{p.partner_name}</div>
+                  ? <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{p.partner_name}</div>
                   : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
               </div>
 
@@ -403,7 +456,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})} style={{fontSize:10,fontWeight:600,color:"var(--plum)",background:"#fff",border:"1px solid var(--plum-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.baby_nickname?"Edit":"+ Add"}</button>
                 </div>
                 {p.baby_nickname
-                  ? <div style={{fontFamily:"'Lora',serif",fontSize:24,color:"var(--plum)",lineHeight:1.2}}>"{p.baby_nickname}"</div>
+                  ? <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:"var(--plum)",lineHeight:1.2}}>"{p.baby_nickname}"</div>
                   : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>What are you calling them?</div>}
               </div>
 
@@ -427,7 +480,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   style={{position:"absolute",top:14,right:14,fontSize:10,fontWeight:600,color:"var(--rose)",background:"#fff",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
                   Edit
                 </button>
-                {editData.name && <div style={{fontFamily:"'Lora',serif",fontSize:24,color:"var(--ink)",lineHeight:1.2,marginBottom:12,paddingRight:52}}>{editData.name}</div>}
+                {editData.name && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:"var(--ink)",lineHeight:1.2,marginBottom:12,paddingRight:52}}>{editData.name}</div>}
                 <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                   {editData.age && (
                     <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
@@ -482,7 +535,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   const validWeek = w > 0 && w <= 42 ? w : null;
                   const tri = !validWeek ? null : validWeek <= 13 ? "First Trimester" : validWeek <= 26 ? "Second Trimester" : "Third Trimester";
                   return <>
-                    <div style={{fontFamily:"'Lora',serif",fontSize:30,color:"var(--teal)",lineHeight:1,marginBottom:4,paddingRight:52}}>
+                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,color:"var(--teal)",lineHeight:1,marginBottom:4,paddingRight:52}}>
                       {validWeek ? <>Week <em style={{fontStyle:"italic"}}>{validWeek}</em></> : "Due soon"}
                     </div>
                     {tri && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--teal)",opacity:0.65,marginBottom:14}}>{tri}</div>}
@@ -575,7 +628,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   Edit
                 </button>
                 {/* Doctor name */}
-                <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2,marginBottom:4,paddingRight:48}}>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2,marginBottom:4,paddingRight:48}}>
                   {editData.doctor_name}
                 </div>
                 {/* Clinic + city */}
@@ -674,7 +727,7 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
                   Edit
                 </button>
                 {editData.diet_type && (
-                  <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2,marginBottom:12,paddingRight:52}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2,marginBottom:12,paddingRight:52}}>
                     {dietLabel[editData.diet_type]}
                   </div>
                 )}

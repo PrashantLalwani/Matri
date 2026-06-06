@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { compressImageFile, buildAlbumPages, photoSquare, photoAlbum } from '../../utils/albumUtils';
 import { COVER_PHOTO_KEY } from '../../utils/storage';
 
-export function PgCover() {
+export function PgCover({ userName }) {
   const [coverPhoto, setCoverPhoto] = useState(() => {
     try { return localStorage.getItem(COVER_PHOTO_KEY) || null; } catch { return null; }
   });
@@ -49,7 +49,7 @@ export function PgCover() {
       <div className="pg-cover-body">
         <div className="pg-cover-series">A Matri Story · Your pregnancy</div>
         <div className="pg-cover-title">The Wait.</div>
-        <div className="pg-cover-name">Priya's pregnancy</div>
+        <div className="pg-cover-name">{userName ? `${userName}'s pregnancy` : "My pregnancy"}</div>
         <div className="pg-cover-chips">
           <span className="pg-cover-chip">📅 March 2025</span>
           <span className="pg-cover-chip">🏥 Due Nov 2025</span>
@@ -179,7 +179,7 @@ export function PgClosing({ data }) {
 }
 
 /* ─── ALBUM VIEW ──────────────────────────────────────────────────────── */
-export function AlbumView({ entries, onClose }) {
+export function AlbumView({ entries, onClose, userName }) {
   const [pg, setPg]       = useState(0);
   const [k,  setK]        = useState(0);
   const [print, setPrint] = useState(false);
@@ -228,7 +228,7 @@ export function AlbumView({ entries, onClose }) {
 
   const renderPage = () => {
     switch(page.type){
-      case "cover":       return <PgCover key={k}/>;
+      case "cover":       return <PgCover key={k} userName={userName}/>;
       case "entry":       return <PgEntry key={k} data={page}/>;
       case "closing":     return <PgClosing key={k} data={page}/>;
       default: return null;
@@ -240,7 +240,7 @@ export function AlbumView({ entries, onClose }) {
       {/* BAR */}
       <div className="album-bar">
         <div className="album-bar-left">
-          <div className="album-bar-title">Priya's Pregnancy Story</div>
+          <div className="album-bar-title">{userName ? `${userName}'s Pregnancy Story` : "My Pregnancy Story"}</div>
           <div className="album-bar-sub">{entries.length} memories</div>
         </div>
         <div className="album-bar-right">

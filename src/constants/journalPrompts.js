@@ -16,4 +16,4 @@ export const WEEKLY_PROMPTS = {
   };
 
 export const getWeekPrompt = (week) =>
-    WEEKLY_PROMPTS[week] || `Week ${week}. What's on your mind today?`;
+    WEEKLY_PROMPTS[week] || (week ? `Week ${week}. What's on your mind today?` : "What's on your mind today?");

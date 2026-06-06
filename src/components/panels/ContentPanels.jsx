@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { myths } from '../../constants/myths';
-import { CHECKLIST_STORAGE_KEY, loadChecked, saveChecked } from '../../utils/storage';
+import { CHECKLIST_STORAGE_KEY, loadChecked, saveChecked, loadUserChecklist, saveUserChecklist } from '../../utils/storage';
 
 export const CHECKS = [
   {id:1,text:"Finalize your doctor",pri:"Today",col:"#c04040"},
@@ -27,7 +27,7 @@ export function MythPanel() {
         <div style={{fontSize:12,color:"var(--muted)",lineHeight:1.65}}>{m.explanation}</div>
       </div>
     ))}
-    <div className="p-card pc-white" style={{fontFamily:"'Lora',serif",fontSize:13,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7,marginTop:4}}>
+    <div className="p-card pc-white" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7,marginTop:4}}>
       You are allowed to say "that's not what my doctor said" to anyone — including your mother-in-law.
     </div>
   </>;
@@ -135,7 +135,7 @@ export function PlanningPanel({ week }) {
       <button onClick={()=>setProfile(null)} style={{background:"none",border:"none",padding:"0 0 14px",fontSize:12,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>← Change</button>
       <div style={{background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
         <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--navy)",marginBottom:5}}>{plan.title}</div>
-        <div style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"#1a2a40",lineHeight:1.65}}>{plan.intro}</div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:"italic",color:"#1a2a40",lineHeight:1.65}}>{plan.intro}</div>
       </div>
       {plan.sections.map((s,i)=>(
         <div key={i} style={{marginBottom:16}}>
@@ -200,7 +200,7 @@ export function FearsPanel() {
         </div>
         {open===f.id&&(
           <div style={{background:"var(--ink)",borderRadius:"0 0 16px 16px",padding:"0 16px 18px",border:"1px solid #2a1a14",borderTop:"none"}}>
-            <div style={{fontFamily:"'Lora',serif",fontSize:13,fontStyle:"italic",color:"rgba(255,255,255,0.65)",lineHeight:1.65,marginBottom:12,paddingTop:4}}>{f.intro}</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,fontStyle:"italic",color:"rgba(255,255,255,0.65)",lineHeight:1.65,marginBottom:12,paddingTop:4}}>{f.intro}</div>
             {f.body.split("\n\n").map((para,i)=>(
               <div key={i} style={{fontSize:13,color:"rgba(255,255,255,0.78)",lineHeight:1.75,marginBottom:10}}>{para}</div>
             ))}
@@ -212,19 +212,99 @@ export function FearsPanel() {
   </>;
 }
 
-export function CheckPanel({ checked, toggle }) {
+export function CheckPanel({ checked, toggle, userItems = [], onUserItemsChange }) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef(null);
+
+  const autoDone  = CHECKS.filter(c => checked[c.id]).length;
+  const userDone  = userItems.filter(u => checked[`u_${u.id}`]).length;
+  const totalDone = autoDone + userDone;
+  const totalAll  = CHECKS.length + userItems.length;
+
+  const addItem = () => {
+    const text = draft.trim();
+    if (!text) { setAdding(false); return; }
+    const item = { id: Date.now(), text };
+    onUserItemsChange?.([...userItems, item]);
+    setDraft("");
+    setAdding(false);
+  };
+
+  const deleteItem = (id) => {
+    onUserItemsChange?.(userItems.filter(u => u.id !== id));
+  };
+
+  const startAdding = () => {
+    setAdding(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
   return <>
-    <div className="p-card pc-white" style={{padding:"4px 16px 12px",marginBottom:16}}>
+    {/* ── THIS WEEK (auto-generated) ── */}
+    <div className="p-card pc-white" style={{padding:"4px 16px 12px",marginBottom:12}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0 8px",borderBottom:"1px solid var(--cream2)",marginBottom:4}}>
+        <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--amber)"}}>This week</span>
+        <span style={{fontSize:11,color:"var(--muted)"}}>{autoDone} of {CHECKS.length} done {autoDone===CHECKS.length?"🎉":""}</span>
+      </div>
       {CHECKS.map(c=>(
         <div key={c.id} className="cl-item" onClick={()=>toggle(c.id)}>
           <div className={`cl-ring${checked[c.id]?" on":""}`}>{checked[c.id]&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
           <div style={{flex:1}}><div className={`cl-txt${checked[c.id]?" on":""}`}>{c.text}</div><div className="cl-tag" style={{color:c.col}}>{c.pri}</div></div>
         </div>
       ))}
-      <div style={{textAlign:"center",paddingTop:10,fontSize:12,color:"var(--muted)"}}>
-        {Object.values(checked).filter(Boolean).length} of {CHECKS.length} done {Object.values(checked).filter(Boolean).length===CHECKS.length?"🎉":""}
-      </div>
     </div>
+
+    {/* ── YOUR LIST (user-added) ── */}
+    <div className="p-card pc-white" style={{padding:"4px 16px 12px",marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0 8px",borderBottom:"1px solid var(--cream2)",marginBottom:4}}>
+        <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--forest)"}}>Your list</span>
+        <button onClick={startAdding} style={{display:"flex",alignItems:"center",gap:4,background:"var(--forest-pale)",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"3px 10px",fontSize:10,fontWeight:600,color:"var(--forest)",cursor:"pointer",fontFamily:"inherit"}}>
+          + Add
+        </button>
+      </div>
+
+      {userItems.length === 0 && !adding && (
+        <div style={{padding:"12px 0",textAlign:"center",fontSize:12,color:"var(--muted)",fontStyle:"italic"}}>
+          Your personal items will appear here
+        </div>
+      )}
+
+      {userItems.map(u=>(
+        <div key={u.id} className="cl-item" style={{paddingRight:0}}>
+          <div className={`cl-ring${checked[`u_${u.id}`]?" on":""}`} onClick={()=>toggle(`u_${u.id}`)}
+            style={checked[`u_${u.id}`]?{background:"var(--forest)",borderColor:"var(--forest)"}:{}}>
+            {checked[`u_${u.id}`]&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}
+          </div>
+          <div style={{flex:1}} onClick={()=>toggle(`u_${u.id}`)}>
+            <div className={`cl-txt${checked[`u_${u.id}`]?" on":""}`} style={checked[`u_${u.id}`]?{color:"var(--forest)"}:{}}>{u.text}</div>
+          </div>
+          <button onClick={()=>deleteItem(u.id)} style={{background:"none",border:"none",padding:"4px 6px",cursor:"pointer",color:"var(--muted)",fontSize:14,lineHeight:1,fontFamily:"inherit",opacity:0.5}}>×</button>
+        </div>
+      ))}
+
+      {adding && (
+        <div style={{display:"flex",gap:8,alignItems:"center",paddingTop:10,borderTop:userItems.length?"1px solid var(--cream2)":"none",marginTop:userItems.length?4:0}}>
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={e=>setDraft(e.target.value)}
+            onKeyDown={e=>{ if(e.key==="Enter") addItem(); if(e.key==="Escape"){setAdding(false);setDraft("");} }}
+            placeholder="Add an item…"
+            style={{flex:1,border:"1px solid var(--bdr)",borderRadius:10,padding:"8px 12px",fontSize:13,fontFamily:"inherit",color:"var(--ink)",background:"var(--cream)",outline:"none"}}
+          />
+          <button onClick={addItem} style={{background:"var(--forest)",color:"#fff",border:"none",borderRadius:100,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Add</button>
+          <button onClick={()=>{setAdding(false);setDraft("");}} style={{background:"none",border:"1px solid var(--bdr)",borderRadius:100,padding:"8px 10px",fontSize:11,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Cancel</button>
+        </div>
+      )}
+
+      {totalAll > 0 && (
+        <div style={{textAlign:"center",paddingTop:10,fontSize:12,color:"var(--muted)",borderTop:"1px solid var(--cream2)",marginTop:6}}>
+          {totalDone} of {totalAll} done {totalDone===totalAll&&totalAll>0?"🎉":""}
+        </div>
+      )}
+    </div>
+
     <div className="p-lbl" style={{color:"var(--amber)"}}>Worth buying this week</div>
     <div className="shop-row">
       {[{ico:"💊",nm:"Folic Acid + Iron",wy:"Neural development",pr:"₹120–300/mo"},

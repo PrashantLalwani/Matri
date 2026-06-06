@@ -227,7 +227,7 @@ function EmptyHealthState({ onUpload }) {
     <>
       <div style={{background:"linear-gradient(135deg,var(--slate-pale),#e8ecf4)",border:"1px solid var(--slate-bdr)",borderRadius:20,padding:"22px 18px 20px",marginBottom:20,textAlign:"center"}}>
         <div style={{fontSize:32,marginBottom:10,opacity:0.85}}>✦</div>
-        <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.3,marginBottom:8}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.3,marginBottom:8}}>
           Your health, <em>organized by AI.</em>
         </div>
         <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.75,marginBottom:20}}>
@@ -293,7 +293,7 @@ function DoctorNotesRow({ prescriptions, onViewDetail, onUpload }) {
             onClick={() => onViewDetail(rx)}
             style={{flexShrink:0,width:165,background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:16,padding:"14px",cursor:"pointer"}}>
             <div style={{fontSize:9,fontWeight:700,color:"var(--navy)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:5}}>Prescription</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:13,color:"var(--ink)",lineHeight:1.35,marginBottom:5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:13,color:"var(--ink)",lineHeight:1.35,marginBottom:5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
               {rx.doctor_name || (date ? `Doctor · ${date}` : "Uploaded prescription")}
             </div>
             {rx.clinic_name && <div style={{fontSize:10,color:"var(--muted)",marginBottom:4}}>{rx.clinic_name}</div>}
@@ -474,7 +474,7 @@ function ScanReportSheet({ scan, onClose }) {
         <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
           <div>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--navy)",marginBottom:4}}>Scan Report</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{scan.type || "Scan"}</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{scan.type || "Scan"}</div>
             {dateLabel && <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>{dateLabel}</div>}
           </div>
           <button onClick={close} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
@@ -627,7 +627,7 @@ function ScanInsightsSheet({ scans, onClose, onUpload }) {
         <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
           <div>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--navy)",marginBottom:4}}>Scan Insights</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>Across all <em>scans</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>Across all <em>scans</em></div>
             <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>{completed.length} scan{completed.length !== 1 ? "s" : ""} completed</div>
           </div>
           <button onClick={close} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
@@ -668,7 +668,7 @@ function ScanInsightsSheet({ scans, onClose, onUpload }) {
                     <div key={key} style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:14,padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                       <div>
                         <div style={{fontSize:10,color:"var(--muted)",marginBottom:2}}>{label}</div>
-                        <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)"}}>
+                        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)"}}>
                           {val}<span style={{fontSize:10,color:"var(--muted)",fontFamily:"inherit",marginLeft:3}}>{unit}</span>
                         </div>
                         <div style={{fontSize:9,color:"var(--muted)",marginTop:1}}>
@@ -707,7 +707,7 @@ function ScanInsightsSheet({ scans, onClose, onUpload }) {
                 </svg>
                 <div style={{position:"relative",zIndex:1}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"rgba(100,180,255,0.7)",marginBottom:7}}>Tracked over time</div>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"#fff",lineHeight:1.3,marginBottom:8}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"#fff",lineHeight:1.3,marginBottom:8}}>
                     See baby's <em style={{color:"rgba(100,180,255,0.85)"}}>growth.</em>
                   </div>
                   <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",lineHeight:1.75,marginBottom:12}}>
@@ -1001,7 +1001,7 @@ function LabInsightsSheet({ labData: initLabData = {}, labExtras: initLabExtras 
         <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
           <div>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--teal)",marginBottom:4}}>Lab Insights</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>Across all <em>results</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>Across all <em>results</em></div>
             <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>
               {CORE.filter(c=>(labData[c.key]||[]).length>0).length} tests tracked
             </div>
@@ -1055,7 +1055,7 @@ function LabInsightsSheet({ labData: initLabData = {}, labExtras: initLabExtras 
                     <div key={c.key} style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:14,padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                       <div>
                         <div style={{fontSize:10,color:"var(--muted)",marginBottom:2}}>{c.label}</div>
-                        <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)"}}>
+                        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)"}}>
                           {latest.value}<span style={{fontSize:10,color:"var(--muted)",fontFamily:"inherit",marginLeft:3}}>{c.unit}</span>
                         </div>
                         <div style={{fontSize:9,color:"var(--muted)",marginTop:1}}>{new Date(latest.date).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</div>
@@ -1095,7 +1095,7 @@ function LabInsightsSheet({ labData: initLabData = {}, labExtras: initLabExtras 
 
                 <div style={{position:"relative",zIndex:1}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"rgba(80,220,190,0.7)",marginBottom:7}}>AI-powered tracking</div>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:19,color:"#fff",lineHeight:1.25,marginBottom:8}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,color:"#fff",lineHeight:1.25,marginBottom:8}}>
                     Know your <em style={{color:"rgba(80,220,190,0.85)"}}>numbers.</em>
                   </div>
                   <div style={{fontSize:12,color:"rgba(255,255,255,0.45)",lineHeight:1.75,marginBottom:14}}>
@@ -1422,7 +1422,7 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
         <span style={{position:"absolute",fontSize:220,right:-20,bottom:-30,opacity:0.06,pointerEvents:"none",userSelect:"none",transform:"rotate(-12deg)"}}>🧬</span>
         <div style={{position:"relative",zIndex:2,padding:"18px 20px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <div style={{width:6,height:6,borderRadius:"50%",background:"rgba(200,160,255,0.6)",flexShrink:0}}/>
+            <div style={{width:6,height:6,borderRadius:"50%",background:"rgba(232,184,200,0.6)",flexShrink:0}}/>
             <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(255,255,255,0.4)"}}>My Health</span>
           </div>
           <div className="profile-chip" onClick={e=>{e.stopPropagation();onOpenProfile?.();}}>
@@ -1431,8 +1431,8 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
           </div>
         </div>
         <div style={{position:"relative",zIndex:2,padding:"18px 20px 24px"}}>
-          <div style={{fontFamily:"'Lora',serif",fontSize:30,fontWeight:400,color:"#fff",lineHeight:1.05,marginBottom:8}}>
-            Everything Matri<br/><em style={{fontStyle:"italic",color:"rgba(200,160,255,0.85)"}}>knows about you.</em>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,fontWeight:400,color:"#fff",lineHeight:1.05,marginBottom:8}}>
+            Everything Matri<br/><em style={{fontStyle:"italic",color:"rgba(232,184,200,0.85)"}}>knows about you.</em>
           </div>
           <div style={{fontSize:13,color:"rgba(255,255,255,0.36)",lineHeight:1.65,marginBottom:healthContext?.summary?14:0}}>
             Prescriptions, medicines, tests — all remembered.
@@ -1440,12 +1440,12 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
           {healthContext?.summary && (() => {
             const points = parseSummaryPoints(healthContext.summary);
             return (
-              <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(200,160,255,0.12)",borderRadius:14,padding:"10px 14px"}}>
-                <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"rgba(200,160,255,0.5)",marginBottom:8}}>Matri's current understanding</div>
+              <div style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(232,184,200,0.12)",borderRadius:14,padding:"10px 14px"}}>
+                <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"rgba(232,184,200,0.5)",marginBottom:8}}>Matri's current understanding</div>
                 <div style={{display:"flex",flexDirection:"column",gap:5}}>
                   {points.map((pt, i) => (
                     <div key={i} style={{display:"flex",alignItems:"center",gap:7}}>
-                      <span style={{fontSize:pt.icon==='·'?16:12,flexShrink:0,lineHeight:1,color:"rgba(200,160,255,0.5)"}}>{pt.icon}</span>
+                      <span style={{fontSize:pt.icon==='·'?16:12,flexShrink:0,lineHeight:1,color:"rgba(232,184,200,0.5)"}}>{pt.icon}</span>
                       <span style={{fontSize:11,color:"rgba(255,255,255,0.55)",lineHeight:1.3,textTransform:"capitalize"}}>{pt.text}</span>
                     </div>
                   ))}

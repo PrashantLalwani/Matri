@@ -22,6 +22,19 @@ export function saveChecked(checked) {
   } catch { /* quota */ }
 }
 
+export const USER_CHECKLIST_KEY = "matri-user-checklist";
+
+export function loadUserChecklist() {
+  try {
+    const raw = localStorage.getItem(USER_CHECKLIST_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function saveUserChecklist(items) {
+  try { localStorage.setItem(USER_CHECKLIST_KEY, JSON.stringify(items)); } catch {}
+}
+
 export const USER_STORIES_KEY = "matri-user-stories";
 
 export function loadUserStories() {

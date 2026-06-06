@@ -24,6 +24,83 @@ export const BABY_SIZES = {
 
 export const MOODS = ["😊","😴","🤢","😭","😤","🥰"];
 
+function getSensesData(w) {
+  const week = w || 8;
+
+  if (week <= 6) return {
+    intro: `At week ${week} your baby is a cluster of cells. Senses haven't started forming yet — but the blueprint is already written.`,
+    senses: [
+      {ico:"🤚",name:"Touch",   status:"not yet",col:"var(--muted)",bg:"var(--cream2)",      bdr:"var(--bdr)",         desc:"Neural pathways haven't formed yet. Skin receptors develop from week 8."},
+      {ico:"👁", name:"Sight",  status:"not yet",col:"var(--muted)",bg:"var(--cream2)",      bdr:"var(--bdr)",         desc:"Eye structures haven't begun forming. Eyes appear around week 5–6."},
+      {ico:"👂",name:"Hearing", status:"not yet",col:"var(--muted)",bg:"var(--cream2)",      bdr:"var(--bdr)",         desc:"Ears won't start developing until week 6–8."},
+      {ico:"👅",name:"Taste",   status:"not yet",col:"var(--muted)",bg:"var(--cream2)",      bdr:"var(--bdr)",         desc:"Taste buds begin forming around week 8. Nothing to taste quite yet."},
+    ],
+    wombQuote: "Right now your baby is becoming. Every cell is dividing with one purpose — to meet you. This is where it all starts.",
+    cta: null,
+  };
+
+  if (week <= 12) return {
+    intro: `At week ${week} your baby's first senses are waking up. Touch is already active — they flinch from stimulation.`,
+    senses: [
+      {ico:"🤚",name:"Touch",   status:"active",  col:"var(--rose)",  bg:"var(--rose-pale)", bdr:"var(--rose-bdr)",   desc:"Already responds to touch — curls and flinches away from stimulation. First sense to activate."},
+      {ico:"👁", name:"Sight",  status:"forming", col:"var(--navy)",  bg:"var(--navy-pale)", bdr:"var(--navy-bdr)",   desc:"Eyes forming but fused shut. Will stay that way until week 27. Light sensitivity begins week 22."},
+      {ico:"👂",name:"Hearing", status:"forming", col:"var(--amber)", bg:"var(--amber-pale)",bdr:"var(--amber-bdr)",  desc:"Inner ear developing. Cochlea forming. Sound recognition is still weeks away."},
+      {ico:"👅",name:"Taste",   status:"forming", col:"var(--amber)", bg:"var(--amber-pale)",bdr:"var(--amber-bdr)",  desc:"Taste buds beginning to form around week 8. Will start tasting amniotic fluid by week 15."},
+    ],
+    wombQuote: "Your baby can already feel you moving. Not much — but enough. The first sensation they'll ever know is the rhythm of your life.",
+    cta: "Touch your belly. At this stage, they may already be curling away from the pressure — or moving toward it. Nobody knows which yet.",
+  };
+
+  if (week <= 18) return {
+    intro: `At week ${week} your baby's senses are advancing quickly. They can taste what you eat, and hearing is almost here.`,
+    senses: [
+      {ico:"🤚",name:"Touch",   status:"active",  col:"var(--rose)",    bg:"var(--rose-pale)",  bdr:"var(--rose-bdr)",   desc:"Responds strongly to touch on your belly. Kicks, rolls, and grabs the umbilical cord."},
+      {ico:"👁", name:"Sight",  status:"forming", col:"var(--navy)",    bg:"var(--navy-pale)",  bdr:"var(--navy-bdr)",   desc:"Eyes still fused. Can detect bright light through the womb. Won't open until week 27."},
+      {ico:"👂",name:"Hearing", status:"forming", col:"var(--amber)",   bg:"var(--amber-pale)", bdr:"var(--amber-bdr)",  desc:"Inner ear nearly complete. Sound recognition begins around week 18."},
+      {ico:"👅",name:"Taste",   status:"active",  col:"var(--forest)",  bg:"var(--forest-pale)",bdr:"var(--forest-bdr)", desc:"Actively tasting amniotic fluid. What you eat shapes their very first food memories."},
+    ],
+    wombQuote: "Your baby is tasting your meals. They know the warmth of spice, the sweetness of fruit — all filtered through you. You're their first world.",
+    cta: "Start eating a variety now. Babies who taste diverse flavours in the womb are more receptive to those foods after birth. It's not folklore — it's research.",
+  };
+
+  if (week <= 26) return {
+    intro: `At week ${week} your baby can hear your voice clearly. They'll recognise it the moment they're born.`,
+    senses: [
+      {ico:"🤚",name:"Touch",   status:"active",  col:"var(--rose)",    bg:"var(--rose-pale)",  bdr:"var(--rose-bdr)",   desc:"Very responsive. Can suck their thumb and grip the umbilical cord. Responds to belly rubs."},
+      {ico:"👁", name:"Sight",  status:"forming", col:"var(--plum)",    bg:"var(--plum-pale)",  bdr:"var(--plum-bdr)",   desc:"Eyes still fused, beginning to open around week 27. Light through your belly skin is noticeable."},
+      {ico:"👂",name:"Hearing", status:"active",  col:"var(--teal)",    bg:"var(--teal-pale)",  bdr:"var(--teal-bdr)",   desc:"Fully hearing. Recognises your voice and partner's. Loud sounds cause noticeable movement."},
+      {ico:"👅",name:"Taste",   status:"active",  col:"var(--forest)",  bg:"var(--forest-pale)",bdr:"var(--forest-bdr)", desc:"Strong sense of taste. Swallows more amniotic fluid when it tastes sweet, less when bitter."},
+    ],
+    wombQuote: "Your baby hears you. Not just sounds — your voice specifically. They're already learning its rhythm, its warmth, its tone. They'll know it the second they're born.",
+    cta: "Talk to your bump. Sing a song or say a phrase daily. After birth, babies will calm to sounds they heard repeatedly in the womb. That's memory starting now.",
+  };
+
+  if (week <= 32) return {
+    intro: `At week ${week} all your baby's senses are active. Their eyes are open. They're listening, tasting, and feeling every day.`,
+    senses: [
+      {ico:"🤚",name:"Touch",   status:"active",  col:"var(--rose)",    bg:"var(--rose-pale)",  bdr:"var(--rose-bdr)",   desc:"Highly developed. Responds to massage and light pressure on your belly. Feel for kicks in response."},
+      {ico:"👁", name:"Sight",  status:"active",  col:"var(--plum)",    bg:"var(--plum-pale)",  bdr:"var(--plum-bdr)",   desc:"Eyes open and closing regularly. Pupils react to light. Sees movement and light/shadow through the womb."},
+      {ico:"👂",name:"Hearing", status:"active",  col:"var(--teal)",    bg:"var(--teal-pale)",  bdr:"var(--teal-bdr)",   desc:"Fully developed. Distinguishes different voices. Recognises favourite sounds and calms to them."},
+      {ico:"👅",name:"Taste",   status:"active",  col:"var(--forest)",  bg:"var(--forest-pale)",bdr:"var(--forest-bdr)", desc:"Fully active. What you eat now shapes early food preferences. Exposure to spice and variety helps."},
+    ],
+    wombQuote: "Your baby is listening. Eyes open, hands touching the womb walls. They're fully here — just waiting for the right time.",
+    cta: "Shine a torch gently on your belly in a dark room. Your baby will often turn toward or away from the light. A small hello from the outside world.",
+  };
+
+  // 33+
+  return {
+    intro: `At week ${week} every sense is fully developed. Your baby is completely aware of the world inside the womb — and curious about what's outside.`,
+    senses: [
+      {ico:"🤚",name:"Touch",   status:"active",  col:"var(--rose)",    bg:"var(--rose-pale)",  bdr:"var(--rose-bdr)",   desc:"Expert. Feels every movement, every pressure change. Head engaged means they feel even more."},
+      {ico:"👁", name:"Sight",  status:"active",  col:"var(--plum)",    bg:"var(--plum-pale)",  bdr:"var(--plum-bdr)",   desc:"Eyes fully functional. Recognises light vs dark. Ready for the bright world waiting outside."},
+      {ico:"👂",name:"Hearing", status:"active",  col:"var(--teal)",    bg:"var(--teal-pale)",  bdr:"var(--teal-bdr)",   desc:"Fully mature. Will recognise your voice, partner's voice, and any song you played regularly."},
+      {ico:"👅",name:"Taste",   status:"active",  col:"var(--forest)",  bg:"var(--forest-pale)",bdr:"var(--forest-bdr)", desc:"Fully mature. They'll be drawn to familiar foods after birth — the ones you ate most through pregnancy."},
+    ],
+    wombQuote: "Your baby knows your voice better than any voice they'll ever hear. They've been listening for months. The first time they hear it outside — they'll know exactly who you are.",
+    cta: null,
+  };
+}
+
 export function BabyPanel({ week, weeklyContent }) {
   const [tab, setTab] = useState("size");
 
@@ -85,8 +162,8 @@ export function BabyPanel({ week, weeklyContent }) {
               </svg>
             </div>
             <div>
-              <div style={{fontSize:11,color:"rgba(240,160,122,0.7)",fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:6}}>Week {week || 8}</div>
-              <div style={{fontFamily:"'Lora',serif",fontSize:28,color:"#fff",lineHeight:1,marginBottom:6}}>{size.cm}</div>
+              <div style={{fontSize:11,color:"rgba(232,184,168,0.7)",fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:6}}>Week {week || 8}</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,color:"#fff",lineHeight:1,marginBottom:6}}>{size.cm}</div>
               <div style={{fontSize:13,color:"rgba(255,255,255,0.55)",lineHeight:1.5}}>
                 {education?.baby_card_text || `About the size of ${size.compare}. Hold your thumb up — that's your baby right now.`}
               </div>
@@ -99,7 +176,7 @@ export function BabyPanel({ week, weeklyContent }) {
               <div key={i} style={{background:"var(--cream2)",borderRadius:14,padding:"14px 13px",display:"flex",flexDirection:"column",gap:6}}>
                 <div style={{fontSize:22}}>{c.icon}</div>
                 <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.15em",textTransform:"uppercase",color:"var(--muted)"}}>{c.label}</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--ink)",fontWeight:400}}>{c.val}</div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"var(--ink)",fontWeight:400}}>{c.val}</div>
                 <div style={{fontSize:10,color:"var(--muted)",lineHeight:1.5}}>{c.note}</div>
               </div>
             ))}
@@ -117,42 +194,63 @@ export function BabyPanel({ week, weeklyContent }) {
             <div key={i} className="p-fact"><div className="p-dot" style={{background:"var(--rose)"}}/><div style={{fontSize:13,lineHeight:1.6}}>{t}</div></div>
           ))}
 
-          <div className="p-card pc-white" style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7,marginTop:8}}>
+          <div className="p-card pc-white" style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7,marginTop:8}}>
             {education?.key_quote || "That heart started beating and hasn't stopped once since. Through your nausea, your exhaustion, your fears — it just keeps going."}
           </div>
         </>}
 
-        {tab==="senses" && <>
-          <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:16}}>At week {week || 8} your baby's sensory world is forming. Some are already active, others are wiring up.</div>
+        {tab==="senses" && (()=>{
+          // Use seeded data from weekly_content if available, fall back to static
+          const seeded = education?.senses;
+          const fallback = getSensesData(week);
+          const SENSE_STYLE = {
+            touch:   {ico:"🤚", col:"var(--rose)",   bg:"var(--rose-pale)",   bdr:"var(--rose-bdr)"},
+            sight:   {ico:"👁",  col:"var(--plum)",   bg:"var(--plum-pale)",   bdr:"var(--plum-bdr)"},
+            hearing: {ico:"👂", col:"var(--teal)",   bg:"var(--teal-pale)",   bdr:"var(--teal-bdr)"},
+            taste:   {ico:"👅", col:"var(--forest)", bg:"var(--forest-pale)", bdr:"var(--forest-bdr)"},
+          };
+          const sd = seeded ? {
+            intro: seeded.intro,
+            senses: ["touch","sight","hearing","taste"].map(key => ({
+              ico:    SENSE_STYLE[key].ico,
+              name:   key.charAt(0).toUpperCase() + key.slice(1),
+              status: seeded[key]?.status || "forming",
+              col:    SENSE_STYLE[key].col,
+              bg:     SENSE_STYLE[key].bg,
+              bdr:    SENSE_STYLE[key].bdr,
+              desc:   seeded[key]?.desc || "",
+            })),
+            wombQuote: seeded.womb_quote,
+            cta: seeded.cta || null,
+          } : fallback;
+          return <>
+            <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.65,marginBottom:16}}>{sd.intro}</div>
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:16}}>
-            {[
-              {ico:"🤚",name:"Touch",status:"active",col:"var(--rose)",bg:"var(--rose-pale)",bdr:"var(--rose-bdr)",desc:"Skin receptors forming. Already curls away from stimulation."},
-              {ico:"👁",name:"Sight",status:"forming",col:"var(--navy)",bg:"var(--navy-pale)",bdr:"var(--navy-bdr)",desc:"Eyes forming but fused shut. Can sense light by week 22."},
-              {ico:"👂",name:"Hearing",status:"forming",col:"var(--navy)",bg:"var(--navy-pale)",bdr:"var(--navy-bdr)",desc:"Inner ear forming now. Will hear your voice from week 18–20."},
-              {ico:"👅",name:"Taste",status:"later",col:"var(--muted)",bg:"var(--cream2)",bdr:"var(--bdr)",desc:"Taste buds form week 13–15. Will taste what you eat."},
-            ].map((s,i)=>(
-              <div key={i} style={{background:s.bg,border:`1px solid ${s.bdr}`,borderRadius:14,padding:"14px 12px"}}>
-                <div style={{fontSize:22,marginBottom:8}}>{s.ico}</div>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                  <div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
-                  <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:s.col,background:"rgba(255,255,255,0.6)",borderRadius:100,padding:"2px 7px"}}>{s.status}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:16}}>
+              {sd.senses.map((s,i)=>(
+                <div key={i} style={{background:s.bg,border:`1px solid ${s.bdr}`,borderRadius:14,padding:"14px 12px"}}>
+                  <div style={{fontSize:22,marginBottom:8}}>{s.ico}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{s.name}</div>
+                    <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:s.col,background:"rgba(255,255,255,0.6)",borderRadius:100,padding:"2px 7px"}}>{s.status}</div>
+                  </div>
+                  <div style={{fontSize:11,color:"var(--muted)",lineHeight:1.55}}>{s.desc}</div>
                 </div>
-                <div style={{fontSize:11,color:"var(--muted)",lineHeight:1.55}}>{s.desc}</div>
+              ))}
+            </div>
+
+            <div style={{background:"linear-gradient(135deg,#0a2020,#183535)",borderRadius:16,padding:"16px 18px",marginBottom:12}}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(112,200,184,0.7)",marginBottom:8}}>Womb connection</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:"italic",color:"rgba(255,255,255,0.82)",lineHeight:1.75}}>"{sd.wombQuote}"</div>
+            </div>
+
+            {sd.cta && (
+              <div className="p-card pc-white" style={{fontSize:12,color:"var(--muted)",lineHeight:1.65}}>
+                <strong style={{color:"var(--ink)",fontWeight:600}}>Something to try now: </strong>{sd.cta}
               </div>
-            ))}
-          </div>
-
-          {/* Womb connection */}
-          <div style={{background:"linear-gradient(135deg,#0a2020,#183535)",borderRadius:16,padding:"16px 18px",marginBottom:12}}>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(112,200,184,0.7)",marginBottom:8}}>Womb connection</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"rgba(255,255,255,0.82)",lineHeight:1.75}}>"Your baby can feel you moving. Your heartbeat is already their lullaby. The rhythm you've had all your life is the first sound they'll ever know."</div>
-          </div>
-
-          <div className="p-card pc-white" style={{fontSize:12,color:"var(--muted)",lineHeight:1.65}}>
-            <strong style={{color:"var(--ink)",fontWeight:600}}>Something to start now:</strong> From around week 18, your baby will recognise sounds they've heard repeatedly. If you or your partner speak the same phrase, hum the same tune, or play the same song every day — baby may recognise it after birth. That's not superstition. That's memory beginning.
-          </div>
-        </>}
+            )}
+          </>;
+        })()}
       </div>
     </div>
   );
@@ -254,7 +352,7 @@ export function PartnerPanel({ week }) {
   return <>
     <div style={{background:"linear-gradient(135deg,#eaf2f8,#d8e8f5)",borderRadius:16,padding:"16px 18px",marginBottom:16}}>
       <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--navy)",marginBottom:6}}>Week {week ?? 8} · For partners</div>
-      <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#1a2a40",lineHeight:1.6,fontWeight:400}}>She's doing something extraordinary. Here's what actually matters this week — specific, not generic.</div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:"#1a2a40",lineHeight:1.6,fontWeight:400}}>She's doing something extraordinary. Here's what actually matters this week — specific, not generic.</div>
     </div>
 
     <div className="p-card pc-white" style={{marginBottom:16}}>
@@ -281,7 +379,7 @@ export function PartnerPanel({ week }) {
 
     {/* Progress */}
     <div style={{background:"var(--navy-pale)",border:"1px solid var(--navy-bdr)",borderRadius:14,padding:"13px 16px",display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-      <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--navy)",fontWeight:400,flexShrink:0}}>{doneCount}/4</div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"var(--navy)",fontWeight:400,flexShrink:0}}>{doneCount}/4</div>
       <div style={{flex:1,height:6,background:"rgba(42,74,112,0.12)",borderRadius:100,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${doneCount/4*100}%`,background:"var(--navy)",borderRadius:100,transition:"width 0.3s"}}/>
       </div>
@@ -314,7 +412,7 @@ export function WinsPanel({ week, weeklyContent }) {
   return <>
     <div className="p-card pc-wins" style={{textAlign:"center",padding:"24px 20px",marginBottom:16}}>
       <div style={{fontSize:36,marginBottom:10}}>🎉</div>
-      <div style={{fontFamily:"'Lora',serif",fontSize:20,fontStyle:"italic",color:"#fff",lineHeight:1.5,marginBottom:8}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontStyle:"italic",color:"#fff",lineHeight:1.5,marginBottom:8}}>
         You made it to week {week ?? "…"}.
       </div>
       <div style={{fontSize:13,color:"rgba(255,255,255,0.6)",lineHeight:1.7}}>{subtitle}</div>
@@ -323,7 +421,7 @@ export function WinsPanel({ week, weeklyContent }) {
     {genericBullets.map((t,i)=>(
       <div key={i} className="p-fact"><div className="p-dot" style={{background:"var(--plum)"}}/><div style={{fontSize:13,lineHeight:1.6}}>{t}</div></div>
     ))}
-    <div className="p-card pc-white" style={{marginTop:8,fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7}}>
+    <div className="p-card pc-white" style={{marginTop:8,fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:"italic",color:"var(--muted)",lineHeight:1.7}}>
       On the hardest days: you don't have to feel good about this. You just have to get through it. That's enough.
     </div>
   </>;

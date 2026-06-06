@@ -79,7 +79,16 @@ Return ONLY a valid JSON object with EXACTLY these keys. No extra commentary, no
       { "q": "a third question", "a": "clear answer" }
     ],
     "partner_tip": "one specific, actionable thing a partner should do or know this week. 1-2 sentences.",
-    "key_quote": "a short, italic-worthy quote or observation about this week. 1-2 sentences. No attribution needed."
+    "key_quote": "a short, italic-worthy quote or observation about this week. 1-2 sentences. No attribution needed.",
+    "senses": {
+      "intro": "1-2 sentences describing the state of sensory development at week ${week}. Be specific and accurate to this week.",
+      "touch":   { "status": "one of: active | forming | not yet", "desc": "week-specific description of touch development. 1-2 sentences." },
+      "sight":   { "status": "one of: active | forming | not yet", "desc": "week-specific description of sight development. 1-2 sentences." },
+      "hearing": { "status": "one of: active | forming | not yet", "desc": "week-specific description of hearing development. 1-2 sentences." },
+      "taste":   { "status": "one of: active | forming | not yet", "desc": "week-specific description of taste development. 1-2 sentences." },
+      "womb_quote": "intimate, poetic 1-2 sentence quote for a 'Womb Connection' card. Should feel warm and personal to the mother.",
+      "cta": "a practical, specific activity the mother can try this week related to the senses (e.g. talk to bump, play music, shine a torch). Or null if not developmentally relevant yet."
+    }
   },
   "symptom_contexts": {
     "cramping": {

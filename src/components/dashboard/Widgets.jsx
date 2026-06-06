@@ -10,7 +10,7 @@ import { MILESTONES } from '../../constants/milestones';
 import { JournalPanel } from '../journal/JournalPanel';
 
 /* ─── SHAREABLE WEEK STRIP ──────────────────────────────────────────────── */
-export function ShareableStrip({ entries }) {
+export function ShareableStrip({ entries, userName }) {
   const [generating, setGenerating] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -351,9 +351,25 @@ export function ShareableStrip({ entries }) {
     setGenerating(false);
   };
 
+  const displayName = userName || "Your";
+  const title = `${displayName}'s Pregnancy Journey 🌸`;
+
   if (!weeks.length) return (
-    <div style={{padding:"16px",fontSize:12,color:"var(--muted)",fontStyle:"italic",textAlign:"center"}}>
-      Write your first journal entry to create a shareable PDF.
+    <div style={{margin:"0 16px 16px"}}>
+      <div className="share-card" style={{opacity:0.75}}>
+        <div className="share-card-header">
+          <div className="share-card-title">{title}</div>
+          <div className="share-card-sub">Your pregnancy memories will appear here</div>
+        </div>
+        <div style={{padding:"20px 16px",textAlign:"center"}}>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,fontStyle:"italic",color:"rgba(255,255,255,0.6)",lineHeight:1.6,marginBottom:12}}>
+            Every week, every feeling, every milestone —<br/>all in one beautiful timeline.
+          </div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.35)"}}>
+            Add journal entries to start building your memories.
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -361,7 +377,7 @@ export function ShareableStrip({ entries }) {
     <div className="share-strip-wrap">
       <div className="share-card">
         <div className="share-card-header">
-          <div className="share-card-title">Priya's Pregnancy Journey 🌸</div>
+          <div className="share-card-title">{title}</div>
           <div className="share-card-sub">
             Week {weeks[0][0]}–{weeks[weeks.length-1][0]} · {entries.length} {entries.length===1?"memory":"memories"} · {weeks.length} {weeks.length===1?"week":"weeks"}
           </div>
@@ -418,8 +434,8 @@ export function FriendsCard() {
     <>
       {/* ── WIDGET CARD ── */}
       <div onClick={openOverlay} style={{
-        background:"linear-gradient(145deg,#181830,#242448)",
-        border:"1px solid rgba(180,170,240,0.12)",
+        background:"linear-gradient(145deg,#1c1430,#2a1c42)",
+        border:"1px solid rgba(232,184,168,0.12)",
         borderRadius:16, padding:"16px 18px", cursor:"pointer",
         marginBottom:10, position:"relative", overflow:"hidden"
       }}>
@@ -428,12 +444,12 @@ export function FriendsCard() {
 
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
           <div>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(180,170,240,0.6)",marginBottom:4}}>Friend's journals</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"#fff",lineHeight:1.2}}>
-              See what your people <em style={{fontStyle:"italic",color:"#b0a0f0"}}>are feeling.</em>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"rgba(232,184,168,0.6)",marginBottom:4}}>Friend's journals</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"#fff",lineHeight:1.2}}>
+              See what your people <em style={{fontStyle:"italic",color:"#e8b8c8"}}>are feeling.</em>
             </div>
           </div>
-          <div style={{background:"rgba(176,160,240,0.15)",border:"1px solid rgba(176,160,240,0.2)",borderRadius:100,padding:"3px 10px",fontSize:10,fontWeight:700,color:"#b0a0f0",whiteSpace:"nowrap",flexShrink:0}}>
+          <div style={{background:"rgba(232,184,168,0.15)",border:"1px solid rgba(232,184,168,0.2)",borderRadius:100,padding:"3px 10px",fontSize:10,fontWeight:700,color:"#e8b8c8",whiteSpace:"nowrap",flexShrink:0}}>
             0 friends
           </div>
         </div>
@@ -452,10 +468,10 @@ export function FriendsCard() {
           ))}
           <div style={{
             width:36,height:36,borderRadius:"50%",
-            background:"rgba(176,160,240,0.12)",
-            border:"1.5px solid rgba(176,160,240,0.25)",
+            background:"rgba(232,184,168,0.12)",
+            border:"1.5px solid rgba(232,184,168,0.25)",
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:18,color:"#b0a0f0",flexShrink:0
+            fontSize:18,color:"#e8b8c8",flexShrink:0
           }}>+</div>
           <div style={{fontSize:11,color:"rgba(255,255,255,0.28)",marginLeft:6,lineHeight:1.4}}>
             Add friends to see their<br/>public entries here
@@ -466,7 +482,7 @@ export function FriendsCard() {
           <div style={{fontSize:11,color:"rgba(255,255,255,0.28)",fontStyle:"italic"}}>
             Public entries only · you control what you share
           </div>
-          <div style={{fontSize:11,color:"#b0a0f0",fontWeight:600}}>Open ↗</div>
+          <div style={{fontSize:11,color:"#e8b8c8",fontWeight:600}}>Open ↗</div>
         </div>
       </div>
 
@@ -492,7 +508,7 @@ export function FriendsCard() {
             <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
               <div>
                 <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--plum)",marginBottom:5}}>Friend's journals</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2}}>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2}}>
                   Your people's <em style={{fontStyle:"italic",color:"var(--plum)"}}>stories.</em>
                 </div>
               </div>
@@ -504,7 +520,7 @@ export function FriendsCard() {
               {/* empty state illustration */}
               <div style={{textAlign:"center",padding:"20px 0 28px"}}>
                 <div style={{fontSize:64,marginBottom:16,opacity:0.7}}>👯</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8,lineHeight:1.3}}>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",marginBottom:8,lineHeight:1.3}}>
                   No friends added yet.
                 </div>
                 <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.7,marginBottom:24,maxWidth:280,margin:"0 auto 24px"}}>
@@ -706,7 +722,7 @@ export function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onV
           <span style={{position:"absolute",fontSize:140,right:-10,bottom:-10,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",userSelect:"none"}}>🤍</span>
           <div className="win-lg">
             <div className="w-lbl" style={{color:"rgba(255,200,180,0.7)"}}><div className="w-lbl-dot" style={{background:"rgba(255,200,180,0.7)"}}/>Real fears</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:8}}>The things nobody <em style={{fontStyle:"italic",color:"#f0c0a0"}}>admits out loud.</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:8}}>The things nobody <em style={{fontStyle:"italic",color:"#f0c0a0"}}>admits out loud.</em></div>
             <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",lineHeight:1.6}}>Miscarriage. Labour. Your body. Your career. Honest, not dismissive.</div>
           </div>
           <div className="w-tap w-tap-lt">Tap to explore ↗</div>
@@ -714,11 +730,11 @@ export function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onV
         <div className="lib-grid">
           {/* NOBODY TELLS YOU */}
           <div className="lw lw-left lw-med" onClick={()=>onOpen("ntty")}
-            style={{background:"linear-gradient(145deg,#2a1040,#3a1852)",border:"1px solid #301048"}}>
-            <span className="w-bg-e" style={{color:"#d0a0f0"}}>🤫</span>
+            style={{background:"linear-gradient(145deg,#2c1438,#401e50)",border:"1px solid #301440"}}>
+            <span className="w-bg-e" style={{color:"#e8b8c8"}}>🤫</span>
             <div className="win">
-              <div className="w-lbl" style={{color:"#c8a0f0"}}><div className="w-lbl-dot" style={{background:"#c8a0f0"}}/>Nobody tells you</div>
-              <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.3}}>The things no one <em style={{fontStyle:"italic",color:"#c8a0f0"}}>warns you about.</em></div>
+              <div className="w-lbl" style={{color:"#e8b8c8"}}><div className="w-lbl-dot" style={{background:"#e8b8c8"}}/>Nobody tells you</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:"#fff",lineHeight:1.3}}>The things no one <em style={{fontStyle:"italic",color:"#e8b8c8"}}>warns you about.</em></div>
             </div>
             <div className="w-tap w-tap-lt">Tap to explore ↗</div>
           </div>
@@ -728,7 +744,7 @@ export function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onV
             <span className="w-bg-e" style={{color:"#f0b860"}}>🔍</span>
             <div className="win">
               <div className="w-lbl" style={{color:"#f0b860"}}><div className="w-lbl-dot" style={{background:"#f0b860"}}/>Myth busting</div>
-              <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.3}}>What your family <em style={{fontStyle:"italic",color:"#f0b860"}}>got wrong.</em></div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:"#fff",lineHeight:1.3}}>What your family <em style={{fontStyle:"italic",color:"#f0b860"}}>got wrong.</em></div>
               <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",marginTop:5}}>Papaya · Saffron · Eclipses · Ghee</div>
             </div>
             <div className="w-tap w-tap-lt">Tap to explore ↗</div>
@@ -754,11 +770,11 @@ export function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onV
       <div className="lib-section" style={{marginTop:6}}>
         <div className="lib-section-lbl">Stories</div>
         <div className="lw lw-full lw-med" onClick={()=>onOpen("stories")}
-          style={{background:"linear-gradient(145deg,#1e1030,#342050)",border:"1px solid #200e38"}}>
-          <span style={{position:"absolute",fontSize:130,right:-10,bottom:-10,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",color:"#c8a0f0",userSelect:"none"}}>💬</span>
+          style={{background:"linear-gradient(145deg,#241038,#381848)",border:"1px solid #22103a"}}>
+          <span style={{position:"absolute",fontSize:130,right:-10,bottom:-10,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",color:"#e8b8c8",userSelect:"none"}}>💬</span>
           <div className="win-lg">
-            <div className="w-lbl" style={{color:"#c8a0f0"}}><div className="w-lbl-dot" style={{background:"#c8a0f0"}}/>Stories</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"#fff",lineHeight:1.2,marginBottom:8}}>Women who've been <em style={{fontStyle:"italic",color:"#c8a0f0"}}>right here.</em></div>
+            <div className="w-lbl" style={{color:"#e8b8c8"}}><div className="w-lbl-dot" style={{background:"#e8b8c8"}}/>Stories</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"#fff",lineHeight:1.2,marginBottom:8}}>Women who've been <em style={{fontStyle:"italic",color:"#e8b8c8"}}>right here.</em></div>
             <div style={{fontSize:12,color:"rgba(255,255,255,0.35)"}}>Real experiences. Read, share, feel less alone.</div>
           </div>
           <div className="w-tap w-tap-lt">Tap to explore ↗</div>
@@ -773,15 +789,15 @@ export function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onV
             style={{background:"linear-gradient(145deg,#0a2020,#183535)",border:"1px solid #0a2828"}}>
             <div className="win" style={{paddingBottom:14}}>
               <div className="w-lbl" style={{color:"#70c8b8"}}><div className="w-lbl-dot" style={{background:"#70c8b8"}}/>Album</div>
-              <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.2}}>View your <em style={{fontStyle:"italic",color:"#70c8b8"}}>pregnancy book.</em></div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:"#fff",lineHeight:1.2}}>View your <em style={{fontStyle:"italic",color:"#70c8b8"}}>pregnancy book.</em></div>
             </div>
             <div className="w-tap w-tap-lt">Tap to explore ↗</div>
           </div>
           <div className="lw lw-right lw-sm" onClick={onViewTimeline}
-            style={{background:"linear-gradient(145deg,#1a1a30,#282850)",border:"1px solid #202048"}}>
+            style={{background:"linear-gradient(145deg,#1c1430,#2a1c42)",border:"1px solid #1e1438"}}>
             <div className="win" style={{paddingBottom:14}}>
-              <div className="w-lbl" style={{color:"#b0a0f0"}}><div className="w-lbl-dot" style={{background:"#b0a0f0"}}/>Timeline</div>
-              <div style={{fontFamily:"'Lora',serif",fontSize:16,color:"#fff",lineHeight:1.2}}>All your <em style={{fontStyle:"italic",color:"#b0a0f0"}}>memories.</em></div>
+              <div className="w-lbl" style={{color:"#e8b8c8"}}><div className="w-lbl-dot" style={{background:"#e8b8c8"}}/>Timeline</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:16,color:"#fff",lineHeight:1.2}}>All your <em style={{fontStyle:"italic",color:"#e8b8c8"}}>memories.</em></div>
               <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:4}}>{journalEntries.length} entries</div>
             </div>
             <div className="w-tap w-tap-lt">Tap to explore ↗</div>
@@ -792,7 +808,7 @@ export function LibraryView({ onOpen, journalEntries, moodLog, onDeleteMood, onV
   );
 }
 
-export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenProfile, profileData }) {
+export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenProfile, profileData, week }) {
   const latest = entries[0];
 
   // Collect all photos across all entries for the thumbnail row
@@ -834,7 +850,7 @@ export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenPr
               {/* placeholder thumbs if fewer than 3 real photos */}
               {allPhotos.length < 3 && Array.from({length:3-allPhotos.length}).map((_,i)=>(
                 <div key={"ph"+i} style={{width:52,height:52,borderRadius:12,flexShrink:0,
-                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(224,168,192,0.3)",
+                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(232,184,168,0.3)",
                   display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:0.5}}>📷</div>
               ))}
             </div>
@@ -845,7 +861,7 @@ export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenPr
             <div style={{display:"flex",gap:8,marginBottom:14}}>
               {[0,1,2].map(i=>(
                 <div key={i} style={{width:52,height:52,borderRadius:12,flexShrink:0,
-                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(224,168,192,0.3)",
+                  background:"rgba(255,255,255,0.06)",border:"1.5px dashed rgba(232,184,168,0.3)",
                   display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,opacity:0.5}}>📷</div>
               ))}
             </div>
@@ -857,7 +873,7 @@ export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenPr
               background:"rgba(255,255,255,0.07)",borderRadius:12,padding:"8px 12px"}}>
               <span style={{fontSize:16,flexShrink:0}}>{latest.mood}</span>
               <span style={{fontSize:12,color:"rgba(255,255,255,0.6)",fontStyle:"italic",
-                fontFamily:"'Lora',serif",lineHeight:1.4,overflow:"hidden",
+                fontFamily:"'Cormorant Garamond',serif",lineHeight:1.4,overflow:"hidden",
                 display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
                 "{latest.text}"
               </span>
@@ -872,7 +888,7 @@ export function JournalTab({ entries, setEntries, onOpenAlbum, moodLog, onOpenPr
         </div>
       </div>
       {/* Full JournalPanel below hero */}
-      <JournalPanel entries={entries} setEntries={setEntries} moodLog={moodLog}/>
+      <JournalPanel entries={entries} setEntries={setEntries} moodLog={moodLog} week={week} userName={profileData?.name}/>
     </div>
   );
 }
@@ -890,7 +906,7 @@ export function MatriMomentWidget({ onOpen, week }) {
         <div className="w-lbl" style={{color:"#80d0a0"}}>
           <div className="w-lbl-dot" style={{background:"#80d0a0"}}/>Matri moment
         </div>
-        <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"#fff",lineHeight:1.35,
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"#fff",lineHeight:1.35,
           marginBottom:10,fontStyle:"italic"}}>
           "{moment.question.slice(0,80)}…"
         </div>
@@ -940,7 +956,7 @@ export function MatriMomentPanel({ week, weeklyMoment, entries, setEntries }) {
         textTransform:"uppercase",color:"var(--teal)",marginBottom:16}}>{moment.pause}</div>
 
       {/* The question */}
-      <div style={{fontFamily:"'Lora',serif",fontSize:19,color:"var(--ink)",lineHeight:1.65,
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,color:"var(--ink)",lineHeight:1.65,
         fontStyle:"italic",marginBottom:20,padding:"0 4px"}}>
         "{moment.question}"
       </div>
@@ -951,7 +967,7 @@ export function MatriMomentPanel({ week, weeklyMoment, entries, setEntries }) {
             borderRadius:14,padding:"14px 16px",marginBottom:12}}>
             <div style={{fontSize:11,fontWeight:700,color:"var(--teal)",
               marginBottom:6,textTransform:"uppercase",letterSpacing:"0.1em"}}>You wrote</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:"italic",
               color:"var(--ink)",lineHeight:1.7}}>"{text}"</div>
           </div>
           <div style={{fontSize:11,color:"var(--muted)",textAlign:"center",fontStyle:"italic"}}>
@@ -1027,7 +1043,7 @@ export function StorybookPreviewWidget({ entries, onOpenAlbum, onOpenJournal }) 
           <div style={{flex:1,padding:"22px 20px 16px",position:"relative",zIndex:1}}>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",
               color:"#70c8b8",marginBottom:12}}>Your pregnancy story</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:28,fontWeight:400,lineHeight:1.1,
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:400,lineHeight:1.1,
               color:"#fff",marginBottom:14}}>
               Your pregnancy,<br/><em style={{fontStyle:"italic",color:"#70c8b8"}}>preserved forever.</em>
             </div>
@@ -1057,10 +1073,10 @@ export function StorybookPreviewWidget({ entries, onOpenAlbum, onOpenJournal }) 
             <div className="w-lbl" style={{color:"#70c8b8",marginBottom:6}}>
               <div className="w-lbl-dot" style={{background:"#70c8b8"}}/>Your pregnancy story
             </div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"#fff",lineHeight:1.2,marginBottom:4}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"#fff",lineHeight:1.2,marginBottom:4}}>
               {count} {count===1?"memory":"memories"} saved.
             </div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:12,fontStyle:"italic",
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:12,fontStyle:"italic",
               color:"rgba(255,255,255,0.35)",marginBottom:14}}>A book is quietly forming…</div>
             <div style={{display:"flex",gap:7,marginBottom:12}}>
               {photos.map((src,i)=>(
@@ -1082,7 +1098,7 @@ export function StorybookPreviewWidget({ entries, onOpenAlbum, onOpenJournal }) 
             </div>
             {latest && (
               <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",fontStyle:"italic",
-                fontFamily:"'Lora',serif",lineHeight:1.55,
+                fontFamily:"'Cormorant Garamond',serif",lineHeight:1.55,
                 display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>
                 "{latest.text}"
               </div>
@@ -1128,7 +1144,7 @@ export function HeroMoodStrip({ journalEntries, moodLog, onTap }) {
 }
 
 /* ─── INSIGHT FEED WIDGET ────────────────────────────────────────────────── */
-export function InsightFeedWidget({ healthContext, profileData, currentWeek, onOpenDoctorPrep, onRxUpload, embedded = false }) {
+export function InsightFeedWidget({ healthContext, profileData, currentWeek, hasRealHealthData, onOpenDoctorPrep, onRxUpload, embedded = false }) {
   const activeMeds = (profileData?.medications || []).filter(m => !(typeof m === "object" ? m.paused : false));
   const hasHealthData = !!(
     activeMeds.length ||
@@ -1144,22 +1160,32 @@ export function InsightFeedWidget({ healthContext, profileData, currentWeek, onO
   const [loading, setLoading]   = useState(false);
 
   React.useEffect(() => {
-    if (!hasHealthData) return;
+    if (!currentWeek) return;
 
-    // Use pre-built insights from Supabase cache — no extra API call needed
-    if (prebuilt?.length) { setInsights(prebuilt); return; }
-
-    // First-ever load before server has generated them: fall back to on-demand
-    const cacheKey = "matri_insights_" + (healthContext?.summary || "").slice(0, 40);
+    // Session cache is week-specific — always takes priority over prebuilt
+    const cacheKey = `matri_insights_w${currentWeek}_` + (healthContext?.summary || "general").slice(0, 30);
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) { setInsights(JSON.parse(cached)); return; }
 
+    // Use prebuilt only if none of its insights reference a different week
+    if (prebuilt?.length) {
+      const weekPattern = /\bWeek\s+(\d+)\b/i;
+      const stale = prebuilt.some(ins => {
+        const m = ins.text.match(weekPattern);
+        return m && parseInt(m[1]) !== currentWeek;
+      });
+      if (!stale) { setInsights(prebuilt); return; }
+    }
+
     setLoading(true);
+    const context = hasHealthData
+      ? (healthContext?.summary || `Week ${currentWeek} pregnancy`)
+      : `Week ${currentWeek} pregnancy, no medical data yet`;
     authFetch("/api/chat", {
       method: "POST",
       body: JSON.stringify({
-        system: "You are Matri, a warm pregnancy companion. Based on the woman's health data, generate 2-3 personalised proactive insights. Return ONLY a JSON array of objects: [{text: string, type: 'info'|'nudge'|'prep', priority: 'high'|'medium'|'low'}]. Each text max 12 words. Warm, never alarming, never a verdict. No markdown.",
-        messages: [{ role: "user", content: `Health context: ${healthContext?.summary || `Week ${currentWeek ?? 8} pregnancy`}. Generate 2-3 insights.` }],
+        system: "You are Matri, a warm pregnancy companion. Generate 2-3 helpful week-specific insights for the woman. Return ONLY a JSON array: [{text: string, type: 'info'|'nudge'|'prep'}]. Each text max 15 words. Warm, practical, week-relevant. No markdown.",
+        messages: [{ role: "user", content: `Context: ${context}. Generate 2-3 insights.` }],
         max_tokens: 300,
       })
     })
@@ -1172,9 +1198,10 @@ export function InsightFeedWidget({ healthContext, profileData, currentWeek, onO
     })
     .catch(() => setInsights([]))
     .finally(() => setLoading(false));
-  }, [prebuilt, healthContext?.summary, hasHealthData]);
+  }, [prebuilt, healthContext?.summary, hasHealthData, currentWeek]);
 
-  const dotColor = (type) => type === "prep" ? "var(--rose)" : type === "nudge" ? "var(--amber)" : "#c8a0ff";
+  const dotColor = (type) => type === "prep" ? "var(--rose)" : type === "nudge" ? "var(--amber)" : "#e8b8c8";
+  const categoryLabel = (type) => type === "prep" ? "DOCTOR PREP" : type === "nudge" ? "ACTION" : "INSIGHT";
 
   const hasDoctorPrep = (healthContext?.doctorPrep || []).length > 0;
   const daysLeft = profileData?.next_appointment_date
@@ -1186,12 +1213,12 @@ export function InsightFeedWidget({ healthContext, profileData, currentWeek, onO
 
       {/* label */}
       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
-        <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(200,160,255,0.65)"}}>✦ Matri AI</span>
+        <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(232,184,200,0.65)"}}>✦ Matri AI</span>
         <span style={{fontSize:9,color:"rgba(255,255,255,0.2)",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:600}}>— get personal</span>
       </div>
 
       {/* headline — italic serif, clearly the display text */}
-      <div style={{fontFamily:"'Lora',serif",fontSize:20,fontStyle:"italic",color:"rgba(255,255,255,0.92)",lineHeight:1.25,marginBottom:18,fontWeight:400}}>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontStyle:"italic",color:"rgba(255,255,255,0.92)",lineHeight:1.25,marginBottom:18,fontWeight:400}}>
         Let Matri carry the medical load.
       </div>
 
@@ -1211,45 +1238,73 @@ export function InsightFeedWidget({ healthContext, profileData, currentWeek, onO
       </div>
 
       {/* CTA button */}
-      <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,rgba(200,160,255,0.2),rgba(180,130,255,0.12))",border:"1px solid rgba(200,160,255,0.26)",borderRadius:100,padding:"10px 20px",fontSize:13,fontWeight:600,color:"rgba(220,190,255,0.95)"}}>
+      <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,rgba(232,184,200,0.2),rgba(180,130,255,0.12))",border:"1px solid rgba(232,184,200,0.26)",borderRadius:100,padding:"10px 20px",fontSize:13,fontWeight:600,color:"rgba(220,190,255,0.95)"}}>
         Upload a prescription →
       </div>
     </div>
   );
 
   const insightsContent = (
-    <div style={{padding: embedded ? "14px 18px 18px" : undefined}} onClick={hasDoctorPrep ? onOpenDoctorPrep : undefined}>
-      <div className="insight-feed-lbl" style={{marginBottom: insights?.length ? 0 : 0}}>
-        <span>✦</span> Matri's insights
+    <div>
+      {/* Section header */}
+      <div style={{padding:"12px 20px 8px",display:"flex",alignItems:"center",gap:8}}>
+        <div className="insight-feed-lbl" style={{margin:0,flex:1}}>
+          <span>✦</span> Matri's insights
+        </div>
         {hasDoctorPrep && daysLeft !== null && daysLeft <= 7 && daysLeft >= 0 && (
-          <span style={{marginLeft:"auto",fontSize:9,background:"var(--rose)",color:"#fff",borderRadius:100,padding:"2px 8px",fontWeight:700}}>
+          <span style={{fontSize:9,background:"var(--rose)",color:"#fff",borderRadius:100,padding:"2px 8px",fontWeight:700,flexShrink:0}}>
             Appt in {daysLeft}d →
           </span>
         )}
       </div>
+
       {loading ? (
-        <div className="insight-empty">Thinking about your week…</div>
+        <div style={{padding:"4px 20px 18px"}}>
+          <div className="insight-empty">Thinking about your week…</div>
+        </div>
       ) : insights?.length ? (
-        insights.map((ins, i) => (
-          <div key={i} className="insight-item">
-            <div className="insight-dot" style={{background: dotColor(ins.type)}}/>
-            <div className="insight-text">{ins.text}</div>
+        <>
+        <div style={{position:"relative"}}>
+        <div className="insight-scroll" style={{padding:"2px 20px 14px"}}>
+          {insights.map((ins, i) => (
+            <div key={i}
+              onClick={ins.type === "prep" && hasDoctorPrep ? onOpenDoctorPrep : undefined}
+              style={{
+                flexShrink:0,
+                width:182,
+                background:"rgba(255,255,255,0.05)",
+                border:"1px solid rgba(255,255,255,0.07)",
+                borderLeft:`3px solid ${dotColor(ins.type)}`,
+                borderRadius:"0 13px 13px 0",
+                padding:"12px 14px",
+                cursor: ins.type === "prep" && hasDoctorPrep ? "pointer" : "default",
+              }}>
+              <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:dotColor(ins.type),marginBottom:8,opacity:0.9}}>
+                {categoryLabel(ins.type)}
+              </div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,0.72)",lineHeight:1.65}}>
+                {ins.text}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{position:"absolute",top:0,right:0,bottom:0,width:52,background:"linear-gradient(to left,#361646 35%,transparent 100%)",pointerEvents:"none"}}/>
+        </div>
+        {!hasRealHealthData && (
+          <div style={{padding:"0 20px 16px",textAlign:"center",cursor:"pointer"}} onClick={onRxUpload}>
+            <span style={{fontSize:11,color:"rgba(232,184,200,0.5)",fontStyle:"italic"}}>
+              Add a prescription for more personalised insights →
+            </span>
           </div>
-        ))
+        )}
+        </>
       ) : (
-        <div className="insight-empty">Personalised insights on the way…</div>
+        <div style={{padding:"4px 20px 18px"}}>
+          <div className="insight-empty">Personalised insights on the way…</div>
+        </div>
       )}
     </div>
   );
-
-  if (!hasHealthData) {
-    if (embedded) return pitchContent;
-    return (
-      <div className="insight-feed" style={{borderRadius:20,cursor:"pointer"}}>
-        <div className="insight-feed-inner">{pitchContent}</div>
-      </div>
-    );
-  }
 
   if (embedded) return insightsContent;
   return (

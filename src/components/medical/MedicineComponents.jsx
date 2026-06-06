@@ -138,7 +138,7 @@ export function MedHealthWidget({ profile, onEditHealth, compact = false, onMeds
               <div className="w-lbl-dot" style={{background:"var(--rose)"}}/>Health &amp; Meds
             </div>
             {p.blood_group && (
-              <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--rose)",lineHeight:1,marginBottom:4}}>{p.blood_group}</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"var(--rose)",lineHeight:1,marginBottom:4}}>{p.blood_group}</div>
             )}
             {hasMeds ? (
               <div style={{fontSize:11,color:"var(--ink)",fontWeight:600}}>
@@ -166,7 +166,7 @@ export function MedHealthWidget({ profile, onEditHealth, compact = false, onMeds
               <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
                 <div>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--rose)",marginBottom:4}}>Health &amp; Medicines</div>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)"}}>Your <em style={{fontStyle:"italic"}}>health snapshot</em></div>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)"}}>Your <em style={{fontStyle:"italic"}}>health snapshot</em></div>
                 </div>
                 <button onClick={closeSheet} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
               </div>
@@ -207,7 +207,7 @@ export function MedDialogs({ pauseMed, setPauseMed, confirmPause, editMed, setEd
         <>
           <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(16,10,8,0.6)"}} onClick={()=>setPauseMed(null)}/>
           <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:501,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:6}}>Pause <em>{pauseMed.name}?</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",marginBottom:6}}>Pause <em>{pauseMed.name}?</em></div>
             <div style={{fontSize:12,color:"var(--muted)",marginBottom:16,lineHeight:1.6}}>The medicine will be marked as paused. Your doctor can resume it when ready.</div>
             <div style={{fontSize:11,fontWeight:700,color:"var(--ink)",marginBottom:8}}>Reason (optional)</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:14}}>
@@ -236,7 +236,7 @@ export function MedDialogs({ pauseMed, setPauseMed, confirmPause, editMed, setEd
         <>
           <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(16,10,8,0.6)"}} onClick={()=>setEditMed(null)}/>
           <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:501,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:16}}>Edit <em>{editMed._origName}</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",marginBottom:16}}>Edit <em>{editMed._origName}</em></div>
             {[["Dosage","dosage","e.g. 500mg"],["Frequency","frequency","e.g. twice daily"],["Duration","duration","e.g. 30 days"]].map(([lbl,key,ph])=>(
               <div key={key} style={{marginBottom:12}}>
                 <div style={{fontSize:10,fontWeight:700,textTransform:"uppercase",color:"var(--muted)",marginBottom:5}}>{lbl}</div>
@@ -258,7 +258,7 @@ export function MedDialogs({ pauseMed, setPauseMed, confirmPause, editMed, setEd
         <>
           <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(16,10,8,0.6)"}} onClick={()=>setDeleteMed(null)}/>
           <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:501,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove <em>{deleteMed.name}?</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove <em>{deleteMed.name}?</em></div>
             <div style={{fontSize:12,color:"var(--muted)",marginBottom:20,lineHeight:1.65}}>This will remove the medicine from your tracker. This cannot be undone.</div>
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>setDeleteMed(null)} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>Cancel</button>
@@ -297,7 +297,7 @@ export function MedHealthWidgetFull({ profile, onEditHealth, onClose, onPause, o
         <div style={{marginBottom:hasMeds?10:0}}>
           {p.blood_group && (
             <div style={{display:"flex",alignItems:"baseline",gap:5,marginBottom:4}}>
-              <span style={{fontFamily:"'Lora',serif",fontSize:17,color:"var(--ink)"}}>
+              <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:17,color:"var(--ink)"}}>
                 Blood group <em style={{fontStyle:"italic",color:"var(--rose)"}}>{p.blood_group}</em>
               </span>
             </div>

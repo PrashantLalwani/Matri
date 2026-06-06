@@ -83,7 +83,7 @@ export default function WeekPickerSheet({ open, onClose, currentWeek, browseWeek
             <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 4 }}>
               Browse weeks
             </div>
-            <div style={{ fontFamily: "'Lora',serif", fontSize: 20, fontWeight: 400, color: "var(--ink)" }}>
+            <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 20, fontWeight: 400, color: "var(--ink)" }}>
               Your pregnancy journey
             </div>
           </div>

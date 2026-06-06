@@ -323,7 +323,7 @@ export function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
           <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(16,10,8,0.65)"}} onClick={()=>setMismatchPrompt(null)}/>
           <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:801,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
             <div style={{fontSize:22,marginBottom:10,textAlign:"center"}}>🤔</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--ink)",marginBottom:10,textAlign:"center"}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"var(--ink)",marginBottom:10,textAlign:"center"}}>
               Report <em>mismatch?</em>
             </div>
             <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:14,padding:"13px 16px",fontSize:13,color:"var(--ink)",lineHeight:1.7,marginBottom:20}}>
@@ -395,7 +395,7 @@ export function TestReportSheet({ order, onClose, onReportDeleted }) {
         <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
           <div>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--teal)",marginBottom:4}}>Lab Report</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{order.test_name}</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{order.test_name}</div>
             {dueDate && <div style={{fontSize:10,color:"var(--muted)",marginTop:2}}>Due: {dueDate}</div>}
           </div>
           <button onClick={close} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
@@ -444,7 +444,7 @@ export function TestReportSheet({ order, onClose, onReportDeleted }) {
                     <div key={key} style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                       <div>
                         <div style={{fontSize:11,color:"var(--muted)",marginBottom:3}}>{label}</div>
-                        <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)"}}>
+                        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)"}}>
                           {val}{unit && <span style={{fontSize:11,color:"var(--muted)",fontFamily:"inherit",marginLeft:4}}>{unit}</span>}
                         </div>
                       </div>
@@ -462,7 +462,7 @@ export function TestReportSheet({ order, onClose, onReportDeleted }) {
                   <div key={i} style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                     <div>
                       <div style={{fontSize:11,color:"var(--muted)",marginBottom:3}}>{ex.name}</div>
-                      <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"var(--ink)"}}>
+                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)"}}>
                         {ex.value}{ex.unit && <span style={{fontSize:11,color:"var(--muted)",fontFamily:"inherit",marginLeft:4}}>{ex.unit}</span>}
                       </div>
                     </div>
@@ -495,7 +495,7 @@ export function TestReportSheet({ order, onClose, onReportDeleted }) {
           <div style={{position:"fixed",inset:0,zIndex:702,background:"rgba(16,10,8,0.5)"}}
             onClick={()=>{ if(!deleting) setConfirmingDelete(false); }}/>
           <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:703,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Delete this <em>report?</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Delete this <em>report?</em></div>
             <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:12,padding:"12px 14px",fontSize:12,color:"var(--rose)",marginBottom:20,lineHeight:1.65}}>
               This will remove the uploaded file and all extracted values from your history. The test will go back to <strong>Ordered</strong> status. <strong>This cannot be undone.</strong>
             </div>
@@ -684,7 +684,7 @@ export function LabsEditor({ editData, setEditData, hideTitle = false }) {
         <div className={`lab-upload-zone-dark${file?" has-file":""}`} onClick={() => fileRef.current?.click()}>
           <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}} onChange={handleFile}/>
           {file
-            ? <><div style={{fontSize:18,marginBottom:3}}>📄</div><div style={{fontSize:12,fontWeight:600,color:"rgba(200,160,255,0.9)"}}>{file.name}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginTop:2}}>Tap to change</div></>
+            ? <><div style={{fontSize:18,marginBottom:3}}>📄</div><div style={{fontSize:12,fontWeight:600,color:"rgba(232,184,200,0.9)"}}>{file.name}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginTop:2}}>Tap to change</div></>
             : <><div style={{fontSize:18,marginBottom:3}}>📎</div><div style={{fontSize:12,fontWeight:500,color:"rgba(255,255,255,0.5)"}}>Attach lab report</div><div style={{fontSize:10,color:"rgba(255,255,255,0.28)",marginTop:2}}>Photo or PDF</div></>
           }
         </div>
@@ -821,7 +821,7 @@ export function TestDetailPanel({ test, onClose, isDone, onMarkComplete }) {
           <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:4}}>
             <div style={{width:48,height:48,borderRadius:14,background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{test.icon}</div>
             <div>
-              <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{test.name}</div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{test.name}</div>
               <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>{test.week} · {test.urgent?"⚡ Recommended now":"Upcoming"}</div>
             </div>
           </div>

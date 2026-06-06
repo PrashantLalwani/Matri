@@ -28,7 +28,7 @@ import {
 import { istDate, istTime } from "./utils/date";
 import { authFetch, useHealthContext } from "./utils/auth";
 import {
-  CHECKLIST_STORAGE_KEY, loadChecked, saveChecked,
+  CHECKLIST_STORAGE_KEY, loadChecked, saveChecked, loadUserChecklist, saveUserChecklist,
   USER_STORIES_KEY, loadUserStories, saveUserStories,
   MOOD_LOG_KEY, NUTR_KEY, loadMoodLog, saveMoodLog,
   JOURNAL_STORAGE_KEY, JOURNAL_IDS_KEY, journalEntryKey, loadJournalEntries, saveJournalEntry, saveJournalEntries,
@@ -87,17 +87,17 @@ const CROP_ASPECTS = {
 
 /* ─── PANEL CONFIG ───────────────────────────────────────────────────── */
 const PANELS = {
-  baby:      { label:"Your baby",        title:<>1.6cm · <em>tip of your thumb</em></>,         headBg:"#1a1210",           lblCol:"#f0a07a",       titleCol:"#fff",        dark:true,  Panel:BabyPanel,    noScroll:true },
+  baby:      { label:"Your baby",        title:<>1.6cm · <em>tip of your thumb</em></>,         headBg:"#1a1210",           lblCol:"#e8b8a8",       titleCol:"#fff",        dark:true,  Panel:BabyPanel,    noScroll:true },
   body:      { label:"Your body",        title:<>What you're feeling is <em>real</em></>,        headBg:"var(--rose-pale)",  lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:BodyPanel },
-  "3am":     { label:"3am searches",     title:<>What everyone <em>Googles</em></>,               headBg:"#1a1210",           lblCol:"#f0a07a",       titleCol:"#fff",        dark:true,  Panel:ThreeAmPanel },
+  "3am":     { label:"3am searches",     title:<>What everyone <em>Googles</em></>,               headBg:"#1a1210",           lblCol:"#e8b8a8",       titleCol:"#fff",        dark:true,  Panel:ThreeAmPanel },
   ntty:      { label:"Nobody tells you", title:<>What nobody <em>tells you</em></>,               headBg:"var(--plum-pale)",  lblCol:"var(--plum)",   titleCol:"var(--ink)",  dark:false, Panel:NobodyTellsPanel },
-  wins:      { label:"This week's win",  title:<>You made it to <em>week 8</em></>,               headBg:"#181830",           lblCol:"#b0a0f0",       titleCol:"#fff",        dark:true,  Panel:WinsPanel },
+  wins:      { label:"This week's win",  title:<>You made it to <em>week 8</em></>,               headBg:"#181a32",           lblCol:"#e8b8c8",       titleCol:"#fff",        dark:true,  Panel:WinsPanel },
   partner:   { label:"For your partner", title:<>What your partner <em>should know</em></>,           headBg:"var(--navy-pale)",  lblCol:"var(--navy)",   titleCol:"var(--ink)",  dark:false, Panel:PartnerPanel },
   food:      { label:"Nutrition",        title:<>Food when nothing <em>appeals</em></>,           headBg:"var(--forest-pale)",lblCol:"var(--forest)", titleCol:"var(--ink)",  dark:false, Panel:FoodPanel },
   medical:   { label:"Medical",          title:<>What needs to happen <em>now</em></>,            headBg:"var(--slate-pale)", lblCol:"var(--slate)",  titleCol:"var(--ink)",  dark:false, Panel:MedPanel },
   checklist: { label:"Checklist this week", title:<>Seven things. <em>That's it.</em></>,            headBg:"var(--amber-pale)", lblCol:"var(--amber)",  titleCol:"var(--ink)",  dark:false, Panel:null },
   journal:   { label:"Journal",          title:<>Your pregnancy <em>story</em></>,                headBg:"#0a2020",           lblCol:"#70c8b8",       titleCol:"#fff",        dark:true,  Panel:JournalPanel, noScroll:true },
-  stories:   { label:"Stories",          title:<>Women who've been <em>right here</em></>,        headBg:"#1e1030",           lblCol:"#c8a0f0",       titleCol:"#fff",        dark:true,  Panel:StoriesPanel },
+  stories:   { label:"Stories",          title:<>Women who've been <em>right here</em></>,        headBg:"#241038",           lblCol:"#e8b8c8",       titleCol:"#fff",        dark:true,  Panel:StoriesPanel },
   symptom:      { label:"How are you feeling?", title:<>Is this <em>normal</em>?</>,               headBg:"var(--cream2)",     lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:null },
   symptomDetail:{ label:"",                    title:<></>,                                         headBg:"var(--cream2)",     lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:null, noScroll:true },
   myth:      { label:"Myth busting",         title:<>True, false, or <em>complicated</em></>,       headBg:"var(--amber-pale)", lblCol:"var(--amber)",  titleCol:"var(--ink)",  dark:false, Panel:MythPanel },
@@ -117,6 +117,28 @@ function App({ profile: initialProfile }) {
 
   // Keep profileData in sync if initialProfile changes (e.g. after onboarding)
   useEffect(() => { if (initialProfile) setProfileData(initialProfile); }, [initialProfile]);
+
+  // Fetch health counts on mount so the Today tab card doesn't wait for HealthTab to mount.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const [medsRes, testRes, scansRes] = await Promise.all([
+          supabase.from("medicines").select("*").eq("user_id", user.id),
+          supabase.from("test_orders").select("id").eq("user_id", user.id).eq("status", "ordered"),
+          supabase.from("scans").select("id,status").eq("user_id", user.id),
+        ]);
+        const allMeds = medsRes.data || [];
+        setHealthTabCounts({
+          medicines: allMeds.filter(m => m.active !== false && !m.paused && !m.ran_out).length,
+          tests:     (testRes.data  || []).length,
+          scans:     (scansRes.data || []).filter(s => s.status !== "completed").length,
+        });
+        setRanOutMeds(allMeds.filter(m => m.ran_out && m.name));
+      } catch {}
+    })();
+  }, []);
 
   // ── Week computation ──────────────────────────────────────────────────────
   const currentWeek = useMemo(() => {
@@ -144,6 +166,7 @@ function App({ profile: initialProfile }) {
   const [active,  setActive]  = useState(null);
   const [visible, setVisible] = useState(false);
   const [checked, setChecked] = useState(() => loadChecked());
+  const [userChecklist, setUserChecklist] = useState(() => loadUserChecklist());
   const [journalEntries, setJournalEntries] = useState(() => loadJournalEntries());
   const [moodLog, setMoodLog] = useState(() => loadMoodLog());
   const [toast, setToast] = useState(null);
@@ -393,7 +416,8 @@ function App({ profile: initialProfile }) {
     });
   };
 
-  const checksDone = Object.values(checked).filter(Boolean).length;
+  const checksTotal = CHECKS.length + userChecklist.length;
+  const checksDone  = Object.values(checked).filter(Boolean).length;
 
   useEffect(()=>{
     document.body.style.overflow = active ? "hidden" : "";
@@ -418,7 +442,7 @@ function App({ profile: initialProfile }) {
             {/* Wordmark + profile chip */}
             <div style={{position:"relative",zIndex:2,padding:"18px 20px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:"#e0b0c0",flexShrink:0}}/>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#e8b8a8",flexShrink:0}}/>
                 <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(255,255,255,0.45)"}}>matri</span>
               </div>
               <div className="profile-chip" onClick={e=>{e.stopPropagation();openProfile();}}>
@@ -434,8 +458,8 @@ function App({ profile: initialProfile }) {
                   onPointerDown={e => e.stopPropagation()}
                   onClick={e => { e.stopPropagation(); setWeekPickerOpen(true); }}
                   style={{background:"transparent",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",textAlign:"left"}}>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:28,fontWeight:400,lineHeight:1,letterSpacing:"-0.02em",color:"#fff",marginBottom:5}}>
-                    Week{" "}<em style={{fontStyle:"italic",color:"#e0b0c0",borderBottom:"1.5px dotted rgba(224,176,192,0.45)",paddingBottom:1}}>{effectiveWeek ?? "…"}</em>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:400,lineHeight:1,letterSpacing:"-0.02em",color:"#fff",marginBottom:5}}>
+                    Week{" "}<em style={{fontStyle:"italic",color:"#e8b8a8",borderBottom:"1.5px dotted rgba(232,184,168,0.45)",paddingBottom:1}}>{effectiveWeek ?? "…"}</em>
                   </div>
                   <span style={{fontSize:9,fontWeight:600,letterSpacing:"0.14em",textTransform:"uppercase",color:"rgba(255,255,255,0.3)"}}>{trimester || "…"}</span>
                 </button>
@@ -446,7 +470,7 @@ function App({ profile: initialProfile }) {
                     const cm  = bs?.cm  || staticBs?.cm  || "…";
                     const bpm = bs?.bpm || 160;
                     return <>
-                      <span style={{fontSize:9,color:"rgba(224,176,192,0.55)",background:"rgba(224,176,192,0.09)",border:"1px solid rgba(224,176,192,0.12)",borderRadius:100,padding:"2px 8px",display:"inline-flex",alignItems:"center",gap:3}}>
+                      <span style={{fontSize:9,color:"rgba(232,184,168,0.55)",background:"rgba(232,184,168,0.09)",border:"1px solid rgba(232,184,168,0.12)",borderRadius:100,padding:"2px 8px",display:"inline-flex",alignItems:"center",gap:3}}>
                         <span style={{fontSize:10}}>🫘</span> {cm}
                       </span>
                       <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:100,padding:"2px 8px"}}>~{bpm}bpm</span>
@@ -489,19 +513,19 @@ function App({ profile: initialProfile }) {
 
           {/* ── BROWSE MODE BANNER ── */}
           {browseWeek !== null && currentWeek && (
-            <div style={{margin:"8px 12px 0",background:"linear-gradient(135deg,#1e1530,#281940)",borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:12,border:"1px solid rgba(200,160,255,0.18)"}}>
-              <div style={{fontSize:10,color:"rgba(200,160,255,0.6)",flex:1,lineHeight:1.5}}>
-                Browsing <strong style={{color:"rgba(200,160,255,0.95)",fontWeight:600}}>Week {browseWeek}</strong>
-                <span style={{color:"rgba(200,160,255,0.35)"}}> · tap to return</span>
+            <div style={{margin:"8px 12px 0",background:"linear-gradient(135deg,#231432,#311840)",borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:12,border:"1px solid rgba(232,184,200,0.18)"}}>
+              <div style={{fontSize:10,color:"rgba(232,184,200,0.6)",flex:1,lineHeight:1.5}}>
+                Browsing <strong style={{color:"rgba(232,184,200,0.95)",fontWeight:600}}>Week {browseWeek}</strong>
+                <span style={{color:"rgba(232,184,200,0.35)"}}> · tap to return</span>
               </div>
               <button
                 onClick={() => setBrowseWeek(null)}
                 style={{
                   background:"transparent",
-                  border:"1px solid rgba(200,160,255,0.22)",
+                  border:"1px solid rgba(232,184,200,0.22)",
                   borderRadius:100,padding:"5px 14px",
                   fontSize:10,fontWeight:600,
-                  color:"rgba(200,160,255,0.75)",
+                  color:"rgba(232,184,200,0.75)",
                   cursor:"pointer",fontFamily:"inherit",
                   WebkitTapHighlightColor:"transparent",
                   whiteSpace:"nowrap",flexShrink:0,
@@ -512,113 +536,121 @@ function App({ profile: initialProfile }) {
             </div>
           )}
 
-          {/* ══ MATRI AI CARD (AI headline + My Health + Insights) ══ */}
+          {/* ══ MATRI AI CARD (My Health + Insights) ══ */}
           {(() => {
             const activeMeds = (profileData?.medications||[]).map(parseMed).filter(m=>!m.paused);
             const conditions = (profileData?.conditions||[]).filter(c => c && c.toLowerCase() !== "unknown" && c.trim());
             const hbReadings = profileData?.lab_data?.hemoglobin||[];
             const hasHealthData = !!(activeMeds.length||conditions.length||hbReadings.length||profileData?.prescriptions?.length);
 
-            const aiLabel = (
-              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:"rgba(200,160,255,1)",boxShadow:"0 0 10px rgba(200,160,255,0.65)",flexShrink:0}}/>
-                <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(200,160,255,0.7)"}}>Matri AI</span>
-              </div>
-            );
-
-            let aiHeadline;
-            if (hasHealthData) {
-              const facts = [];
-              const namedMeds = activeMeds.filter(m => m.name && m.name.toLowerCase() !== "unknown");
-              if (conditions.length) facts.push(conditions[0]);
-              if (namedMeds.length===1) facts.push(namedMeds[0].name);
-              else if (namedMeds.length>1) facts.push(`your ${namedMeds.length} medicines`);
-              if (hbReadings.length) { const l=hbReadings[hbReadings.length-1]; facts.push(`HB ${l.value}`); }
-              const factStr = facts.length===0 ? "your health history"
-                : facts.length===1 ? facts[0]
-                : facts.length===2 ? `${facts[0]} & ${facts[1]}`
-                : `${facts.slice(0,-1).join(", ")} & ${facts[facts.length-1]}`;
-              aiHeadline = (
-                <div style={{padding:"16px 20px 14px",position:"relative",zIndex:1}}>
-                  {aiLabel}
-                  <div style={{fontFamily:"'Lora',serif",fontSize:20,fontStyle:"italic",color:"#fff",lineHeight:1.25,marginBottom:6,fontWeight:400}}>
-                    You're not carrying this alone.
-                  </div>
-                  <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",lineHeight:1.6}}>
-                    Matri remembers {factStr} — so you don't have to.
-                  </div>
-                </div>
-              );
-            } else {
-              aiHeadline = (
-                <div style={{padding:"16px 20px 14px",position:"relative",zIndex:1}}>
-                  {aiLabel}
-                  <div style={{fontFamily:"'Lora',serif",fontSize:20,fontStyle:"italic",color:"#fff",lineHeight:1.25,fontWeight:400}}>
-                    The nausea is real. So is that heartbeat.
-                  </div>
-                </div>
-              );
-            }
+            // Build subline for My Health header
+            const facts = [];
+            const namedMeds = activeMeds.filter(m => m.name && m.name.toLowerCase() !== "unknown");
+            if (conditions.length) facts.push(conditions[0]);
+            if (namedMeds.length===1) facts.push(namedMeds[0].name);
+            else if (namedMeds.length>1) facts.push(`your ${namedMeds.length} medicines`);
+            if (hbReadings.length) { const l=hbReadings[hbReadings.length-1]; facts.push(`HB ${l.value}`); }
+            const factStr = facts.length===0 ? "your health history"
+              : facts.length===1 ? facts[0]
+              : facts.length===2 ? `${facts[0]} & ${facts[1]}`
+              : `${facts.slice(0,-1).join(", ")} & ${facts[facts.length-1]}`;
+            const healthSubline = hasHealthData ? `Matri remembers ${factStr} — so you don't have to.` : null;
 
             const conds  = conditions;
-            const counts = healthTabCounts;
-            const hasHealthSummary = counts
-              ? (counts.medicines > 0 || counts.tests > 0 || counts.scans > 0 || conds.length > 0)
-              : !!(profileData?.prescriptions?.length || conds.length);
+            const counts = {
+              medicines: healthTabCounts?.medicines ?? 0,
+              tests:     healthTabCounts?.tests     ?? 0,
+              scans:     healthTabCounts?.scans     ?? 0,
+            };
+            const hasHealthSummary = counts.medicines > 0 || counts.tests > 0 || counts.scans > 0 || conds.length > 0
+              || !!(profileData?.prescriptions?.length);
 
             return (
-              <div style={{margin:"8px 12px 0",background:"linear-gradient(160deg,#261530 0%,#301a3c 50%,#281535 100%)",borderRadius:20,overflow:"hidden",border:"1px solid rgba(200,160,255,0.1)",position:"relative"}}>
-                {/* depth glow behind headline */}
-                <div style={{position:"absolute",top:0,left:0,right:0,height:130,background:"radial-gradient(ellipse at 25% 0%,rgba(200,160,255,0.09) 0%,transparent 65%)",pointerEvents:"none"}}/>
+              <div style={{margin:"8px 12px 0",background:"linear-gradient(160deg,#2c1438 0%,#3c1c4c 50%,#2e1440 100%)",borderRadius:20,overflow:"hidden",border:"1px solid rgba(232,184,200,0.1)",position:"relative"}}>
 
-                {/* AI headline */}
-                {aiHeadline}
-
-                {/* My Health strip */}
-                <div style={{height:1,background:"rgba(255,255,255,0.08)"}}/>
-                <div style={{padding:"14px 20px",cursor:"pointer",display:"flex",alignItems:"center",gap:14,position:"relative",zIndex:1}}
-                  onClick={()=>setMainTab("library")}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"rgba(200,160,255,0.6)",marginBottom:7,display:"flex",alignItems:"center",gap:5}}>
-                      <span style={{fontSize:8}}>✦</span> My Health
-                    </div>
-                    {hasHealthSummary ? (
-                      <div style={{display:"flex",flexWrap:"wrap",gap:"5px 10px",alignItems:"center"}}>
-                        {conds.length > 0 && (
-                          <span style={{fontSize:12,fontWeight:600,color:"rgba(220,180,255,0.9)",background:"rgba(200,160,255,0.1)",borderRadius:100,padding:"2px 9px"}}>{conds[0]}</span>
-                        )}
-                        {counts?.medicines > 0 && (
-                          <span style={{fontSize:12,color:"rgba(255,255,255,0.6)"}}>{counts.medicines} medicine{counts.medicines>1?"s":""}</span>
-                        )}
-                        {counts?.tests > 0 && (
-                          <span style={{fontSize:12,fontWeight:600,color:"rgba(255,190,90,0.9)",background:"rgba(255,180,80,0.1)",borderRadius:100,padding:"2px 9px"}}>{counts.tests} test{counts.tests>1?"s":""} due</span>
-                        )}
-                        {counts?.scans > 0 && (
-                          <span style={{fontSize:12,color:"rgba(130,185,255,0.75)",background:"rgba(120,170,255,0.08)",borderRadius:100,padding:"2px 9px"}}>{counts.scans} scan{counts.scans>1?"s":""}</span>
-                        )}
+                {/* My Health stat tiles — top of card now */}
+                <div style={{cursor:"pointer",position:"relative",zIndex:1}} onClick={()=>setMainTab("library")}>
+                  <div style={{padding:"14px 20px 10px"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom: healthSubline ? 4 : 0}}>
+                      <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"rgba(232,184,200,0.6)",display:"flex",alignItems:"center",gap:5}}>
+                        <span>✦</span> My Health
                       </div>
-                    ) : (
-                      <div>
-                        <div style={{fontFamily:"'Lora',serif",fontSize:14,fontStyle:"italic",color:"rgba(255,255,255,0.75)",lineHeight:1.35,marginBottom:5}}>
-                          Upload your prescription once.
-                        </div>
-                        <div style={{fontSize:12,color:"rgba(255,255,255,0.38)",lineHeight:1.5}}>
-                          Matri tracks medicines, sends test reminders, and keeps everything ready — automatically.
-                        </div>
+                      <div style={{width:26,height:26,borderRadius:"50%",background:"rgba(232,184,200,0.08)",border:"1px solid rgba(232,184,200,0.14)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <span style={{fontSize:11,color:"rgba(232,184,200,0.6)"}}>→</span>
+                      </div>
+                    </div>
+                    {healthSubline && (
+                      <div style={{fontSize:10,color:"rgba(255,255,255,0.32)",lineHeight:1.5,paddingRight:36}}>
+                        {healthSubline}
                       </div>
                     )}
                   </div>
-                  <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(200,160,255,0.1)",border:"1px solid rgba(200,160,255,0.15)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <span style={{fontSize:11,color:"rgba(200,160,255,0.7)"}}>→</span>
-                  </div>
+                  {hasHealthSummary ? (
+                    <div style={{padding:"0 16px 14px"}}>
+                      <div style={{display:"flex",gap:8}}>
+                        {counts.medicines > 0 && (
+                          <div style={{flex:1,background:"rgba(255,255,255,0.05)",border:"1px solid rgba(232,184,200,0.12)",borderRadius:12,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{fontSize:16,lineHeight:1,flexShrink:0}}>💊</div>
+                            <div>
+                              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:400,color:"#fff",lineHeight:1,marginBottom:2}}>{counts.medicines}</div>
+                              <div style={{fontSize:8,color:"rgba(255,255,255,0.35)",letterSpacing:"0.06em",textTransform:"uppercase"}}>med{counts.medicines>1?"s":""}</div>
+                            </div>
+                          </div>
+                        )}
+                        {counts.tests > 0 && (
+                          <div style={{flex:1,background:"rgba(255,180,80,0.08)",border:"1px solid rgba(255,180,80,0.2)",borderRadius:12,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{fontSize:16,lineHeight:1,flexShrink:0}}>🧪</div>
+                            <div>
+                              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:400,color:"rgba(255,195,90,0.95)",lineHeight:1,marginBottom:2}}>{counts.tests}</div>
+                              <div style={{fontSize:8,color:"rgba(255,180,80,0.6)",letterSpacing:"0.06em",textTransform:"uppercase",fontWeight:700}}>tests due</div>
+                            </div>
+                          </div>
+                        )}
+                        {counts.scans > 0 && (
+                          <div style={{flex:1,background:"rgba(120,170,255,0.06)",border:"1px solid rgba(120,170,255,0.15)",borderRadius:12,padding:"8px 10px",display:"flex",alignItems:"center",gap:8}}>
+                            <div style={{fontSize:16,lineHeight:1,flexShrink:0}}>📄</div>
+                            <div>
+                              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:400,color:"rgba(140,190,255,0.85)",lineHeight:1,marginBottom:2}}>{counts.scans}</div>
+                              <div style={{fontSize:8,color:"rgba(120,170,255,0.45)",letterSpacing:"0.06em",textTransform:"uppercase"}}>scan{counts.scans>1?"s":""}</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      {conds.length > 0 && (
+                        <div style={{marginTop:8,display:"flex",flexWrap:"wrap",gap:5}}>
+                          {conds.slice(0,2).map((c,i) => (
+                            <span key={i} style={{fontSize:10,fontWeight:600,color:"rgba(240,200,210,0.85)",background:"rgba(232,184,200,0.1)",border:"1px solid rgba(232,184,200,0.15)",borderRadius:100,padding:"3px 10px"}}>{c}</span>
+                          ))}
+                        </div>
+                      )}
+                      {ranOutMeds.filter(m=>m.name).length > 0 && (
+                        <div style={{marginTop:10,display:"flex",alignItems:"center",gap:8,background:"rgba(255,180,80,0.08)",border:"1px solid rgba(255,180,80,0.2)",borderRadius:10,padding:"7px 12px",cursor:"pointer"}}
+                          onClick={()=>setMainTab("library")}>
+                          <span style={{fontSize:13,flexShrink:0}}>⚠️</span>
+                          <span style={{fontSize:11,color:"rgba(255,195,90,0.9)",flex:1,lineHeight:1.4}}>
+                            {ranOutMeds.filter(m=>m.name).slice(0,2).map(m=>m.name).join(", ")}
+                            {ranOutMeds.filter(m=>m.name).length > 2 ? ` +${ranOutMeds.filter(m=>m.name).length - 2} more` : ""} ran out
+                          </span>
+                          <span style={{fontSize:10,fontWeight:700,color:"rgba(255,195,90,0.6)",flexShrink:0}}>Restock →</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{padding:"0 20px 16px"}}>
+                      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,fontStyle:"italic",color:"rgba(255,255,255,0.55)",lineHeight:1.45}}>
+                        Upload a prescription to get started →
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Insights — embedded, same card */}
+                {/* Insights — always shown; widget handles no-health-data state */}
                 <div style={{height:1,background:"rgba(255,255,255,0.08)"}}/>
                 <InsightFeedWidget
                   healthContext={healthContext}
                   profileData={profileData}
                   currentWeek={currentWeek}
+                  hasRealHealthData={hasHealthSummary}
                   onOpenDoctorPrep={()=>setDoctorPrepOpen(true)}
                   onRxUpload={()=>setRxUploadOpen(true)}
                   embedded
@@ -628,32 +660,16 @@ function App({ profile: initialProfile }) {
             );
           })()}
 
-          {/* ── RAN OUT BANNER ── */}
-          {(() => {
-            const ranOut = ranOutMeds.filter(m => m.name);
-            if (!ranOut.length) return null;
-            return (
-              <div style={{margin:"8px 12px 0",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:16,padding:"14px 16px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
-                  <div style={{width:6,height:6,borderRadius:"50%",background:"var(--rose)",flexShrink:0}}/>
-                  <span style={{fontSize:10,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"var(--rose)"}}>Medicine reminder</span>
-                </div>
-                {ranOut.map((m, i) => (
-                  <div key={i} style={{fontSize:13,color:"var(--ink)",marginBottom:i<ranOut.length-1?6:0,display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:15}}>💊</span>
-                    <span><strong>{m.name}</strong> — you marked this as ran out</span>
-                  </div>
-                ))}
-                <div style={{fontSize:11,color:"var(--muted)",marginTop:8,fontStyle:"italic"}}>
-                  Go to My Health → Medicines to restock
-                </div>
-              </div>
-            );
-          })()}
 
-          {/* SECTION HEADER */}
+          {/* SYMPTOM SECTION — Matri AI branded */}
           <div style={{padding:"20px 20px 0",display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"var(--muted)",flexShrink:0}}>What are you feeling?</span>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"3px 10px 3px 7px",flexShrink:0}}>
+                <div style={{width:5,height:5,borderRadius:"50%",background:"var(--rose)",boxShadow:"0 0 6px rgba(181,88,112,0.5)",flexShrink:0}}/>
+                <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--rose)"}}>Matri AI</span>
+              </div>
+              <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"var(--muted)"}}>What are you feeling?</span>
+            </div>
             <div style={{flex:1,height:1,background:"var(--bdr)"}}/>
           </div>
 
@@ -723,7 +739,7 @@ function App({ profile: initialProfile }) {
                   </div>
                   <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"#5f6368"}}>3am searches</span>
                 </div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3,marginBottom:8}}>What everyone <em style={{fontStyle:"italic",color:"#4285F4"}}>Googles.</em></div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3,marginBottom:8}}>What everyone <em style={{fontStyle:"italic",color:"#4285F4"}}>Googles.</em></div>
                 <div style={{display:"flex",flexDirection:"column",gap:5}}>
                   {["Is this normal?","Can I eat paneer?","Why so tired?"].map(q=>(
                     <div key={q} style={{fontSize:10,color:"#5f6368",display:"flex",gap:5,alignItems:"center",
@@ -738,13 +754,13 @@ function App({ profile: initialProfile }) {
 
             {/* WINS */}
             <div className="w w-sm wc-dark2" style={{width:180,minHeight:320,flexShrink:0}} onClick={()=>open("wins")}>
-              <span className="w-bg-e" style={{color:"#b0a0f0",fontSize:80}}>🏆</span>
+              <span className="w-bg-e" style={{color:"#e8b8c8",fontSize:80}}>🏆</span>
               <div className="win">
-                <div className="w-lbl" style={{color:"#b0a0f0"}}><div className="w-lbl-dot" style={{background:"#b0a0f0"}}/>This week's win</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:15,color:"#fff",lineHeight:1.3,marginBottom:6}}>
+                <div className="w-lbl" style={{color:"#e8b8c8"}}><div className="w-lbl-dot" style={{background:"#e8b8c8"}}/>This week's win</div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,color:"#fff",lineHeight:1.3,marginBottom:6}}>
                   {weeklyContent?.wins_copy?.title_em
                     ? <span dangerouslySetInnerHTML={{__html: weeklyContent.wins_copy.title_em}}/>
-                    : <>You made it to <em style={{fontStyle:"italic",color:"#b0a0f0"}}>week {effectiveWeek ?? 8}.</em></>
+                    : <>You made it to <em style={{fontStyle:"italic",color:"#e8b8c8"}}>week {effectiveWeek ?? 8}.</em></>
                   }
                 </div>
                 <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",lineHeight:1.5}}>
@@ -759,7 +775,7 @@ function App({ profile: initialProfile }) {
               <span className="w-bg-e" style={{color:"var(--plum)",fontSize:60}}>🤫</span>
               <div className="win">
                 <div className="w-lbl" style={{color:"var(--plum)"}}><div className="w-lbl-dot" style={{background:"var(--plum)"}}/>Nobody tells you</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>The things no one <em style={{color:"var(--plum)"}}>warns you about.</em></div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>The things no one <em style={{color:"var(--plum)"}}>warns you about.</em></div>
               </div>
               <div className="w-tap w-tap-dk">Tap to explore ↗</div>
             </div>
@@ -769,7 +785,7 @@ function App({ profile: initialProfile }) {
               <span className="w-bg-e" style={{color:"var(--teal)",fontSize:60}}>🤝</span>
               <div className="win">
                 <div className="w-lbl" style={{color:"var(--teal)"}}><div className="w-lbl-dot" style={{background:"var(--teal)"}}/>For your partner</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>What your partner <em style={{color:"var(--teal)"}}>should know.</em></div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>What your partner <em style={{color:"var(--teal)"}}>should know.</em></div>
               </div>
               <div className="w-tap w-tap-dk">Tap to explore ↗</div>
             </div>
@@ -779,7 +795,7 @@ function App({ profile: initialProfile }) {
               <span className="w-bg-e" style={{color:"var(--forest)",fontSize:60}}>🥥</span>
               <div className="win">
                 <div className="w-lbl" style={{color:"var(--forest)"}}><div className="w-lbl-dot" style={{background:"var(--forest)"}}/>Nutrition</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>Food when nothing <em style={{color:"var(--forest)"}}>appeals.</em></div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,color:"var(--ink)",lineHeight:1.3}}>Food when nothing <em style={{color:"var(--forest)"}}>appeals.</em></div>
               </div>
               <div className="w-tap w-tap-dk">Tap to explore ↗</div>
             </div>
@@ -797,10 +813,10 @@ function App({ profile: initialProfile }) {
 
           <div style={{padding:"14px 12px 0"}}>
             <div className="w wc-dark4" style={{minHeight:200,cursor:"pointer"}} onClick={()=>open("stories")}>
-              <span style={{position:"absolute",fontSize:140,right:-10,bottom:-10,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",color:"#c8a0f0",userSelect:"none"}}>💬</span>
+              <span style={{position:"absolute",fontSize:140,right:-10,bottom:-10,opacity:0.07,transform:"rotate(-10deg)",pointerEvents:"none",color:"#e8b8c8",userSelect:"none"}}>💬</span>
               <div className="win-lg">
-                <div className="w-lbl" style={{color:"#c8a0f0"}}><div className="w-lbl-dot" style={{background:"#c8a0f0"}}/>Stories from week {effectiveWeek ?? 8}</div>
-                <div style={{fontFamily:"'Lora',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:14}}>Women who've been <em style={{fontStyle:"italic",color:"#c8a0f0"}}>right here.</em></div>
+                <div className="w-lbl" style={{color:"#e8b8c8"}}><div className="w-lbl-dot" style={{background:"#e8b8c8"}}/>Stories from week {effectiveWeek ?? 8}</div>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:14}}>Women who've been <em style={{fontStyle:"italic",color:"#e8b8c8"}}>right here.</em></div>
                 <div style={{display:"flex",alignItems:"center"}}>
                   {STORIES.map(s=>(
                     <div key={s.id} style={{width:28,height:28,borderRadius:"50%",background:s.aBg,color:s.aCol,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,border:"2px solid rgba(0,0,0,0.3)",marginRight:-5,flexShrink:0}}>{s.init}</div>
@@ -861,7 +877,7 @@ function App({ profile: initialProfile }) {
         {/* ══ JOURNAL TAB ══ */}
         {mainTab==="journal" && (
           <div style={{minHeight:"calc(100vh - 64px)",display:"flex",flexDirection:"column"}}>
-            <JournalTab entries={journalEntries} setEntries={setJournalEntriesPersist} onOpenAlbum={openLibAlbum} moodLog={moodLog} onOpenProfile={openProfile} profileData={profileData}/>
+            <JournalTab entries={journalEntries} setEntries={setJournalEntriesPersist} onOpenAlbum={openLibAlbum} moodLog={moodLog} onOpenProfile={openProfile} profileData={profileData} week={effectiveWeek}/>
           </div>
         )}
       </div>
@@ -905,7 +921,7 @@ function App({ profile: initialProfile }) {
                 {active==="baby"
                   ? <BabyPanel week={effectiveWeek} weeklyContent={weeklyContent}/>
                   : active==="journal"
-                  ? <JournalPanel entries={journalEntries} setEntries={setJournalEntriesPersist} initialTab="timeline" moodLog={moodLog} week={effectiveWeek}/>
+                  ? <JournalPanel entries={journalEntries} setEntries={setJournalEntriesPersist} initialTab="timeline" moodLog={moodLog} week={effectiveWeek} userName={profileData?.name}/>
                   : active==="symptomDetail"
                   ? <SymptomDetailPanel
                   symptomKey={symptomKey}
@@ -918,7 +934,7 @@ function App({ profile: initialProfile }) {
               </div>
             ) : (
               <div className="panel-scroll">
-                {active==="checklist" ? <CheckPanel checked={checked} toggle={toggleCheck}/>
+                {active==="checklist" ? <CheckPanel checked={checked} toggle={toggleCheck} userItems={userChecklist} onUserItemsChange={(items)=>{ setUserChecklist(items); saveUserChecklist(items); }}/>
                   : active==="symptom" ? <SymptomPanel
                   initialQuery={symptomQuery}
                   analytics={analytics}
@@ -940,7 +956,7 @@ function App({ profile: initialProfile }) {
       {/* ── LIBRARY ALBUM OVERLAY ── */}
       {libAlbumOpen && (
         <div className={`album-screen${libAlbumVis?" open":""}`} style={{position:"fixed",inset:0,zIndex:200}}>
-          <AlbumView entries={journalEntries} onClose={closeLibAlbum}/>
+          <AlbumView entries={journalEntries} onClose={closeLibAlbum} userName={profileData?.name}/>
         </div>
       )}
 
@@ -991,11 +1007,11 @@ function App({ profile: initialProfile }) {
             transition: bubbleDragging ? "none" : "left 0.35s cubic-bezier(0.25,0.8,0.25,1),top 0.35s cubic-bezier(0.25,0.8,0.25,1)"}}>
 
           <div style={{width:32,height:32,borderRadius:"50%",flexShrink:0,
-            background: checksDone===CHECKS.length ? "rgba(70,190,120,0.18)" : "rgba(210,165,50,0.16)",
-            border:`1.5px solid ${checksDone===CHECKS.length ? "rgba(70,190,120,0.4)" : "rgba(210,165,50,0.35)"}`,
+            background: checksDone===checksTotal ? "rgba(70,190,120,0.18)" : "rgba(210,165,50,0.16)",
+            border:`1.5px solid ${checksDone===checksTotal ? "rgba(70,190,120,0.4)" : "rgba(210,165,50,0.35)"}`,
             display:"flex",alignItems:"center",justifyContent:"center",
             fontSize:15, pointerEvents:"none",
-            color: checksDone===CHECKS.length ? "rgba(80,210,130,0.95)" : "rgba(230,175,55,0.95)"}}>
+            color: checksDone===checksTotal ? "rgba(80,210,130,0.95)" : "rgba(230,175,55,0.95)"}}>
             ✓
           </div>
 
@@ -1003,10 +1019,10 @@ function App({ profile: initialProfile }) {
             <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",
               color:"rgba(255,255,255,0.38)",lineHeight:1}}>Your checklist</span>
             <span style={{fontSize:13,fontWeight:700,lineHeight:1,
-              color: checksDone===CHECKS.length ? "rgba(80,210,130,0.9)" : "rgba(230,175,55,0.95)"}}>
-              {checksDone===CHECKS.length
+              color: checksDone===checksTotal ? "rgba(80,210,130,0.9)" : "rgba(230,175,55,0.95)"}}>
+              {checksDone===checksTotal
                 ? "All done ✓"
-                : <>{checksDone}<span style={{fontWeight:400,color:"rgba(255,255,255,0.28)"}}> of {CHECKS.length}</span></>}
+                : <>{checksDone}<span style={{fontWeight:400,color:"rgba(255,255,255,0.28)"}}> of {checksTotal}</span></>}
             </span>
           </div>
         </button>
@@ -1033,7 +1049,7 @@ function App({ profile: initialProfile }) {
       <div className="tab-nav">
         <div className="tab-nav-inner">
           {[
-            {id:"week",  icon:"🌸", label:"Today"},
+            {id:"week",  icon:"🌸", label:"Home"},
             {id:"library",icon:"🏥",label:"My Health"},
             {id:"journal",icon:"✍️",label:"Memories"},
           ].map(t=>(
@@ -1091,7 +1107,7 @@ function App({ profile: initialProfile }) {
           <div className="quick-add-backdrop" onClick={closeLabsEditor}/>
           <div className="quick-add-card" style={{maxHeight:"88vh",display:"flex",flexDirection:"column",padding:"20px 18px 0"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexShrink:0}}>
-              <div style={{fontFamily:"'Lora',serif",fontSize:19,color:"var(--ink)"}}>Tests &amp; <em>lab values</em></div>
+              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,color:"var(--ink)"}}>Tests &amp; <em>lab values</em></div>
               <button onClick={closeLabsEditor} style={{background:"transparent",border:"none",cursor:"pointer",fontSize:16,color:"var(--muted)",padding:0,lineHeight:1}}>✕</button>
             </div>
             <div style={{flex:1,overflowY:"auto",scrollbarWidth:"none",paddingBottom:4}}>
@@ -1207,9 +1223,9 @@ function AuthGate() {
   // Loading state
   if (session === undefined) {
     return (
-      <div style={{position:"fixed",inset:0,background:"linear-gradient(160deg,#6a2e20,#1a6060)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{position:"fixed",inset:0,background:"linear-gradient(160deg,#200c18,#186068)",display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:8,height:8,borderRadius:"50%",background:"#f0a07a"}}/>
+          <div style={{width:8,height:8,borderRadius:"50%",background:"#e8b8a8"}}/>
           <span style={{fontSize:13,fontWeight:700,letterSpacing:"0.28em",textTransform:"uppercase",color:"rgba(255,255,255,0.5)"}}>matri</span>
         </div>
       </div>

@@ -264,9 +264,9 @@ export function PrescriptionsList({ prescriptions = [], onViewDetail, onDeleted 
               onClick={() => onViewDetail && onViewDetail(rx)}>
               <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10}}>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:14,color:"var(--ink)",lineHeight:1.2,marginBottom:3}}>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:14,color:"var(--ink)",lineHeight:1.2,marginBottom:3}}>
                     {rx.doctor || (rx.date ? `Prescription · ${new Date(rx.date).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}` : "Uploaded prescription")}
-                    {rx.clinic && <span style={{fontSize:11,color:"var(--muted)",fontFamily:"'Inter',sans-serif",fontStyle:"normal"}}> · {rx.clinic}</span>}
+                    {rx.clinic && <span style={{fontSize:11,color:"var(--muted)",fontFamily:"'DM Sans',sans-serif",fontStyle:"normal"}}> · {rx.clinic}</span>}
                   </div>
                   {date && <div style={{fontSize:10,color:"var(--muted)",marginBottom:4}}>{date}</div>}
                   {counts && <div style={{fontSize:11,color:"var(--navy)",fontWeight:500,marginBottom:4}}>{counts}</div>}
@@ -295,7 +295,7 @@ export function PrescriptionsList({ prescriptions = [], onViewDetail, onDeleted 
         <>
           <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(16,10,8,0.7)"}} onClick={()=>setDeleteRx(null)}/>
           <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:601,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove this <em>prescription?</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove this <em>prescription?</em></div>
             <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:12,padding:"12px 14px",fontSize:12,color:"var(--rose)",marginBottom:16,lineHeight:1.65}}>
               This will permanently remove this prescription and all medicines, tests, and scan dates linked to it. The AI health context derived from it will also be cleared and rebuilt. <strong>This cannot be undone.</strong>
             </div>
@@ -422,7 +422,7 @@ export function PrescriptionDetailSheet({ rx, onClose, onDelete }) {
         <div style={{padding:"20px 20px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
           <div>
             <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--navy)",marginBottom:4}}>Prescription</div>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>
               {data.doctor_name || data.doctor || "Doctor's prescription"}
             </div>
             {(data.clinic_name || data.clinic) && <div style={{fontSize:11,color:"var(--muted)",marginTop:3}}>{data.clinic_name || data.clinic}</div>}
@@ -494,7 +494,7 @@ export function PrescriptionDetailSheet({ rx, onClose, onDelete }) {
             onClick={() => { if (!deleting) setConfirmingDelete(false); }}
           />
           <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:703,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
-            <div style={{fontFamily:"'Lora',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove this <em>prescription?</em></div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",marginBottom:8}}>Remove this <em>prescription?</em></div>
             <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:12,padding:"12px 14px",fontSize:12,color:"var(--rose)",marginBottom:20,lineHeight:1.65}}>
               This will permanently remove this prescription and all medicines, tests, and scan dates linked to it. <strong>This cannot be undone.</strong>
             </div>

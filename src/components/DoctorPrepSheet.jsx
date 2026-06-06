@@ -57,7 +57,7 @@ export default function DoctorPrepSheet({
           <div
             style={{
               fontFamily:
-                "'Lora',serif",
+                "'Cormorant Garamond',serif",
               fontSize: 22,
               color: "var(--ink)",
             }}

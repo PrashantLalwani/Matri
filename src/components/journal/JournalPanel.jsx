@@ -265,7 +265,7 @@ export function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
           zIndex:10,display:"flex",flexDirection:"column",alignItems:"center",
           justifyContent:"center",padding:28,gap:16,borderRadius:"inherit"}}>
           <div style={{fontSize:32}}>📖</div>
-          <div style={{fontFamily:"'Lora',serif",fontSize:18,color:"var(--ink)",
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"var(--ink)",
             textAlign:"center",lineHeight:1.4,fontWeight:400}}>
             Add to your<br/><em style={{color:"var(--teal)"}}>pregnancy album</em> too?
           </div>
@@ -340,7 +340,7 @@ export function JournalPhotoCrop({ src, remaining, onConfirm, onCancel }) {
   );
 }
 
-export function JournalPanel({ entries, setEntries, initialTab, moodLog, week }) {
+export function JournalPanel({ entries, setEntries, initialTab, moodLog, week, userName }) {
   const [tab,       setTab]       = useState(initialTab || "write");
   const [text,      setText]      = useState("");
   const [mood,      setMood]      = useState(null);
@@ -483,9 +483,9 @@ export function JournalPanel({ entries, setEntries, initialTab, moodLog, week })
                   borderRadius:14,padding:"14px 16px",marginBottom:12}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",
                     textTransform:"uppercase",color:"var(--teal)",marginBottom:6}}>This week's prompt</div>
-                  <div style={{fontFamily:"'Lora',serif",fontSize:15,fontStyle:"italic",
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontStyle:"italic",
                     color:"var(--ink)",lineHeight:1.65}}>
-                    {getWeekPrompt(8)}
+                    {getWeekPrompt(week)}
                   </div>
                 </div>
                 <textarea className="j-textarea" rows={5} value={text}
@@ -578,7 +578,7 @@ export function JournalPanel({ entries, setEntries, initialTab, moodLog, week })
             )}
 
             {/* SHAREABLE STRIP */}
-            <ShareableStrip entries={entries}/>
+            <ShareableStrip entries={entries} userName={userName}/>
             {/* FRIENDS CARD */}
             <div style={{padding:"0 16px 16px"}}><FriendsCard/></div>
 
@@ -675,7 +675,7 @@ export function JournalPanel({ entries, setEntries, initialTab, moodLog, week })
       {/* ── ALBUM OVERLAY (scoped inside journal panel) ── */}
       {albumOpen && (
         <div className={`album-screen${albumVis?" open":""}`}>
-          <AlbumView entries={entries} onClose={closeAlbum}/>
+          <AlbumView entries={entries} onClose={closeAlbum} userName={userName}/>
         </div>
       )}
     </div>
