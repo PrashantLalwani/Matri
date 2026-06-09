@@ -94,6 +94,16 @@ export default function SymptomDetailPanel({
   
     return (
       <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
+        {/* Disclaimer banner */}
+        <div style={{
+          padding:"9px 16px", flexShrink:0,
+          background:"var(--cream2)",
+          borderBottom:"1px solid var(--bdr)",
+        }}>
+          <p style={{fontSize:11, lineHeight:1.55, color:"var(--muted)", margin:0}}>
+            Matri's guidance is personalised to your health data, but is not a substitute for professional medical advice. Always consult your doctor.
+          </p>
+        </div>
         {/* Scrollable content */}
         <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"16px 16px 0",scrollbarWidth:"none"}}>
   

@@ -8,6 +8,7 @@ const PROMISES = [
 
 export default function ConsentScreen({ onConsent, onDismiss }) {
   const [agreed, setAgreed] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -113,18 +114,24 @@ export default function ConsentScreen({ onConsent, onDismiss }) {
             ))}
           </div>
 
-          <a
-            href="/privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              fontSize: 12.5, color: "#e8b8a8", fontWeight: 600,
-              textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
-              marginBottom: 32,
-            }}
-          >
-            Read our full Privacy Policy →
-          </a>
+          <div style={{display:"flex", flexDirection:"column", gap:10, marginBottom:32}}>
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{fontSize:12.5, color:"#e8b8a8", fontWeight:600, textDecoration:"none", display:"inline-flex", alignItems:"center", gap:4}}
+            >
+              Read our full Privacy Policy →
+            </a>
+            <a
+              href="/tos"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{fontSize:12.5, color:"#e8b8a8", fontWeight:600, textDecoration:"none", display:"inline-flex", alignItems:"center", gap:4}}
+            >
+              Read our Terms of Service →
+            </a>
+          </div>
 
         </div>
 
@@ -159,20 +166,52 @@ export default function ConsentScreen({ onConsent, onDismiss }) {
               >
                 Privacy Policy
               </a>
-              {" "}and consent to the collection and use of my data as described.
+              {" "}and{" "}
+              <a
+                href="/tos"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                style={{color:"#e8b8a8", fontWeight:600, textDecoration:"none"}}
+              >
+                Terms of Service
+              </a>
+              , and consent to the collection and use of my data as described.
+            </span>
+          </label>
+
+          <label style={{
+            display: "flex", alignItems: "flex-start", gap: 12,
+            cursor: "pointer", marginBottom: 16,
+            WebkitTapHighlightColor: "transparent",
+          }}>
+            <div
+              onClick={() => setAgeConfirmed(a => !a)}
+              style={{
+                width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
+                border: ageConfirmed ? "none" : "1.5px solid rgba(255,255,255,0.3)",
+                background: ageConfirmed ? "var(--rose)" : "rgba(255,255,255,0.07)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.15s",
+              }}
+            >
+              {ageConfirmed && <span style={{color:"#fff", fontSize:11, fontWeight:700, lineHeight:1}}>✓</span>}
+            </div>
+            <span style={{fontSize:12.5, color:"rgba(255,255,255,0.55)", lineHeight:1.6}}>
+              I confirm that I am 18 years of age or older.
             </span>
           </label>
 
           <button
-            disabled={!agreed}
+            disabled={!agreed || !ageConfirmed}
             onClick={onConsent}
             style={{
               width: "100%", padding: "15px",
-              background: agreed ? "var(--rose)" : "rgba(255,255,255,0.08)",
+              background: agreed && ageConfirmed ? "var(--rose)" : "rgba(255,255,255,0.08)",
               border: "none", borderRadius: 100,
               fontSize: 15, fontWeight: 600, letterSpacing: "0.02em",
-              color: agreed ? "#fff" : "rgba(255,255,255,0.25)",
-              cursor: agreed ? "pointer" : "not-allowed",
+              color: agreed && ageConfirmed ? "#fff" : "rgba(255,255,255,0.25)",
+              cursor: agreed && ageConfirmed ? "pointer" : "not-allowed",
               fontFamily: "inherit",
               transition: "all 0.2s",
             }}
