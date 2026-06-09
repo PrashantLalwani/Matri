@@ -50,6 +50,7 @@ import { LabTimelineRow, TestOrderRow, TestOrdersSection, TestReportSheet, LabsE
 import ProfilePage from "./components/profile/ProfilePage";
 import HealthTab from "./components/medical/HealthTab";
 import { PregnantIcon, AuthScreen } from "./components/auth/AuthGate";
+import ConsentScreen from "./components/ConsentScreen";
 import { StorybookPreviewWidget, HeroMoodStrip, InsightFeedWidget, QuickAddEntry, FriendsCard, MoodSummary, MatriMomentWidget, MatriMomentPanel, ShareableStrip, LibraryView, JournalTab } from "./components/dashboard/Widgets";
 
 // Matri v2.1 — build 2026-05-24
@@ -182,6 +183,8 @@ function App({ profile: initialProfile }) {
   const [doctorPrepOpen, setDoctorPrepOpen] = useState(false);
   const [rxUploadOpen,   setRxUploadOpen]   = useState(false);
   const [labsOpen,       setLabsOpen]       = useState(false);
+  const [consentOpen,    setConsentOpen]    = useState(false);
+  const [pendingAction,  setPendingAction]  = useState(null);
   const [labsVis,        setLabsVis]        = useState(false);
   const [labsEditData,   setLabsEditData]   = useState({});
   const [labsSaving,     setLabsSaving]     = useState(false);
@@ -380,6 +383,31 @@ function App({ profile: initialProfile }) {
   // Quick add sheet
   const openQuickAdd  = () => { setQuickAdd(true);  requestAnimationFrame(()=>setQuickAddVis(true)); };
   const closeQuickAdd = () => { setQuickAddVis(false); setTimeout(()=>setQuickAdd(false), 370); };
+
+  // Consent gate — shows ConsentScreen before any upload if not yet consented
+  const withConsent = (action) => {
+    if (profileData?.consent_given) { action(); return; }
+    setPendingAction(() => action);
+    setConsentOpen(true);
+  };
+  const handleConsentDismiss = () => {
+    setConsentOpen(false);
+    setPendingAction(null);
+  };
+  const handleConsent = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const now = new Date().toISOString();
+        await supabase.from("profiles").update({ consent_given: true, consent_date: now }).eq("id", user.id);
+        setProfileData(p => ({ ...p, consent_given: true, consent_date: now }));
+      }
+    } catch {}
+    setConsentOpen(false);
+    const action = pendingAction;
+    setPendingAction(null);
+    action?.();
+  };
 
   // Labs editor sheet
   const openLabsEditor  = () => {
@@ -652,7 +680,7 @@ function App({ profile: initialProfile }) {
                   currentWeek={currentWeek}
                   hasRealHealthData={hasHealthSummary}
                   onOpenDoctorPrep={()=>setDoctorPrepOpen(true)}
-                  onRxUpload={()=>setRxUploadOpen(true)}
+                  onRxUpload={()=>withConsent(()=>setRxUploadOpen(true))}
                   embedded
                 />
 
@@ -837,7 +865,8 @@ function App({ profile: initialProfile }) {
             profileData={profileData}
             healthContext={healthContext}
             onOpenProfile={openProfile}
-            onOpenLabsEditor={openLabsEditor}
+            onOpenLabsEditor={()=>withConsent(openLabsEditor)}
+            requireConsent={withConsent}
             onRanOutChange={setRanOutMeds}
             onCountsChange={setHealthTabCounts}
             onDataChange={async () => {
@@ -945,7 +974,7 @@ function App({ profile: initialProfile }) {
                   : active==="body" ? <BodyPanel onLogMood={logMood} week={effectiveWeek}/>
                   : active==="food" ? <FoodPanel week={effectiveWeek} weeklyContent={weeklyContent}/>
                   : active==="moment" ? <MatriMomentPanel week={effectiveWeek ?? 8} weeklyMoment={weeklyContent?.matri_moment} entries={journalEntries} setEntries={setJournalEntriesPersist}/>
-                  : active==="medical" ? <MedPanel profileData={profileData} completedTests={completedTests} onMarkTestComplete={markTestComplete} onRxUpload={()=>setRxUploadOpen(true)} {...appMedHandlers}/>
+                  : active==="medical" ? <MedPanel profileData={profileData} completedTests={completedTests} onMarkTestComplete={markTestComplete} onRxUpload={()=>withConsent(()=>setRxUploadOpen(true))} {...appMedHandlers}/>
                   : pd.Panel ? <pd.Panel week={effectiveWeek} weeklyContent={weeklyContent}/> : null}
               </div>
             )}
@@ -1070,6 +1099,9 @@ function App({ profile: initialProfile }) {
         />
       )}
 
+      {/* ── CONSENT SCREEN ── */}
+      {consentOpen && <ConsentScreen onConsent={handleConsent} onDismiss={handleConsentDismiss}/>}
+
       {/* ── PRESCRIPTION UPLOAD FLOW ── */}
       {rxUploadOpen && (
         <PrescriptionUploadFlow
@@ -1151,7 +1183,7 @@ function App({ profile: initialProfile }) {
           completedTests={completedTests}
           onMarkTestComplete={markTestComplete}
           appMedHandlers={appMedHandlers}
-          onRxUpload={() => { closeProfile(); setTimeout(() => setRxUploadOpen(true), 400); }}
+          onRxUpload={() => withConsent(() => { closeProfile(); setTimeout(() => setRxUploadOpen(true), 400); })}
         />
       )}
 

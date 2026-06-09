@@ -1157,7 +1157,7 @@ function PmsmaFooter() {
 }
 
 /* ─── MAIN HEALTH TAB ────────────────────────────────────────────────────── */
-export default function HealthTab({ profileData, healthContext, onOpenProfile, onOpenLabsEditor, onUploadComplete, onRanOutChange, onDataChange, onCountsChange }) {
+export default function HealthTab({ profileData, healthContext, onOpenProfile, onOpenLabsEditor, onUploadComplete, onRanOutChange, onDataChange, onCountsChange, requireConsent }) {
   const [loading,       setLoading]       = useState(true);
   const [prescriptions, setPrescriptions] = useState([]);
   const [medicines,     setMedicines]     = useState([]);
@@ -1360,7 +1360,8 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
     if (!resolvedScan.id) return; // migration not yet run — columns missing
 
     if (action === "upload") {
-      setActiveScanUpload(resolvedScan);
+      const doUpload = () => setActiveScanUpload(resolvedScan);
+      requireConsent ? requireConsent(doUpload) : doUpload();
     } else if (action === "markDone") {
       await supabase.from("scans").update({ status: "completed" }).eq("id", resolvedScan.id);
       fetchData();
@@ -1465,7 +1466,7 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
           </div>
         ) : !hasPrescriptions ? (
           <>
-            <EmptyHealthState onUpload={() => setShowUpload(true)} />
+            <EmptyHealthState onUpload={() => requireConsent ? requireConsent(() => setShowUpload(true)) : setShowUpload(true)} />
             <PmsmaFooter />
           </>
         ) : (
@@ -1476,7 +1477,7 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
               <DoctorNotesRow
                 prescriptions={prescriptions}
                 onViewDetail={setDetailRx}
-                onUpload={() => setShowUpload(true)}
+                onUpload={() => requireConsent ? requireConsent(() => setShowUpload(true)) : setShowUpload(true)}
               />
             </div>
 
