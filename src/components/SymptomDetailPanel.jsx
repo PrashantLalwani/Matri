@@ -1,5 +1,34 @@
 import React, { useState, useRef, useCallback } from "react";
 
+// Patterns that must never reach the LLM — show a static emergency response instantly.
+const EMERGENCY_PATTERNS = [
+  /can.?t feel (baby|kicks?|movements?)/i,
+  /no (fetal |baby )?(movement|kicks?)/i,
+  /(stopped?|not) (moving|kicking)/i,
+  /heavy bleeding/i,
+  /(lots? of|a lot of|so much) blood/i,
+  /bleeding (heavily|a lot|badly|non.?stop)/i,
+  /water (broke|breaking|broken)/i,
+  /fluid (gushing|pouring|leaking from)/i,
+  /chest (pain|tightness|pressure)/i,
+  /can.?t breathe|difficulty breathing/i,
+  /blurr(y|ed) vision/i,
+  /vision (changes?|loss|gone|spots)/i,
+  /severe headache.{0,30}(vision|see|sight|swelling)/i,
+  /face.*sudden(ly)? swoll?en|hands? swoll?en/i,
+  /fever.{0,20}(38|39|40|41)|high fever/i,
+  /seizure|convulsion/i,
+  /(unconscious|fainted|passed out)/i,
+  /want to (hurt|harm|kill) (myself|me)/i,
+  /suicid/i,
+];
+
+const EMERGENCY_RESPONSE = "This sounds urgent. Please call your doctor or go to your nearest maternity hospital right now — don’t wait for your next appointment.";
+
+function isEmergency(text) {
+  return EMERGENCY_PATTERNS.some(p => p.test(text));
+}
+
 const TILE_BG   = "rgba(255,255,255,0.07)";
 const TILE_BDR  = "rgba(255,255,255,0.09)";
 const BODY_TXT  = "rgba(255,255,255,0.58)";
@@ -55,21 +84,30 @@ export default function SymptomDetailPanel({ symptomKey, week = 8, COMMON_SYMPTO
 
   const OUT_OF_SCOPE = `I'm focused on ${s?.label?.toLowerCase() || "this symptom"} right now. For other concerns, go back and tap the relevant symptom from the home screen.`;
 
-  const buildSystemPrompt = () => `You are Matri, a warm and knowledgeable pregnancy companion for Indian women in Week ${week}, First Trimester.
+  const trimesterLabel = !week ? "pregnancy" : week <= 13 ? "First Trimester" : week <= 26 ? "Second Trimester" : "Third Trimester";
+
+  const buildSystemPrompt = () => `You are Matri, a warm and knowledgeable pregnancy companion for Indian women in Week ${week ?? "unknown"} (${trimesterLabel}).
 
 The user is asking about: ${s?.label} during pregnancy.
 
 Grounding facts you must use:
 ${s?.context || ""}
 
+Red flags for ${s?.label} — always tell the user to call their doctor if these come up:
+${s?.callIf || "Any sudden or severe worsening of symptoms."}
+
 Your rules:
-1. ONLY answer questions directly related to ${s?.label} during pregnancy.
-2. If the question is about anything else, respond with exactly: "OUT_OF_SCOPE"
-3. Keep answers to 2-3 sentences maximum. Warm, honest, never alarming.
-4. Never diagnose. For severe symptoms, suggest consulting a doctor.
-5. Use Indian context where relevant (food, medicines, lifestyle).
-6. Do not repeat information already given in previous answers.
-7. Never say you are an AI or mention Claude/Anthropic.`;
+1. Answer any question about ${s?.label} — its causes, what makes it better or worse, safe remedies, when to call a doctor, and lifestyle factors (hydration, diet, rest, posture, safe foods) that directly affect it. All of these are in scope.
+2. Only respond with exactly "OUT_OF_SCOPE" if the question is clearly about a completely different, unrelated medical concern.
+3. Keep answers to 2–3 sentences maximum. Warm, confident, not alarming unless genuinely warranted.
+4. Medication handling — two separate cases:
+   a. If the medication appears in her health context (already prescribed by her doctor): answer with full confidence, reference the prescribed dose and timing naturally. Her doctor has already made that call — reinforce it.
+   b. If the medication is NOT in her health context: give general guidance only ("paracetamol is commonly used in pregnancy") without specifying a dose or schedule.
+5. Be a confident companion. For lifestyle, diet, hydration, and standard pregnancy guidance — answer directly and warmly without hedging every sentence. Reserve caution for genuine medical edge cases.
+6. Append "[REFER]" on its own line at the very end ONLY when: (a) the question involves a medication not in her health context, (b) the symptom pattern she describes matches the red flags above, or (c) the question requires individual clinical judgment ("should I stop this medicine?", "is my dose too high?"). Do NOT add [REFER] for lifestyle questions, hydration, diet, rest, questions about her already-prescribed medications, or established pregnancy guidance.
+7. Use Indian context where relevant (desi foods, Indian brand medicines, lifestyle).
+8. Do not repeat information already given in previous answers.
+9. Never say you are an AI or mention Claude/Anthropic.`;
 
   const ask = async (question) => {
     if (!question.trim() || loading) return;
@@ -77,6 +115,14 @@ Your rules:
     const userMsg = question.trim();
     setInput("");
     setMessages(p => [...p, { role:"user", text: userMsg }]);
+
+    // Layer 1: emergency intercept — never reaches the API
+    if (isEmergency(userMsg)) {
+      setMessages(p => [...p, { role:"emergency", text: EMERGENCY_RESPONSE }]);
+      setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior:"smooth" }), 100);
+      return;
+    }
+
     setLoading(true);
     setTimeout(() => chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior:"smooth" }), 100);
 
@@ -90,7 +136,7 @@ Your rules:
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-5",
+          model: "claude-sonnet-4-6",
           max_tokens: 300,
           system: buildSystemPrompt(),
           messages: [...history, { role: "user", content: userMsg }],
@@ -99,13 +145,16 @@ Your rules:
 
       if (!resp.ok) throw new Error(`Server error ${resp.status}`);
       const data = await resp.json();
-      const text = data.content?.[0]?.text || "";
-      if (!text) throw new Error("Empty response");
+      const raw = data.content?.[0]?.text || "";
+      if (!raw) throw new Error("Empty response");
 
-      if (text.includes("OUT_OF_SCOPE")) {
+      if (raw.includes("OUT_OF_SCOPE")) {
         setMessages(p => [...p, { role:"scope", text: OUT_OF_SCOPE }]);
       } else {
-        setMessages(p => [...p, { role:"assistant", text }]);
+        // Layer 2: extract [REFER] signal — strip from displayed text
+        const refer = raw.includes("[REFER]");
+        const text = raw.replace(/\[REFER\]\s*$/m, "").trimEnd();
+        setMessages(p => [...p, { role:"assistant", text, refer }]);
       }
     } catch {
       setMessages(p => [...p, { role:"scope", text: "Something didn't go through on our end. Give it a moment and try again — we're here." }]);
@@ -227,10 +276,20 @@ Your rules:
           {messages.length > 0 && (
             <div className="sdp-chat">
               {messages.map((m,i) => (
-                <div key={i} className={m.role === "user" ? "sdp-msg-q" : "sdp-msg-a"}
-                  style={m.role === "assistant" ? {background:TILE_BG,border:`1px solid ${TILE_BDR}`,color:BODY_TXT} :
-                         m.role === "scope"     ? {background:"rgba(255,200,80,0.1)",border:"1px solid rgba(255,200,80,0.2)",color:"rgba(255,210,120,0.85)",borderRadius:14} : {}}>
-                  {m.text}
+                <div key={i}>
+                  <div className={m.role === "user" ? "sdp-msg-q" : "sdp-msg-a"}
+                    style={m.role === "assistant" ? {background:TILE_BG,border:`1px solid ${TILE_BDR}`,color:BODY_TXT} :
+                           m.role === "scope"     ? {background:"rgba(255,200,80,0.1)",border:"1px solid rgba(255,200,80,0.2)",color:"rgba(255,210,120,0.85)",borderRadius:14} :
+                           m.role === "emergency" ? {background:"rgba(220,60,80,0.15)",border:"1px solid rgba(220,60,80,0.35)",color:"#f0b0b8",borderRadius:14,fontWeight:500} : {}}>
+                    {m.role === "emergency" && <span style={{marginRight:6}}>📞</span>}
+                    {m.text}
+                  </div>
+                  {m.refer && (
+                    <div style={{display:"flex",alignItems:"center",gap:5,marginTop:5,paddingLeft:4}}>
+                      <span style={{fontSize:11}}>📞</span>
+                      <span style={{fontSize:11,color:"rgba(232,184,200,0.65)",fontStyle:"italic"}}>Worth confirming with your doctor</span>
+                    </div>
+                  )}
                 </div>
               ))}
               {loading && (

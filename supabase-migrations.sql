@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS weekly_content (
   symptom_contexts  jsonb,   -- {cramping:{means,context}, nausea:{means,context}, …}
   nutrition         jsonb,   -- {iron_mg, folate_mcg, calcium_mg, note}
   checklist         jsonb,   -- [{id, text, pri, col}] — week-specific action items
+  shopping          jsonb,   -- [{ico, nm, wy, pr}] — week-specific buy suggestions
   updated_at        timestamptz DEFAULT now()
 );
 
@@ -50,9 +51,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- Add checklist column to existing weekly_content tables.
+-- Add checklist and shopping columns to existing weekly_content tables.
 ALTER TABLE weekly_content
   ADD COLUMN IF NOT EXISTS checklist jsonb;
+ALTER TABLE weekly_content
+  ADD COLUMN IF NOT EXISTS shopping  jsonb;  -- [{ico, nm, wy, pr}] — week-specific buy suggestions
 
 -- Store computed week on health_insights so the GET cache can return it.
 ALTER TABLE health_insights

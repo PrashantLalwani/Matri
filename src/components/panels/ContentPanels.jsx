@@ -2,6 +2,13 @@ import React, { useState, useRef } from 'react';
 import { myths } from '../../constants/myths';
 import { CHECKLIST_STORAGE_KEY, loadChecked, saveChecked, loadUserChecklist, saveUserChecklist } from '../../utils/storage';
 
+export const SHOP_ITEMS = [
+  {ico:"💊",nm:"Folic Acid + Iron",wy:"Neural development",pr:"₹120–300/mo"},
+  {ico:"🩱",nm:"Supportive Bra",wy:"Non-negotiable now",pr:"₹400–800"},
+  {ico:"💧",nm:"Water Bottle",wy:"3L/day — nice one helps",pr:"₹300–600"},
+  {ico:"🍪",nm:"Ginger Biscuits",wy:"Best natural nausea fix",pr:"₹40–80"},
+];
+
 export const CHECKS = [
   {id:1,text:"Finalize your doctor",pri:"Today",col:"#c04040"},
   {id:2,text:"Tell your parents and close ones",pri:"Today",col:"#c04040"},
@@ -309,11 +316,7 @@ export function CheckPanel({ checked, toggle, userItems = [], onUserItemsChange,
 
     <div className="p-lbl" style={{color:"var(--amber)"}}>Worth buying this week</div>
     <div className="shop-row">
-      {[{ico:"💊",nm:"Folic Acid + Iron",wy:"Neural development",pr:"₹120–300/mo"},
-        {ico:"🩱",nm:"Supportive Bra",wy:"Non-negotiable now",pr:"₹400–800"},
-        {ico:"💧",nm:"Water Bottle",wy:"3L/day — nice one helps",pr:"₹300–600"},
-        {ico:"🍪",nm:"Ginger Biscuits",wy:"Best natural nausea fix",pr:"₹40–80"},
-      ].map((s,i)=>(
+      {(weeklyContent?.shopping ?? SHOP_ITEMS).map((s,i)=>(
         <div key={i} className="shop-tile"><div className="shop-ico">{s.ico}</div><div className="shop-nm">{s.nm}</div><div className="shop-wy">{s.wy}</div><div className="shop-pr">{s.pr}</div></div>
       ))}
     </div>
