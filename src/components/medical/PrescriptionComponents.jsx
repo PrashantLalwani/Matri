@@ -6,12 +6,13 @@ import { compressImageFile } from '../../utils/albumUtils';
 /* ─── PRESCRIPTION UPLOAD FLOW ───────────────────────────────────────────── */
 // The full fan-out upload — prescription → medicines + tests + scans + summary
 export function PrescriptionUploadFlow({ onComplete, onClose }) {
-  const [vis,      setVis]      = useState(false);
-  const [file,     setFile]     = useState(null);
-  const [step,     setStep]     = useState("upload"); // upload → confirm → done
-  const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
-  const [error,    setError]    = useState(null);
+  const [vis,            setVis]            = useState(false);
+  const [file,           setFile]           = useState(null);
+  const [step,           setStep]           = useState("upload"); // upload → confirm → done
+  const [loading,        setLoading]        = useState(false);
+  const [result,         setResult]         = useState(null);
+  const [error,          setError]          = useState(null);
+  const [doctorConflict, setDoctorConflict] = useState(null); // { current, extracted }
   const fileRef = useRef();
 
   useEffect(() => { requestAnimationFrame(() => setVis(true)); }, []);
@@ -44,6 +45,7 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
       if (!resp.ok) throw new Error("Server error");
       const data = await resp.json();
       setResult(data.parsed);
+      setDoctorConflict(data.doctor_conflict || null);
       setStep("confirm");
     } catch(e) {
       setError("Couldn't read the prescription. Try a clearer photo.");
@@ -51,8 +53,17 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
     setLoading(false);
   };
 
+  const resolveDoctor = async (useExtracted) => {
+    if (useExtracted && doctorConflict) {
+      await supabase.from("profiles").update({
+        doctor_name: doctorConflict.extracted.doctor_name,
+        clinic_name: doctorConflict.extracted.clinic_name || null,
+      }).eq("id", (await supabase.auth.getUser()).data.user.id);
+    }
+    setDoctorConflict(null);
+  };
+
   const confirm = async () => {
-    // Data is already saved by api/infer — just close and refresh
     onComplete(result);
     close();
   };
@@ -185,7 +196,29 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
             </div>
           )}
 
-<div style={{display:"flex",gap:10,marginTop:8}}>
+          {doctorConflict && (
+            <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:"var(--rose)",marginBottom:8}}>Doctor mismatch</div>
+              <div style={{fontSize:12,color:"var(--ink)",marginBottom:4}}>
+                Your profile: <strong>{doctorConflict.current.doctor_name}</strong>
+                {doctorConflict.current.clinic_name && ` · ${doctorConflict.current.clinic_name}`}
+              </div>
+              <div style={{fontSize:12,color:"var(--ink)",marginBottom:12}}>
+                This prescription: <strong>{doctorConflict.extracted.doctor_name}</strong>
+                {doctorConflict.extracted.clinic_name && ` · ${doctorConflict.extracted.clinic_name}`}
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={() => resolveDoctor(false)} style={{flex:1,padding:"9px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:12,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+                  Keep existing
+                </button>
+                <button onClick={() => resolveDoctor(true)} style={{flex:1,padding:"9px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+                  Update doctor
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{display:"flex",gap:10,marginTop:8}}>
             <button onClick={() => setStep("upload")} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
               Re-upload
             </button>

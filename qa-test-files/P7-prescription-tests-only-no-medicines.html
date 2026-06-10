@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>P7 — Prescription Tests Only, No Medicines</title>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 680px; min-height: 780px; background: #fffdf5; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); padding: 0; position: relative; }
+  .lh { background: linear-gradient(135deg, #1a4a6b, #2e6e9e); color: #fff; padding: 20px 28px 16px; border-bottom: 4px solid #e8a020; }
+  .lh-name { font-size: 22px; font-weight: 700; }
+  .lh-qual { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .lh-clinic { font-size: 12px; opacity: 0.75; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px; }
+  .body { padding: 20px 28px; }
+  .patient-row { display: flex; border: 1px solid #bbb; border-radius: 4px; overflow: hidden; margin-bottom: 16px; }
+  .patient-cell { flex: 1; padding: 6px 10px; border-right: 1px solid #bbb; }
+  .patient-cell:last-child { border-right: none; }
+  .patient-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .patient-val { font-family: 'Kalam', cursive; font-size: 14px; color: #1a1a1a; }
+  .rx-marker { font-size: 42px; color: #1a4a6b; font-weight: 700; font-style: italic; line-height: 1; margin-bottom: 8px; font-family: 'Times New Roman', serif; }
+  .no-med { font-family: 'Kalam', cursive; font-size: 15px; color: #aaa; font-style: italic; margin-bottom: 16px; padding-left: 8px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #1a4a6b; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px dashed #ccc; }
+  .inv-line { font-family: 'Kalam', cursive; font-size: 15px; color: #222; margin-bottom: 6px; }
+  .inv-line::before { content: '• '; color: #e8a020; }
+  .footer { margin-top: 28px; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 12px; border-top: 1px dashed #ccc; }
+  .followup-label { font-size: 10px; text-transform: uppercase; color: #888; }
+  .followup-date { font-family: 'Kalam', cursive; font-size: 17px; color: #c0392b; font-weight: 700; margin-top: 2px; }
+  .sig-scrawl { font-family: 'Kalam', cursive; font-size: 22px; color: #1a1a1a; transform: rotate(-3deg) skewX(-5deg); display: inline-block; }
+  .sig-label { font-size: 10px; color: #888; margin-top: 2px; }
+  .date-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 14px; color: #555; }
+  .date-val { font-family: 'Kalam', cursive; font-size: 14px; color: #222; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #00695c; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .test-note { background: #e0f2f1; border: 1px solid #80cbc4; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 11px; color: #004d40; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">P7 — QA TEST FILE</div>
+  <div class="lh">
+    <div class="lh-name">Dr. Archana Pathak</div>
+    <div class="lh-qual">MBBS, MD (Obstetrics &amp; Gynaecology) &nbsp;|&nbsp; FICOG</div>
+    <div class="lh-clinic">Apollo Maternity Clinic, Juhu, Mumbai – 400049 &nbsp;|&nbsp; Ph: 022-26205100</div>
+  </div>
+  <div class="body">
+    <div class="test-note">⚠️ QA NOTE: NO medicines prescribed — only investigations and scan. Tests that the medicines section is NOT affected while test orders and scans are correctly created.</div>
+    <div class="date-row">
+      <div><span style="font-size:10px;color:#888;display:block;">DATE</span><span class="date-val">25 / 03 / 2026</span></div>
+      <div><span style="font-size:10px;color:#888;display:block;">OPD NO.</span><span class="date-val">5011</span></div>
+    </div>
+    <div class="patient-row">
+      <div class="patient-cell"><div class="patient-label">Patient Name</div><div class="patient-val">Priya Mehta</div></div>
+      <div class="patient-cell"><div class="patient-label">Age</div><div class="patient-val">28 Y</div></div>
+      <div class="patient-cell"><div class="patient-label">GA (weeks)</div><div class="patient-val">17+ wks</div></div>
+    </div>
+    <div class="rx-marker">℞</div>
+    <div class="no-med">— Continue all previous medicines —</div>
+    <div class="section-title">Investigations (Ordered)</div>
+    <div class="inv-line">GTT (75g Oral Glucose Tolerance Test)</div>
+    <div class="inv-line">Hb (repeat)</div>
+    <div class="inv-line">Serum Calcium</div>
+    <div class="inv-line">Thyroid Profile (T3, T4, TSH)</div>
+    <div class="section-title">Scan Advised</div>
+    <div class="inv-line">Fetal Echo — 22 to 24 weeks</div>
+    <div class="section-title">Advice</div>
+    <div style="font-family:'Kalam',cursive;font-size:14px;color:#444;margin-bottom:5px;">→ Fast for 8 hrs before GTT</div>
+    <div style="font-family:'Kalam',cursive;font-size:14px;color:#444;margin-bottom:5px;">→ Carry previous reports</div>
+    <div class="footer">
+      <div>
+        <div class="followup-label">Follow-Up Date</div>
+        <div class="followup-date">25 / 04 / 2026</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="sig-scrawl">Archana Pathak</div>
+        <div class="sig-label">Dr. Archana Pathak</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

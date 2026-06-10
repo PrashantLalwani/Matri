@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Matri — QA Checklist</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #1a1a2e;
+    background: #fff;
+    padding: 48px 56px;
+    max-width: 900px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ── COVER ── */
+  .cover {
+    text-align: center;
+    padding: 60px 0 48px;
+    border-bottom: 2px solid #e8d5f0;
+    margin-bottom: 40px;
+  }
+  .cover-logo {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #c0396b, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+  .cover-sub {
+    font-size: 13px;
+    color: #888;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 32px;
+  }
+  .cover-meta {
+    display: inline-flex;
+    gap: 32px;
+    background: #f8f4fc;
+    border: 1px solid #e8d5f0;
+    border-radius: 12px;
+    padding: 16px 28px;
+  }
+  .cover-meta-item { text-align: center; }
+  .cover-meta-num {
+    font-size: 26px;
+    font-weight: 700;
+    color: #7c3aed;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .cover-meta-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ── HOW TO USE ── */
+  .how-to-use {
+    background: #f8f4fc;
+    border-left: 4px solid #7c3aed;
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+    margin-bottom: 40px;
+  }
+  .how-to-use h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: #7c3aed; margin-bottom: 10px; font-weight: 700; }
+  .how-to-use ol { padding-left: 18px; }
+  .how-to-use li { margin-bottom: 6px; color: #444; font-size: 12px; }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 36px; break-inside: avoid; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1.5px solid #f0e8f8;
+  }
+  .section-num {
+    width: 26px; height: 26px;
+    background: linear-gradient(135deg, #c0396b, #7c3aed);
+    border-radius: 50%;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a2e;
+    letter-spacing: -0.2px;
+  }
+  .section-emoji { font-size: 16px; }
+
+  /* ── ITEMS ── */
+  .items { list-style: none; }
+  .item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 2px;
+    transition: background 0.1s;
+  }
+  .item:nth-child(odd) { background: #fafafa; }
+  .checkbox {
+    width: 16px; height: 16px;
+    border: 1.5px solid #c8b8e8;
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 1px;
+    background: #fff;
+  }
+  .item-text { color: #333; font-size: 12.5px; line-height: 1.55; }
+  .item-text strong { color: #1a1a2e; font-weight: 600; }
+  .item-text .arrow { color: #7c3aed; font-weight: 500; }
+  .item-text .pass { color: #16a34a; font-weight: 600; }
+  .item-text .fail { color: #dc2626; font-weight: 600; }
+  .item-text .note {
+    display: inline-block;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 10.5px;
+    padding: 1px 7px;
+    border-radius: 100px;
+    margin-left: 6px;
+    font-weight: 500;
+  }
+
+  /* ── PRIORITY BADGES ── */
+  .badge {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 100px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .badge-critical { background: #fee2e2; color: #dc2626; }
+  .badge-high     { background: #fef3c7; color: #b45309; }
+  .badge-medium   { background: #e0f2fe; color: #0369a1; }
+
+  /* ── RESULT BOX ── */
+  .result-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .result-box {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    color: #666;
+    min-width: 80px;
+    text-align: center;
+  }
+  .result-box span { font-weight: 600; color: #1a1a2e; }
+
+  /* ── NOTES ROW ── */
+  .notes-row {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 6px 0 10px 26px;
+    font-size: 11.5px;
+    color: #166534;
+  }
+  .notes-row strong { font-weight: 600; }
+
+  /* ── SIGNATURE ── */
+  .footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid #e8d5f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #aaa;
+    font-size: 11px;
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    body { padding: 24px 32px; font-size: 11.5px; }
+    .section { break-inside: avoid; }
+    .cover { break-after: page; }
+    @page { margin: 0.6in; size: A4; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-logo">matri</div>
+  <div class="cover-sub">Your Pregnancy Companion &nbsp;·&nbsp; QA Test Plan</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">15</div>
+      <div class="cover-meta-label">Test Areas</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">100+</div>
+      <div class="cover-meta-label">Test Cases</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">16</div>
+      <div class="cover-meta-label">Test Files</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-num">v1</div>
+      <div class="cover-meta-label">App Version</div>
+    </div>
+  </div>
+</div>
+
+<!-- HOW TO USE -->
+<div class="how-to-use">
+  <h3>How to run this checklist</h3>
+  <ol>
+    <li><strong>Create two test accounts</strong> — one fresh (no data) to test empty states, one fully populated to test data flows. Do not use your own account.</li>
+    <li><strong>Test on both platforms</strong> — web (Chrome desktop) and Android device. Some sections are Android-only.</li>
+    <li><strong>Use Android Logcat</strong> filtered on <code>mtri.app</code> or <code>authFetch</code> to catch silent JS errors during Android testing.</li>
+    <li><strong>AI context tests</strong> — wait ~60 seconds after data changes before verifying AI personalisation, or manually trigger a health context refresh.</li>
+    <li><strong>Mark each item</strong> ✓ Pass, ✗ Fail, or — Skip. Note the build version and date tested.</li>
+    <li><strong>For prescription tests</strong> — use the test files in the <code>qa-test-files/</code> folder. Open in Chrome → Print → Save as PDF, then upload that PDF to the app.</li>
+  </ol>
+</div>
+
+<!-- TEST FILES GUIDE -->
+<div style="margin-bottom:40px;">
+  <div style="font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:6px;">📁 Test Files Guide</div>
+  <div style="font-size:12px;color:#666;margin-bottom:16px;">All test files are in the <strong>qa-test-files/</strong> folder. Open each HTML file in Chrome → Cmd+P → Save as PDF → upload to the app. Each file has a coloured tag in the top-right corner identifying its code (P1, L1, etc.). Yellow notes inside each file explain what to verify — these notes are hidden when printing.</div>
+
+  <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#7c3aed;margin-bottom:8px;">Prescriptions (Handwritten style)</div>
+  <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">
+    <thead><tr style="background:#f8f4fc;"><th style="padding:7px 10px;text-align:left;border:1px solid #e8d5f0;font-weight:700;">File</th><th style="padding:7px 10px;text-align:left;border:1px solid #e8d5f0;font-weight:700;">Doctor</th><th style="padding:7px 10px;text-align:left;border:1px solid #e8d5f0;font-weight:700;">What's inside</th><th style="padding:7px 10px;text-align:left;border:1px solid #e8d5f0;font-weight:700;">Tests scenario</th></tr></thead>
+    <tbody>
+      <tr><td style="padding:7px 10px;border:1px solid #e8d5f0;font-weight:600;color:#7c3aed;">P1</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Dr. Archana Pathak</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Iron 200mg + Calcium + B12. Tests: HB, TSH, FBS, Urine. Scan: NT Scan. Follow-up 4 weeks.</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Baseline — first upload, doctor auto-populate, all fan-out</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:7px 10px;border:1px solid #e8d5f0;font-weight:600;color:#2e7d32;">P2</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Dr. Archana P. <em>(abbreviated)</em></td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Iron (continue) + Calcium + Thyronorm (new) + Vit D3 (new). Tests: HB, Vit D, Ferritin. Scan: Anomaly at 20w.</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Same doctor abbreviated — should NOT show conflict. New + existing medicines.</td></tr>
+      <tr><td style="padding:7px 10px;border:1px solid #e8d5f0;font-weight:600;color:#e65100;">P3</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Dr. Archana Pathak</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Iron <strong>300mg</strong> (was 200) + Calcium TDS (was BD). Only dosage/frequency changes.</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Dosage/frequency change on existing medicines — observe update vs duplicate</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:7px 10px;border:1px solid #e8d5f0;font-weight:600;color:#c0392b;">P4</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Dr. Priya Sharma <em>(different)</em></td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Iron + Calcium + Thyronorm (continue) + Aspirin 75mg (new). Tests: GTT, CBC. Scan: Growth at 28w.</td><td style="padding:7px 10px;border:1px solid #e8d5f0;"><strong>Doctor mismatch</strong> — conflict prompt must appear</td></tr>
+      <tr><td style="padding:7px 10px;border:1px solid #e8d5f0;font-weight:600;color:#7b1fa2;">P5</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Dr. Archana Pathak</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Magnesium + Progesterone (continue) + Ondansetron (SOS). No investigations.</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Medicines only, SOS medicine, "Continue" duration — no test order fan-out</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:7px 10px;border:1px solid #e8d5f0;font-weight:600;color:#616161;">P6</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">No doctor name</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Generic clinic letterhead. Medicines + tests. Illegible signature.</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">No doctor name — Doctor's Area must NOT be cleared</td></tr>
+      <tr><td style="padding:7px 10px;border:1px solid #e8d5f0;font-weight:600;color:#00695c;">P7</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Dr. Archana Pathak</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">No medicines — only tests (GTT, HB, Serum Calcium, Thyroid Profile) + Fetal Echo scan.</td><td style="padding:7px 10px;border:1px solid #e8d5f0;">Tests only — medicines section must NOT change</td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#c62828;margin-bottom:8px;">Lab Reports (Printed format)</div>
+  <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">
+    <thead><tr style="background:#fff5f5;"><th style="padding:7px 10px;text-align:left;border:1px solid #fecaca;font-weight:700;">File</th><th style="padding:7px 10px;text-align:left;border:1px solid #fecaca;font-weight:700;">Key values</th><th style="padding:7px 10px;text-align:left;border:1px solid #fecaca;font-weight:700;">Upload after</th><th style="padding:7px 10px;text-align:left;border:1px solid #fecaca;font-weight:700;">Tests scenario</th></tr></thead>
+    <tbody>
+      <tr><td style="padding:7px 10px;border:1px solid #fecaca;font-weight:600;color:#c62828;">L1</td><td style="padding:7px 10px;border:1px solid #fecaca;">HB 10.2 (LOW), TSH 4.8 (HIGH), FBS 84 (normal)</td><td style="padding:7px 10px;border:1px solid #fecaca;">P1</td><td style="padding:7px 10px;border:1px solid #fecaca;">First lab upload. Low HB + thyroid flags in AI. Links to P1 test orders → marks them complete.</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:7px 10px;border:1px solid #fecaca;font-weight:600;color:#1565c0;">L2</td><td style="padding:7px 10px;border:1px solid #fecaca;">HB 10.8 (still low), Vit D 18 (low), Ferritin 12 (low)</td><td style="padding:7px 10px;border:1px solid #fecaca;">P2</td><td style="padding:7px 10px;border:1px solid #fecaca;">HB trend: 2nd data point. Extra lab values (Vit D, Ferritin). Links to P2 test orders.</td></tr>
+      <tr><td style="padding:7px 10px;border:1px solid #fecaca;font-weight:600;color:#2e7d32;">L3</td><td style="padding:7px 10px;border:1px solid #fecaca;">HB 11.4 (normal), GTT all normal</td><td style="padding:7px 10px;border:1px solid #fecaca;">P4</td><td style="padding:7px 10px;border:1px solid #fecaca;">HB trend: 3rd point, now normal. GTT extra values. Verify 3-point trend chart.</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:7px 10px;border:1px solid #fecaca;font-weight:600;color:#e65100;">L4</td><td style="padding:7px 10px;border:1px solid #fecaca;">FBS 102 (HIGH), PP 162 (HIGH), HbA1c 6.1</td><td style="padding:7px 10px;border:1px solid #fecaca;">Standalone</td><td style="padding:7px 10px;border:1px solid #fecaca;">GDM flags. AI context should reference high blood sugar. No linked test order.</td></tr>
+      <tr><td style="padding:7px 10px;border:1px solid #fecaca;font-weight:600;color:#2e7d32;">L5</td><td style="padding:7px 10px;border:1px solid #fecaca;">Blood Group A+, HB 12.1, TSH 2.1 (all normal)</td><td style="padding:7px 10px;border:1px solid #fecaca;">Fresh account (no blood group set)</td><td style="padding:7px 10px;border:1px solid #fecaca;">Blood group auto-populate. All normal — no flags. Test twice: once on empty profile, once on profile with existing blood group.</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:7px 10px;border:1px solid #fecaca;font-weight:600;color:#6a1b9a;">L6</td><td style="padding:7px 10px;border:1px solid #fecaca;">HB 10.5 — same date as L1 (12/02/2026)</td><td style="padding:7px 10px;border:1px solid #fecaca;">L1 (must be uploaded first)</td><td style="padding:7px 10px;border:1px solid #fecaca;">Duplicate date test. Observe: does app add a 2nd entry for same test on same date, or update existing?</td></tr>
+    </tbody>
+  </table>
+
+  <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#0d2137;margin-bottom:8px;">Scan Reports + Wrong File</div>
+  <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:0;">
+    <thead><tr style="background:#f0f7ff;"><th style="padding:7px 10px;text-align:left;border:1px solid #c5dff5;font-weight:700;">File</th><th style="padding:7px 10px;text-align:left;border:1px solid #c5dff5;font-weight:700;">What's inside</th><th style="padding:7px 10px;text-align:left;border:1px solid #c5dff5;font-weight:700;">Upload after</th><th style="padding:7px 10px;text-align:left;border:1px solid #c5dff5;font-weight:700;">Tests scenario</th></tr></thead>
+    <tbody>
+      <tr><td style="padding:7px 10px;border:1px solid #c5dff5;font-weight:600;color:#0d2137;">S1</td><td style="padding:7px 10px;border:1px solid #c5dff5;">NT Scan — 12+3 weeks. NT 1.4mm, CRL 58mm, FHR 162. Normal.</td><td style="padding:7px 10px;border:1px solid #c5dff5;">P1</td><td style="padding:7px 10px;border:1px solid #c5dff5;">NT scan entry created. Links to P1 scan advisement.</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:7px 10px;border:1px solid #c5dff5;font-weight:600;color:#1a237e;">S2</td><td style="padding:7px 10px;border:1px solid #c5dff5;">Anomaly Scan — 20+1 weeks. Full biometry. Normal anatomy.</td><td style="padding:7px 10px;border:1px solid #c5dff5;">P2</td><td style="padding:7px 10px;border:1px solid #c5dff5;">Anomaly scan entry created. Links to P2 scan advisement.</td></tr>
+      <tr><td style="padding:7px 10px;border:1px solid #c5dff5;font-weight:600;color:#c62828;">WRONG</td><td style="padding:7px 10px;border:1px solid #c5dff5;">Colourful lemon cake recipe image — completely unrelated to medicine.</td><td style="padding:7px 10px;border:1px solid #c5dff5;">Anytime</td><td style="padding:7px 10px;border:1px solid #c5dff5;">Error handling — app must not crash. Should show an error or a graceful "couldn't read" message.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SUGGESTED TEST ORDER -->
+<div style="background:#f8f4fc;border:1px solid #e8d5f0;border-radius:14px;padding:20px 24px;margin-bottom:40px;">
+  <div style="font-size:13px;font-weight:700;color:#7c3aed;margin-bottom:12px;">📋 Suggested Upload Order (for the prescription + lab scenario test)</div>
+  <ol style="font-size:12px;color:#444;padding-left:18px;line-height:2;">
+    <li>Sign in with fresh test account → complete onboarding</li>
+    <li>Upload <strong>P1</strong> → verify medicines, test orders, scans, Doctor's Area populates</li>
+    <li>Upload <strong>L1</strong> (link to P1 test orders) → verify HB/TSH flags, test orders marked complete</li>
+    <li>Upload <strong>S1</strong> → verify NT scan entry appears</li>
+    <li>Upload <strong>P2</strong> → verify no conflict prompt (same doctor abbreviated), new medicines added, existing updated</li>
+    <li>Upload <strong>L2</strong> (link to P2 test orders) → verify HB trend has 2 points, Vit D + Ferritin in extras</li>
+    <li>Upload <strong>P3</strong> → verify dosage/frequency updated on Iron and Calcium (not duplicated)</li>
+    <li>Upload <strong>P4</strong> → verify <strong>conflict prompt appears</strong> (different doctor). Test both "Keep existing" and "Update doctor" on separate runs.</li>
+    <li>Upload <strong>L3</strong> (link to P4 test orders) → verify HB trend now has 3 points (10.2 → 10.8 → 11.4)</li>
+    <li>Upload <strong>S2</strong> → verify Anomaly scan entry</li>
+    <li>Upload <strong>P5</strong> → verify SOS medicine appears, no test order change</li>
+    <li>Upload <strong>P6</strong> → verify Doctor's Area is unchanged (no name to overwrite with)</li>
+    <li>Upload <strong>P7</strong> → verify medicines section untouched, only test orders added</li>
+    <li>Upload <strong>L4</strong> (standalone) → verify GDM blood sugar flags in AI</li>
+    <li>Upload <strong>L5</strong> on fresh account → verify blood group A+ auto-populated on profile</li>
+    <li>Upload <strong>L1</strong> then <strong>L6</strong> → verify duplicate date behaviour</li>
+    <li>Upload <strong>WRONG</strong> → verify graceful error, no crash</li>
+    <li><strong>Delete P1</strong> → verify medicines removed, doctor re-derives from P2</li>
+    <li><strong>Delete all prescriptions</strong> → verify Doctor's Area shows empty state, all medicines cleared</li>
+  </ol>
+</div>
+
+
+<!-- SECTION 1 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">1</div>
+    <div class="section-emoji">🔐</div>
+    <div class="section-title">Authentication &amp; Session</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Web — Google SSO:</strong> Click "Continue with Google" <span class="arrow">→</span> Google account picker opens in the same tab <span class="arrow">→</span> sign in <span class="arrow">→</span> redirects back to app (not stuck on accounts.google.com). <span class="note">Web only</span></div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Android — Google SSO in-app:</strong> Tap "Continue with Google" <span class="arrow">→</span> Custom Chrome Tab slides up from within the app (not external Chrome browser) <span class="arrow">→</span> pick account <span class="arrow">→</span> tab closes automatically <span class="arrow">→</span> app shows onboarding or home screen. <span class="note">Android only</span></div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>TOS link:</strong> Tap "Terms of Service" in the auth footer <span class="arrow">→</span> opens in-app browser (not external Chrome) <span class="arrow">→</span> content renders correctly <span class="arrow">→</span> back/close returns to auth screen.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Privacy Policy link:</strong> Same as above for "Privacy Policy".</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Session persistence:</strong> Sign in <span class="arrow">→</span> force-close the app <span class="arrow">→</span> reopen <span class="arrow">→</span> lands directly on home screen without re-authenticating.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Sign out:</strong> Sign out from profile <span class="arrow">→</span> lands on auth screen <span class="arrow">→</span> session fully cleared <span class="arrow">→</span> reopening app shows auth screen (not home).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>New user routing:</strong> Sign in with a brand-new account <span class="arrow">→</span> routed to onboarding flow, not the main app.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 2 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">2</div>
+    <div class="section-emoji">🌸</div>
+    <div class="section-title">Onboarding</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Required fields validation:</strong> Cannot proceed past a required step without filling in the field. Button disabled or error shown.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Due date → week calculation:</strong> Enter a due date <span class="arrow">→</span> Today tab shows the correct pregnancy week immediately after onboarding completes.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Profile data persisted:</strong> All fields entered during onboarding are visible and correct on the Profile page after completing onboarding.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Optional fields skippable:</strong> Skipping optional fields (partner name, baby nickname, conditions) does not cause errors in any part of the app.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Re-onboarding guard:</strong> Returning user who has completed onboarding is never shown onboarding again on subsequent app opens.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 3 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">3</div>
+    <div class="section-emoji">📅</div>
+    <div class="section-title">Today Tab</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Correct week shown:</strong> Week number displayed matches the expected week calculated from the due date.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Weekly content loads:</strong> Tips, article, and checklist content appear for the current week. Not blank or stuck in loading.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Week picker — browse:</strong> Tap the week display <span class="arrow">→</span> week picker sheet opens <span class="arrow">→</span> select a different week <span class="arrow">→</span> content updates to that week's data correctly.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Week picker — return to current:</strong> While browsing a past/future week, a "back to current week" option returns to the actual current week.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Insight feed:</strong> Insight cards load (not blank or spinner forever). Content is relevant to the current week and her health data.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Symptom chips:</strong> Symptom chips shown are relevant to the current trimester / week. Tapping a chip opens SymptomDetailPanel.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Doctor prep section:</strong> Appears on Today tab when a doctor is set on the profile. Hidden when no doctor is set.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 4 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">4</div>
+    <div class="section-emoji">🤖</div>
+    <div class="section-title">Symptom Checker (AI Chat)</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>AI responds successfully:</strong> Send any message <span class="arrow">→</span> response appears (not "Something didn't go through"). Verify no HTML response in logcat. <span class="note">Key fix tested here</span></div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Context personalisation:</strong> Response references her pregnancy week. If medicines are set, response is aware of them when relevant.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Info tile &amp; popover:</strong> Both columns in the info tile are tappable. Tapping opens a popover with full detail. Popover dismisses via backdrop tap or × button.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Alert strip:</strong> "Call your doctor if" strip is visible at the top of the panel with relevant warning signs.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Drag handle:</strong> Dragging the handle between the info section and chat zone resizes both sections correctly.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Suggested question chips:</strong> Tapping a chip pre-fills the message input. Sending it gets an appropriate response.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Multi-turn conversation:</strong> Send 3+ messages in a thread. Conversation history is preserved — AI responds in context of earlier messages.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Out-of-scope guard:</strong> Ask an unrelated question (e.g. "what's the weather today") <span class="arrow">→</span> receives the out-of-scope message, not a general answer.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 5 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">5</div>
+    <div class="section-emoji">💊</div>
+    <div class="section-title">Prescription Upload &amp; Delete</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Consent gate on first upload:</strong> First prescription upload attempt (fresh account) <span class="arrow">→</span> consent screen shown with two checkboxes. Both must be checked before "Continue" enables.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Consent dismiss:</strong> Tap × on consent screen <span class="arrow">→</span> upload cancelled, nothing saved to DB. Consent not recorded.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Consent persistence:</strong> After consenting once, subsequent uploads go straight to the upload sheet (no consent screen again, even after sign out and back in).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Prescription parsing — baseline:</strong> Use file <strong>P1</strong>. Upload it <span class="arrow">→</span> "Reading prescription…" shown <span class="arrow">→</span> confirm step shows: Iron 200mg, Calcium 500mg, B12 1500mcg as medicines; HB, TSH, FBS, Urine as tests; NT Scan as scan advised.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Data fan-out on save (P1):</strong> After confirming P1 <span class="arrow">→</span> all 3 medicines appear in Medicines section, 4 test orders appear in Test Orders, NT Scan appears in Scans section.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Doctor auto-populate (P1, empty profile):</strong> Before uploading P1, ensure profile has no doctor set. After upload <span class="arrow">→</span> Doctor's Area shows "Dr. Archana Pathak" and "Apollo Maternity Clinic".</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Same doctor abbreviated — no conflict (P2):</strong> Upload P1 first, then upload <strong>P2</strong>. P2 is signed "Archana P." — the app should semantically match this to "Dr. Archana Pathak" and show NO conflict prompt. New medicines Thyronorm and Vit D3 should be added; Iron and Calcium updated to "continue".</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Dosage/frequency change (P3):</strong> Upload <strong>P3</strong> after P1. Iron dose changes from 200mg to 300mg; Calcium frequency changes from BD to TDS. Observe whether the app updates the existing medicine entries or creates duplicate entries. Expected: update, not duplicate.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Doctor mismatch — conflict prompt (P4):</strong> Upload <strong>P4</strong> after P1 or P2. P4 is from "Dr. Priya Sharma" — a clearly different doctor. A conflict card must appear showing both names with "Keep existing" and "Update doctor" buttons.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Doctor mismatch — Update (P4):</strong> On the P4 conflict card, tap "Update doctor" <span class="arrow">→</span> Doctor's Area should update to show "Dr. Priya Sharma" and "Kokilaben Hospital" after saving.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Doctor mismatch — Keep existing (P4):</strong> Run the P4 upload again on a separate test. On the conflict card, tap "Keep existing" <span class="arrow">→</span> Doctor's Area retains "Dr. Archana Pathak" unchanged.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Medicines only — no test fan-out (P5):</strong> Upload <strong>P5</strong>. Contains Magnesium, Progesterone (continue), Ondansetron (SOS). Verify: 3 medicines added, test orders section is NOT changed, SOS duration stored correctly.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>No doctor name — Doctor's Area unchanged (P6):</strong> With a doctor already set, upload <strong>P6</strong> (no doctor name on prescription). Doctor's Area must still show the original doctor after upload — it should not be cleared or changed.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Tests only — medicines untouched (P7):</strong> Upload <strong>P7</strong>. No medicines are prescribed. Verify: medicines section is completely unchanged, but test orders for GTT, HB, Serum Calcium, Thyroid Profile are added; Fetal Echo scan entry is created.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Delete prescription — cascade cleanup:</strong> Delete P1 <span class="arrow">→</span> all medicines, test orders, and scans from P1 must be removed. Medicines from P2/P3 that were updated (same name) — observe whether they are also removed or remain.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Delete prescription — doctor re-derives:</strong> Delete P1 (while P2 exists) <span class="arrow">→</span> Doctor's Area should update to reflect P2's doctor. Delete all remaining prescriptions <span class="arrow">→</span> Doctor's Area shows "Add your doctor" empty state.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Wrong file — graceful error (WRONG):</strong> Upload the <strong>WRONG</strong> file (lemon cake recipe image). App must not crash. Should show either a graceful "couldn't read" error message or parse something nonsensical without breaking.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 6 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">6</div>
+    <div class="section-emoji">👩‍⚕️</div>
+    <div class="section-title">Doctor's Area</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Empty state:</strong> Fresh account with no prescriptions uploaded <span class="arrow">→</span> Doctor's Area shows "Add your doctor, prescriptions &amp; appointment details" with the + Add doctor CTA.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Populated state:</strong> Doctor name, clinic name, and next appointment date all display correctly after a prescription with doctor info is uploaded.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Appointment countdown:</strong> Next appointment set to a future date <span class="arrow">→</span> "in X days" shown. Set to within 7 days <span class="arrow">→</span> highlighted in rose colour. Set to today <span class="arrow">→</span> "Today! 🎯" shown. Past date <span class="arrow">→</span> greyed out.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Manual edit:</strong> Tap Doctor's Area to open the editor <span class="arrow">→</span> edit doctor name, clinic, city, visit notes <span class="arrow">→</span> save <span class="arrow">→</span> changes visible immediately on profile page and persist after app restart.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Doctor insight:</strong> AI-generated insight shown under doctor name (relevant to her health data / upcoming appointment).</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 7 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">7</div>
+    <div class="section-emoji">🏥</div>
+    <div class="section-title">My Health Tab</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>All sections load:</strong> Prescriptions, Medicines, Labs, Scans, and Test Orders all render without errors.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Medicines — active/paused toggle:</strong> Mark a medicine as paused <span class="arrow">→</span> it moves to the paused list with different styling. Re-activate <span class="arrow">→</span> returns to active.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Lab values — trend display:</strong> HB, TSH, blood sugar values show trend lines if multiple entries exist. Values below/above normal range are flagged visually.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Scans list:</strong> Scan entries visible with correct type (NT, anomaly, dating, growth) and date. Scan added via prescription upload appears here.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Test orders — mark complete:</strong> An "ordered" test can be marked as completed. Status updates and test moves to completed section.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Empty states:</strong> Each section shows an appropriate empty state when no data exists (not blank or broken layout).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Health insights speed:</strong> Insights card loads quickly (served from cache). Does not trigger a slow API call on every tab open.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 8 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">8</div>
+    <div class="section-emoji">🧪</div>
+    <div class="section-title">Lab Report Upload</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Lab parsing — first upload (L1):</strong> Use file <strong>L1</strong>. Upload it <span class="arrow">→</span> confirm step shows HB 10.2, TSH 4.8, FBS 84, Urine values correctly extracted.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Values saved + flags triggered (L1):</strong> After confirming L1 <span class="arrow">→</span> HB 10.2 appears in lab section flagged as LOW. TSH 4.8 flagged as HIGH. Check the AI symptom checker — it should be aware of low HB and elevated thyroid.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Lab linked to test order (L1 → P1):</strong> Upload P1 first (creates HB, TSH, FBS, Urine as test orders). Then upload <strong>L1</strong> and link it to those test orders during upload. After confirming <span class="arrow">→</span> those 4 test orders should flip from "ordered" to "completed".</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>HB trend — 2nd data point (L2):</strong> Upload <strong>L2</strong> after L1. HB is now 10.8 (date: 12/03/2026). The HB trend chart should now show 2 data points: 10.2 on 12/02 and 10.8 on 12/03. Also verify Vitamin D 18 and Ferritin 12 appear in "Other lab values" section.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>HB trend — 3rd data point, now normal (L3):</strong> Upload <strong>L3</strong> after L1 and L2. HB is now 11.4 (normal). Trend chart should show 3 points. The LOW flag should be gone for the latest entry. GTT values (fasting 88, 1hr 148, 2hr 128) should appear as extra lab values.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>GDM blood sugar flags (L4):</strong> Upload <strong>L4</strong> as a standalone (no linked prescription needed). FBS 102 and PP 162 are both above normal antenatal thresholds. After upload, open the AI symptom checker and ask a question — response should be aware of the elevated blood sugar.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Blood group auto-populate (L5) — Test A:</strong> Use a fresh account with no blood group set on profile. Upload <strong>L5</strong>. After upload <span class="arrow">→</span> go to Profile page and verify blood group now shows "A+".</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Blood group NOT overwritten (L5) — Test B:</strong> Set a different blood group (e.g. "B+") manually on the profile. Then upload <strong>L5</strong> (which says A+). After upload <span class="arrow">→</span> profile blood group must still show "B+" — existing value should NOT be overwritten.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Duplicate date deduplication (L6):</strong> Upload <strong>L1</strong> first, then upload <strong>L6</strong>. Both have sample date 12/02/2026 with HB values (10.2 and 10.5). Observe: does the app create two separate HB entries for the same date, or does it update the existing one? Note what actually happens — this tests deduplication behaviour.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 9 — SCAN REPORTS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">9</div>
+    <div class="section-emoji">🔬</div>
+    <div class="section-title">Scan Report Upload</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>NT Scan entry created (S1):</strong> Upload <strong>S1</strong> as a scan report. After upload <span class="arrow">→</span> a scan entry of type "NT" or "Nuchal Translucency" should appear in the Scans section with the date 12/02/2026. NT measurement 1.4mm and findings should be stored.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Anomaly Scan entry created (S2):</strong> Upload <strong>S2</strong>. After upload <span class="arrow">→</span> a scan entry of type "Anomaly" appears in the Scans section with date 10/04/2026. Key measurements (BPD 48mm, FL 33mm, EFW 312g) should be stored.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Scan linked to prescription advisement:</strong> Upload P1 first (creates NT Scan as an advised scan), then upload S1. Verify the scan in the Scans section reflects as completed/done rather than just "advised".</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Multiple scan types coexist:</strong> After uploading both S1 and S2, the Scans section should show both — NT Scan (Feb) and Anomaly Scan (Apr) — as separate entries with their respective types and dates.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 10 — JOURNAL -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <div class="section-emoji">📸</div>
+    <div class="section-title">Journal / Memories</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Camera permission prompt (Android):</strong> First time tapping the camera button <span class="arrow">→</span> Android permission dialog appears. <span class="note">Android only</span></div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Selfie camera:</strong> Tap selfie button <span class="arrow">→</span> front camera opens in-app <span class="arrow">→</span> capture <span class="arrow">→</span> photo added to entry draft.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Rear camera (scan):</strong> Tap scan button <span class="arrow">→</span> rear camera opens <span class="arrow">→</span> capture works correctly.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Camera permission denied fallback:</strong> Deny camera permission <span class="arrow">→</span> "Camera not available. Try Photo to pick from your gallery." shown. App does not crash.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Gallery pick:</strong> Tap photo picker <span class="arrow">→</span> file picker opens <span class="arrow">→</span> select an image <span class="arrow">→</span> image appears in entry draft.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Photo crop — square:</strong> After selecting/capturing a photo, crop to square format works. Saved entry shows square-cropped photo.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Photo crop — album (16:9):</strong> Crop to album/landscape format works. Album view shows landscape-cropped photo.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Entry save:</strong> Create a new entry with text + photo + mood <span class="arrow">→</span> save <span class="arrow">→</span> entry appears in the journal list.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Entry delete:</strong> Delete an entry <span class="arrow">→</span> removed from journal list <span class="arrow">→</span> also removed from album view.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Album view:</strong> Journal entries with photos render correctly as album pages. Cover page and closing page present.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Mood selection:</strong> Select a mood on an entry <span class="arrow">→</span> mood is saved and visible on the entry in the list.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Week prompt:</strong> The journaling prompt shown matches content for the current pregnancy week.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 10 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">10</div>
+    <div class="section-emoji">👤</div>
+    <div class="section-title">Profile Page</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>All fields editable:</strong> Name, due date, diet type, blood group, city, conditions, partner name, baby nickname — all can be edited and changes persist after navigating away.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Due date change:</strong> Change due date <span class="arrow">→</span> pregnancy week on Today tab updates correctly.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Partner name and baby nickname chips:</strong> When set, these appear as small chips on the profile card.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>My Health bridge card:</strong> Tapping the "My Health" card on the profile page navigates to the My Health tab.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 11 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">11</div>
+    <div class="section-emoji">🧠</div>
+    <div class="section-title">AI Health Context (Cross-Feature)</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Medicine awareness:</strong> Upload a prescription with medicines <span class="arrow">→</span> ask the symptom checker a relevant question <span class="arrow">→</span> AI response references or is aware of her medicines.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Lab awareness:</strong> Upload a lab report with low HB (&lt;11 g/dL) <span class="arrow">→</span> AI responses should acknowledge the low haemoglobin when relevant.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Week personalisation:</strong> AI response to the same question differs meaningfully between week 8 and week 28 (reflects the correct trimester context).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Context cleared after deletion:</strong> Delete a prescription <span class="arrow">→</span> wait ~60s or force a health context refresh <span class="arrow">→</span> AI responses no longer reference the deleted medicines.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Prior loss sensitivity:</strong> If prior losses &gt; 0 is set on profile, AI tone is noticeably gentler on sensitive topics.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 12 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">12</div>
+    <div class="section-emoji">🗑️</div>
+    <div class="section-title">Data Deletion Consistency</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Prescription delete — cascade:</strong> Delete a prescription <span class="arrow">→</span> medicines, test orders, scans linked to it are all removed.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>No ghost data:</strong> Deleted items do not reappear after navigating away and returning to the section.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Lab report delete:</strong> Delete a lab report <span class="arrow">→</span> the associated lab values are removed from the lab history timeline.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Medicine delete:</strong> Manually delete a medicine <span class="arrow">→</span> removed from medicines list and does not reappear on next app open.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Follow-up date cleared:</strong> Delete a prescription that had a follow-up date <span class="arrow">→</span> Doctor's Area appointment date updates to the next remaining prescription's follow-up (or clears if none).</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 13 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">13</div>
+    <div class="section-emoji">📋</div>
+    <div class="section-title">Consent Gate</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Triggers on first health data upload:</strong> Attempting to upload a prescription or lab report for the first time shows the consent screen.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Both checkboxes required:</strong> "Continue" button is disabled until both the privacy/TOS checkbox AND the age 18+ checkbox are checked.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Dismiss cancels action:</strong> Tapping × or the backdrop dismisses consent screen without saving any data and without recording consent.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Consent persists:</strong> After consenting, sign out, sign back in <span class="arrow">→</span> consent screen does not reappear on next upload.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Consent links:</strong> Privacy Policy and Terms of Service links within the consent screen open the correct pages in-app.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 14 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">14</div>
+    <div class="section-emoji">🤖</div>
+    <div class="section-title">Android-Specific</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>Clean install:</strong> App installs and opens on Android 9+ device without crashing. Splash screen shows correctly. <span class="note">Android only</span></div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-critical">Critical</div>
+      <div class="item-text"><strong>API calls reach Vercel:</strong> In logcat, <code>authFetch</code> logs should show <code>content-type: application/json</code> — not <code>&lt;!doctype html&gt;</code>. <span class="note">Key fix tested here</span></div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Back button behaviour:</strong> Back button closes open panels/sheets rather than exiting the app. From home screen, back button exits cleanly (or shows exit confirmation).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Keyboard handling:</strong> Input fields in forms (onboarding, profile editor, journal) are not obscured by the software keyboard when tapped.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Font rendering:</strong> Cormorant Garamond serif font loads and renders correctly throughout the app (headlines, doctor name, etc.).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Gradient backgrounds:</strong> Dark plum gradients on auth screen, consent screen, and SymptomDetailPanel render without colour banding on the test device.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Scroll performance:</strong> Scrolling through the journal list and My Health tab with 10+ entries is smooth (no jank).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Deep link on cold start:</strong> Open the app via the <code>com.matri.app://login-callback/</code> deep link (simulating OAuth return on cold start) <span class="arrow">→</span> session is established correctly.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- SECTION 15 -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-num">15</div>
+    <div class="section-emoji">⚠️</div>
+    <div class="section-title">Edge Cases &amp; Resilience</div>
+  </div>
+  <ul class="items">
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>No internet connection:</strong> Disable network <span class="arrow">→</span> app shows a graceful error on API-dependent features. Does not show a blank screen or crash.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-high">High</div>
+      <div class="item-text"><strong>Non-prescription image uploaded:</strong> Upload a random photo (not a prescription) to the prescription flow <span class="arrow">→</span> app handles the poor OCR result gracefully (shows what was parsed, does not crash).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Post-due-date week:</strong> Set a due date in the past (e.g., 4 weeks ago) <span class="arrow">→</span> week calculation does not show a negative number or crash.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Very long text inputs:</strong> Enter an extremely long doctor name or medicine name <span class="arrow">→</span> text truncates cleanly, layout does not break.</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Completely empty account:</strong> Sign in with a new account and complete onboarding <span class="arrow">→</span> every section shows a correct empty state (no broken UI, no JS errors in console/logcat).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>Rapid taps:</strong> Tap "Upload prescription" multiple times quickly <span class="arrow">→</span> only one upload sheet opens (no duplicate sheets stacked).</div>
+    </li>
+    <li class="item">
+      <div class="checkbox"></div>
+      <div class="badge badge-medium">Medium</div>
+      <div class="item-text"><strong>PDF prescription:</strong> Upload a prescription as a PDF file (not image) <span class="arrow">→</span> parsing and confirm flow work the same as with an image.</div>
+    </li>
+  </ul>
+</div>
+
+
+<!-- RESULT TRACKING -->
+<div class="section" style="background:#fafafa; border:1px solid #e5e7eb; border-radius:14px; padding:24px;">
+  <div class="section-header" style="border-bottom:1.5px solid #e5e7eb;">
+    <div class="section-emoji" style="font-size:18px;">📊</div>
+    <div class="section-title">Test Run Summary</div>
+  </div>
+  <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom:20px;">
+    <div style="text-align:center; padding:14px; background:#fff; border:1px solid #e5e7eb; border-radius:10px;">
+      <div style="font-size:22px; font-weight:700; color:#16a34a;">___</div>
+      <div style="font-size:11px; color:#888; margin-top:4px;">Passed</div>
+    </div>
+    <div style="text-align:center; padding:14px; background:#fff; border:1px solid #e5e7eb; border-radius:10px;">
+      <div style="font-size:22px; font-weight:700; color:#dc2626;">___</div>
+      <div style="font-size:11px; color:#888; margin-top:4px;">Failed</div>
+    </div>
+    <div style="text-align:center; padding:14px; background:#fff; border:1px solid #e5e7eb; border-radius:10px;">
+      <div style="font-size:22px; font-weight:700; color:#b45309;">___</div>
+      <div style="font-size:11px; color:#888; margin-top:4px;">Skipped</div>
+    </div>
+    <div style="text-align:center; padding:14px; background:#fff; border:1px solid #e5e7eb; border-radius:10px;">
+      <div style="font-size:22px; font-weight:700; color:#7c3aed;">___</div>
+      <div style="font-size:11px; color:#888; margin-top:4px;">Total</div>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:12px; color:#555;">
+    <div><strong>Tester:</strong> ____________________________</div>
+    <div><strong>Date:</strong> ____________________________</div>
+    <div><strong>Build / APK version:</strong> ____________________________</div>
+    <div><strong>Device (Android):</strong> ____________________________</div>
+    <div><strong>Browser (Web):</strong> ____________________________</div>
+    <div><strong>Critical failures:</strong> ____________________________</div>
+  </div>
+</div>
+
+
+<div class="footer">
+  <div>Matri — Internal QA Document · Not for distribution</div>
+  <div>Generated 2026-06-10</div>
+</div>
+
+</body>
+</html>

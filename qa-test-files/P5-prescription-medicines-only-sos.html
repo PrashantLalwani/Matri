@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>P5 — Prescription Medicines Only with SOS</title>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 680px; min-height: 860px; background: #fffdf5; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); padding: 0; position: relative; }
+  .lh { background: linear-gradient(135deg, #1a4a6b, #2e6e9e); color: #fff; padding: 20px 28px 16px; border-bottom: 4px solid #e8a020; }
+  .lh-name { font-size: 22px; font-weight: 700; }
+  .lh-qual { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .lh-clinic { font-size: 12px; opacity: 0.75; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px; }
+  .lh-reg { font-size: 10px; opacity: 0.6; margin-top: 2px; }
+  .body { padding: 20px 28px; }
+  .patient-row { display: flex; border: 1px solid #bbb; border-radius: 4px; overflow: hidden; margin-bottom: 16px; }
+  .patient-cell { flex: 1; padding: 6px 10px; border-right: 1px solid #bbb; }
+  .patient-cell:last-child { border-right: none; }
+  .patient-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .patient-val { font-family: 'Kalam', cursive; font-size: 14px; color: #1a1a1a; }
+  .rx-marker { font-size: 42px; color: #1a4a6b; font-weight: 700; font-style: italic; line-height: 1; margin-bottom: 8px; font-family: 'Times New Roman', serif; }
+  .rx-line { font-family: 'Kalam', cursive; font-size: 16px; color: #1a1a1a; margin-bottom: 14px; line-height: 1.55; padding-left: 8px; border-left: 2px solid #e8a020; }
+  .rx-line .num { font-weight: 700; color: #1a4a6b; margin-right: 4px; }
+  .rx-sub { font-size: 13px; color: #444; padding-left: 18px; display: block; }
+  .rx-note { font-size: 12px; color: #888; padding-left: 18px; display: block; font-style: italic; }
+  .sos-badge { font-size: 11px; background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; padding: 1px 7px; border-radius: 3px; font-family: 'Inter', sans-serif; font-weight: 700; margin-left: 6px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #1a4a6b; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px dashed #ccc; }
+  .no-inv { font-family: 'Kalam', cursive; font-size: 15px; color: #888; font-style: italic; }
+  .footer { margin-top: 28px; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 12px; border-top: 1px dashed #ccc; }
+  .followup-label { font-size: 10px; text-transform: uppercase; color: #888; }
+  .followup-date { font-family: 'Kalam', cursive; font-size: 17px; color: #c0392b; font-weight: 700; margin-top: 2px; }
+  .sig-scrawl { font-family: 'Kalam', cursive; font-size: 22px; color: #1a1a1a; transform: rotate(-3deg) skewX(-5deg); display: inline-block; }
+  .sig-label { font-size: 10px; color: #888; margin-top: 2px; }
+  .date-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 14px; color: #555; }
+  .date-val { font-family: 'Kalam', cursive; font-size: 14px; color: #222; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #7b1fa2; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .test-note { background: #f3e5f5; border: 1px solid #ce93d8; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 11px; color: #4a148c; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">P5 — QA TEST FILE</div>
+  <div class="lh">
+    <div class="lh-name">Dr. Archana Pathak</div>
+    <div class="lh-qual">MBBS, MD (Obstetrics &amp; Gynaecology) &nbsp;|&nbsp; FICOG</div>
+    <div class="lh-clinic">Apollo Maternity Clinic, Juhu, Mumbai – 400049 &nbsp;|&nbsp; Ph: 022-26205100</div>
+    <div class="lh-reg">MCI Reg. No: 2025-MH-47832</div>
+  </div>
+  <div class="body">
+    <div class="test-note">⚠️ QA NOTE: Medicines only — NO investigations, NO scans. Tests that medicine fan-out works but test-orders section remains unchanged. Also tests SOS and "Continue" durations.</div>
+    <div class="date-row">
+      <div><span style="font-size:10px;color:#888;display:block;">DATE</span><span class="date-val">20 / 03 / 2026</span></div>
+      <div><span style="font-size:10px;color:#888;display:block;">OPD NO.</span><span class="date-val">4948</span></div>
+      <div><span style="font-size:10px;color:#888;display:block;">VISIT</span><span class="date-val">Interim Visit</span></div>
+    </div>
+    <div class="patient-row">
+      <div class="patient-cell"><div class="patient-label">Patient Name</div><div class="patient-val">Priya Mehta</div></div>
+      <div class="patient-cell"><div class="patient-label">Age</div><div class="patient-val">28 Y</div></div>
+      <div class="patient-cell"><div class="patient-label">GA (weeks)</div><div class="patient-val">17 wks</div></div>
+      <div class="patient-cell"><div class="patient-label">Gravida / Para</div><div class="patient-val">G1 P0</div></div>
+    </div>
+    <div class="rx-marker">℞</div>
+    <div class="rx-line">
+      <span class="num">1.</span> Tab. Magnesium Glycinate 250mg
+      <span class="rx-sub">0 – 0 – 1 &nbsp;×&nbsp; 30 days</span>
+      <span class="rx-note">For leg cramps at night.</span>
+    </div>
+    <div class="rx-line">
+      <span class="num">2.</span> Cap. Progesterone 200mg <span class="sos-badge">CONTINUE</span>
+      <span class="rx-sub">0 – 0 – 1 &nbsp;×&nbsp; Continue till 28 weeks</span>
+      <span class="rx-note">Vaginal route. Don't stop abruptly.</span>
+    </div>
+    <div class="rx-line">
+      <span class="num">3.</span> Tab. Ondansetron 4mg <span class="sos-badge">SOS</span>
+      <span class="rx-sub">1 tab &nbsp;×&nbsp; SOS (for nausea only)</span>
+      <span class="rx-note">Not more than twice a day.</span>
+    </div>
+    <div class="section-title">Investigations</div>
+    <div class="no-inv">— None at this visit —</div>
+    <div class="section-title">Advice</div>
+    <div style="font-family:'Kalam',cursive;font-size:14px;color:#444;margin-bottom:5px;">→ Keep previous medicines ongoing</div>
+    <div style="font-family:'Kalam',cursive;font-size:14px;color:#444;margin-bottom:5px;">→ Rest and avoid stress</div>
+    <div class="footer">
+      <div>
+        <div class="followup-label">Follow-Up Date</div>
+        <div class="followup-date">12 / 04 / 2026</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="sig-scrawl">Archana Pathak</div>
+        <div class="sig-label">Dr. Archana Pathak</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

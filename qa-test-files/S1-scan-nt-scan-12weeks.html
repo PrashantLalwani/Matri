@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>S1 — NT Scan Report — 12+3 Weeks</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 720px; background: #fff; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); position: relative; }
+  .header { background: #0d2137; color: #fff; padding: 20px 28px; }
+  .center-name { font-size: 18px; font-weight: 700; color: #7ec8e3; }
+  .center-sub { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+  .center-contact { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 6px; }
+  .patient-section { background: #f0f7ff; border-bottom: 1px solid #c5dff5; padding: 14px 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pfield label { font-size: 9px; text-transform: uppercase; color: #666; letter-spacing: 0.08em; display: block; margin-bottom: 2px; }
+  .pfield span { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0d2137; background: #e8f4ff; padding: 8px 28px; border-top: 1px solid #c5dff5; border-bottom: 1px solid #c5dff5; }
+  .measurements { padding: 0 28px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  th { background: #0d2137; color: #7ec8e3; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 14px; text-align: left; }
+  td { padding: 9px 14px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  tr:nth-child(even) td { background: #fafcff; }
+  .meas-name { font-weight: 500; color: #1a1a1a; }
+  .meas-val { font-weight: 700; color: #0d2137; }
+  .meas-norm { font-size: 12px; color: #777; }
+  .normal-badge { font-size: 10px; background: #e8f5e9; color: #2e7d32; padding: 2px 7px; border-radius: 3px; font-weight: 700; }
+  .findings { padding: 16px 28px; font-size: 13px; color: #333; line-height: 1.7; border-top: 1px solid #eee; }
+  .findings h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #666; margin-bottom: 8px; }
+  .findings p { margin-bottom: 8px; }
+  .opinion { padding: 14px 28px; background: #e8f5e9; border-top: 1px solid #a5d6a7; font-size: 13px; color: #1b5e20; }
+  .footer-bar { background: #0d2137; color: rgba(255,255,255,0.6); padding: 12px 28px; display: flex; justify-content: space-between; font-size: 11px; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #0d2137; color: #7ec8e3; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .test-note { background: #e8f4ff; border-left: 4px solid #0d2137; padding: 10px 16px; margin: 0 28px 0; font-size: 11px; color: #0d2137; border-radius: 0 6px 6px 0; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">S1 — QA TEST FILE</div>
+  <div class="header">
+    <div class="center-name">Cloudnine Fetal Medicine &amp; Ultrasound</div>
+    <div class="center-sub">Fetal Medicine Unit &nbsp;|&nbsp; Registered Sonologist: Dr. Meera Iyer (MBBS, MD Radiology, FRCR)</div>
+    <div class="center-contact">Malad West, Mumbai – 400064 &nbsp;|&nbsp; Ph: 022-61212121 &nbsp;|&nbsp; Reg. No: PCPNDT/MH/2019/1892</div>
+  </div>
+  <div class="patient-section">
+    <div class="pfield"><label>Patient Name</label><span>Priya Mehta</span></div>
+    <div class="pfield"><label>Age</label><span>28 Years</span></div>
+    <div class="pfield"><label>Ref. Doctor</label><span>Dr. Archana Pathak</span></div>
+    <div class="pfield"><label>LMP</label><span>20/11/2025</span></div>
+    <div class="pfield"><label>Scan Date</label><span>12/02/2026</span></div>
+    <div class="pfield"><label>Gestational Age by LMP</label><span>12 weeks 3 days</span></div>
+  </div>
+  <div class="test-note">⚠️ QA NOTE: NT Scan. Should create a scan entry of type "NT" or "Nuchal Translucency" in the Scans section. Links to P1 scan advisement. All findings normal.</div>
+  <div class="section-title">Biometry &amp; NT Measurements</div>
+  <div class="measurements">
+    <table>
+      <thead><tr><th>Parameter</th><th>Measured Value</th><th>Normal Range</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td class="meas-name">Crown Rump Length (CRL)</td><td class="meas-val">58.2 mm</td><td class="meas-norm">Expected: 55–65 mm at 12w3d</td><td><span class="normal-badge">Normal</span></td></tr>
+        <tr><td class="meas-name">Nuchal Translucency (NT)</td><td class="meas-val">1.4 mm</td><td class="meas-norm">&lt; 3.5 mm (normal)</td><td><span class="normal-badge">Normal</span></td></tr>
+        <tr><td class="meas-name">Fetal Heart Rate (FHR)</td><td class="meas-val">162 bpm</td><td class="meas-norm">120 – 180 bpm</td><td><span class="normal-badge">Normal</span></td></tr>
+        <tr><td class="meas-name">Biparietal Diameter (BPD)</td><td class="meas-val">21.4 mm</td><td class="meas-norm">Expected: 20–24 mm</td><td><span class="normal-badge">Normal</span></td></tr>
+        <tr><td class="meas-name">Nasal Bone</td><td class="meas-val">Present &amp; ossified</td><td class="meas-norm">Should be present</td><td><span class="normal-badge">Normal</span></td></tr>
+        <tr><td class="meas-name">Gestational Age by Scan</td><td class="meas-val">12 weeks 3 days</td><td class="meas-norm">Matches LMP</td><td><span class="normal-badge">Concordant</span></td></tr>
+        <tr><td class="meas-name">EDD by Scan</td><td class="meas-val">26/08/2026</td><td class="meas-norm">—</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="section-title" style="margin-top:0;">Findings</div>
+  <div class="findings">
+    <p><strong>Fetus:</strong> Single live intrauterine fetus. Active fetal movements noted. Regular cardiac activity present at 162 bpm.</p>
+    <p><strong>Nuchal Translucency:</strong> NT measures 1.4 mm — within normal limits (&lt;3.5 mm). Nasal bone visible and ossified — reassuring finding for chromosomal normalcy.</p>
+    <p><strong>Anatomy:</strong> Skull, brain, spine, abdominal wall, stomach bubble, bladder, and limbs appear normal for gestational age. Four-chamber heart view normal.</p>
+    <p><strong>Placenta:</strong> Posterior, grade 0, away from os.</p>
+    <p><strong>Liquor:</strong> Adequate. AFI not formally measured at this gestation.</p>
+    <p><strong>Uterus &amp; Ovaries:</strong> No fibroids. Right ovary — small corpus luteum cyst (physiological). Left ovary normal.</p>
+  </div>
+  <div class="opinion">
+    <strong>Opinion:</strong> Single live intrauterine fetus at 12 weeks 3 days gestation. NT and nasal bone within normal limits — low-risk profile for aneuploidy at this scan. Recommend combined first trimester screening (NIPT or Double Marker) as per clinical protocol.
+  </div>
+  <div class="footer-bar">
+    <div>Dr. Meera Iyer — MBBS, MD Radiology, FRCR &nbsp;|&nbsp; Reg: MCI-2018-MH-31240</div>
+    <div>Cloudnine Fetal Medicine, Mumbai &nbsp;|&nbsp; 12/02/2026</div>
+  </div>
+</div>
+</body>
+</html>

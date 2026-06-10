@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>L3 — Lab Report Week 20 — Normal HB + GTT</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 720px; background: #fff; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); position: relative; }
+  .header { border-bottom: 3px solid #1565c0; padding: 20px 28px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .lab-name { font-size: 20px; font-weight: 700; color: #1565c0; }
+  .lab-sub { font-size: 11px; color: #555; margin-top: 2px; }
+  .lab-contact { font-size: 11px; color: #777; text-align: right; }
+  .patient-section { background: #fafafa; border-bottom: 1px solid #eee; padding: 14px 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .pfield label { font-size: 9px; text-transform: uppercase; color: #888; letter-spacing: 0.08em; display: block; margin-bottom: 2px; }
+  .pfield span { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .report-title { padding: 14px 28px 8px; font-size: 14px; font-weight: 700; color: #333; border-bottom: 1px solid #eee; }
+  .report-subtitle { font-size: 11px; color: #888; font-weight: 400; margin-left: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #1565c0; color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 16px; text-align: left; }
+  td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .test-name { font-weight: 500; color: #1a1a1a; }
+  .result.low { color: #1565c0; font-weight: 700; }
+  .result.normal { color: #2e7d32; font-weight: 700; }
+  .flag.N { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; margin-left: 6px; background: #e8f5e9; color: #2e7d32; }
+  .ref { font-size: 12px; color: #777; }
+  .unit { font-size: 11px; color: #999; }
+  .section-header td { background: #f5f5f5; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #555; letter-spacing: 0.08em; padding: 6px 16px; }
+  .footer-bar { background: #fafafa; border-top: 2px solid #eee; padding: 14px 28px; display: flex; justify-content: space-between; font-size: 11px; color: #777; }
+  .remarks { padding: 14px 28px; background: #e8f5e9; border-top: 1px solid #a5d6a7; font-size: 12px; color: #1b5e20; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #2e7d32; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .test-note { background: #e8f5e9; border-left: 4px solid #2e7d32; padding: 10px 16px; margin: 0 28px 12px; font-size: 11px; color: #1b5e20; border-radius: 0 6px 6px 0; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">L3 — QA TEST FILE</div>
+  <div class="header">
+    <div>
+      <div class="lab-name">SRL Diagnostics</div>
+      <div class="lab-sub">NABL &amp; CAP Accredited Laboratory</div>
+      <div class="lab-sub">Andheri East, Mumbai – 400069 &nbsp;|&nbsp; Ph: 022-39877200</div>
+    </div>
+    <div class="lab-contact">
+      <div>Report Date: <strong>11/04/2026</strong></div>
+      <div>Sample Date: <strong>10/04/2026</strong></div>
+      <div>Lab ID: <strong>SRL-2026-44201</strong></div>
+    </div>
+  </div>
+  <div class="patient-section">
+    <div class="pfield"><label>Patient Name</label><span>Priya Mehta</span></div>
+    <div class="pfield"><label>Age / Sex</label><span>28 Y / Female</span></div>
+    <div class="pfield"><label>Ref. Doctor</label><span>Dr. Priya Sharma</span></div>
+    <div class="pfield"><label>GA</label><span>20 Weeks</span></div>
+  </div>
+  <div class="report-title">BLOOD INVESTIGATIONS <span class="report-subtitle">— 20 Week Panel + GTT</span></div>
+  <div class="test-note">⚠️ QA NOTE: HB 11.4 — now NORMAL (3rd data point for trend). GTT values are all normal (no GDM). Links to P4 test orders. Verify HB trend chart now shows three points: 10.2 → 10.8 → 11.4.</div>
+  <table>
+    <thead><tr><th>Test</th><th>Result</th><th>Reference Range</th><th>Units</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td class="section-header" colspan="5">Haematology</td></tr>
+      <tr>
+        <td class="test-name">Haemoglobin (Hb)</td>
+        <td class="result normal">11.4 <span class="flag N">N</span></td>
+        <td class="ref">11.0 – 14.0</td>
+        <td class="unit">g/dL</td>
+        <td><span style="color:#2e7d32;font-weight:600;font-size:12px;">Normal</span></td>
+      </tr>
+      <tr><td class="section-header" colspan="5">Glucose Tolerance Test (75g OGTT)</td></tr>
+      <tr>
+        <td class="test-name">Fasting Glucose</td>
+        <td class="result normal">88 <span class="flag N">N</span></td>
+        <td class="ref">&lt; 92</td>
+        <td class="unit">mg/dL</td>
+        <td><span style="color:#2e7d32;font-weight:600;font-size:12px;">Normal</span></td>
+      </tr>
+      <tr>
+        <td class="test-name">1 Hour Post Glucose</td>
+        <td class="result normal">148 <span class="flag N">N</span></td>
+        <td class="ref">&lt; 180</td>
+        <td class="unit">mg/dL</td>
+        <td><span style="color:#2e7d32;font-weight:600;font-size:12px;">Normal</span></td>
+      </tr>
+      <tr>
+        <td class="test-name">2 Hour Post Glucose</td>
+        <td class="result normal">128 <span class="flag N">N</span></td>
+        <td class="ref">&lt; 153</td>
+        <td class="unit">mg/dL</td>
+        <td><span style="color:#2e7d32;font-weight:600;font-size:12px;">Normal</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="remarks">
+    <strong>Interpretation:</strong> Haemoglobin has normalised (11.4 g/dL) — good response to iron therapy. GTT results are within normal limits as per IADPSG criteria — GDM not detected at this time.
+  </div>
+  <div class="footer-bar">
+    <div>Verified by: <strong>Dr. Kavita Joshi (MD Pathology)</strong></div>
+    <div>SRL Diagnostics, Mumbai &nbsp;|&nbsp; reports@srl.in</div>
+  </div>
+</div>
+</body>
+</html>

@@ -4,10 +4,11 @@ import {
 } from "./albumUtils";
 
 export const CHECKLIST_STORAGE_KEY = "matri-checklist-week-8";
+const checklistWeekKey = (week) => `matri-checklist-week-${week ?? 8}`;
 
-export function loadChecked() {
+export function loadChecked(week) {
   try {
-    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY);
+    const raw = localStorage.getItem(checklistWeekKey(week));
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     return parsed && typeof parsed === "object" ? parsed : {};
@@ -16,9 +17,9 @@ export function loadChecked() {
   }
 }
 
-export function saveChecked(checked) {
+export function saveChecked(checked, week) {
   try {
-    localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checked));
+    localStorage.setItem(checklistWeekKey(week), JSON.stringify(checked));
   } catch { /* quota */ }
 }
 

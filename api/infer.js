@@ -1,6 +1,28 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
+// Semantic doctor name match — order-independent token set comparison with initial expansion.
+// Strips "Dr."/"Doctor" prefix, splits into tokens, then checks every token in the shorter
+// name can be matched to a token in the longer name (exact or one is a prefix initial of the other).
+// "Dr. Archana Pathak" matches "Archana P", "Pathak Archana", "A. Pathak", "archana pathak" etc.
+function doctorNamesMatch(a, b) {
+  if (!a || !b) return false;
+  const tokenize = s => s
+    .replace(/^(dr\.?|doctor)\s*/i, '')
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .map(t => t.replace(/\.$/, ''))
+    .filter(Boolean);
+  const ta = tokenize(a);
+  const tb = tokenize(b);
+  if (!ta.length || !tb.length) return false;
+  const isInitialOf = (t1, t2) => t1.length === 1 && t2.startsWith(t1);
+  const tokenMatches = (t1, t2) => t1 === t2 || isInitialOf(t1, t2) || isInitialOf(t2, t1);
+  const [shorter, longer] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  return shorter.every(t => longer.some(lt => tokenMatches(t, lt)));
+}
+
+
 // Name aliases for core lab tests — extras matching any of these are duplicates and should be skipped
 const CORE_ALIASES = {
   hemoglobin:           ["hemoglobin","haemoglobin","hb","hgb","hb level","haemoglobin level"],
@@ -171,6 +193,7 @@ async function uploadFile(userId, type, fileBase64, mimeType, fileName) {
 
 // ── MAIN HANDLER ─────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS,DELETE');res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');if(req.method==='OPTIONS'){res.status(200).end();return;}
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await getUser(req);
@@ -237,6 +260,7 @@ export default async function handler(req, res) {
 
     // 5. Fan out based on type
     const debugInfo = {};
+    let doctorMismatch = null;
     if (type === "prescription") {
       // Normalise: support both old field names and new
       const medicines     = parsed.medicines     || [];
@@ -396,7 +420,7 @@ export default async function handler(req, res) {
 
       // Update profile prescriptions list AND medications jsonb
       const { data: profile } = await supabase
-        .from("profiles").select("prescriptions, medications").eq("id", user.id).single();
+        .from("profiles").select("prescriptions, medications, doctor_name, clinic_name").eq("id", user.id).single();
 
       const existingRxList = profile?.prescriptions || [];
       const newRxEntry = {
@@ -453,10 +477,17 @@ export default async function handler(req, res) {
         }
       }
 
+      const currentDoctor = profile?.doctor_name?.trim();
+      const extractedDoctor = parsed.doctor_name?.trim();
+      doctorMismatch = currentDoctor && extractedDoctor &&
+        !doctorNamesMatch(currentDoctor, extractedDoctor);
+
       await supabase.from("profiles")
         .update({
           prescriptions: [...existingRxList, newRxEntry],
           medications: updatedMedications,
+          ...(!doctorMismatch && extractedDoctor ? { doctor_name: extractedDoctor } : {}),
+          ...(!doctorMismatch && parsed.clinic_name ? { clinic_name: parsed.clinic_name } : {}),
         })
         .eq("id", user.id);
 
@@ -568,6 +599,10 @@ export default async function handler(req, res) {
       parsed,
       upload_id: upload?.id,
       prescription_id: type === "prescription" ? (await supabase.from("prescriptions").select("id").eq("upload_id", upload?.id).single())?.data?.id : null,
+      doctor_conflict: (type === "prescription" && doctorMismatch) ? {
+        current: { doctor_name: profile?.doctor_name, clinic_name: profile?.clinic_name },
+        extracted: { doctor_name: parsed.doctor_name, clinic_name: parsed.clinic_name },
+      } : undefined,
       _debug: Object.keys(debugInfo).length ? debugInfo : undefined,
     });
 

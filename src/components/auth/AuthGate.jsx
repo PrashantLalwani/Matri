@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import matriLogo from '../../assets/matri.png';
 import { supabase } from '../../supabase';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 /* ─── PREGNANT ICON ─────────────────────────────────────────────────────── */
 export function PregnantIcon({ size = 20, opacity = 1 }) {
@@ -26,20 +29,31 @@ export function AuthScreen() {
 
   const handleGoogle = async () => {
     setLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
+    if (Capacitor.isNativePlatform()) {
+      const { data } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: 'in.matri.app://login-callback/',
+          skipBrowserRedirect: true,
+        },
+      });
+      if (data?.url) await Browser.open({ url: data.url, windowName: '_self' });
+      setLoading(false);
+    } else {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+    }
   };
 
   return (
     <div className="auth-screen">
 
       {/* Top wordmark */}
-      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:0}}>
-        <div style={{width:7,height:7,borderRadius:"50%",background:"#e8b8a8"}}/>
-        <span style={{fontSize:12,fontWeight:700,letterSpacing:"0.28em",textTransform:"uppercase",color:"rgba(255,255,255,0.55)"}}>matri</span>
-      </div>
+      <img src={matriLogo} alt="Matri" style={{width:260,marginBottom:0}}/>
 
       {/* Centre — illustration + copy */}
       <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",width:"100%"}}>
@@ -73,8 +87,10 @@ export function AuthScreen() {
       </div>
 
       <div className="auth-footer">
-        By continuing, you agree to Matri's terms.<br/>
-        Your data is private and encrypted.
+        By continuing, you agree to our{' '}
+        <span className="auth-footer-link" onClick={() => Browser.open({ url: 'https://matri-ai-seven.vercel.app/tos', windowName: '_self' })}>Terms of Service</span>
+        {' '}and{' '}
+        <span className="auth-footer-link" onClick={() => Browser.open({ url: 'https://matri-ai-seven.vercel.app/privacy', windowName: '_self' })}>Privacy Policy</span>.
       </div>
     </div>
   );

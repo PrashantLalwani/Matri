@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>L6 — Lab Report — Duplicate Date (Same as L1)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 720px; background: #fff; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); position: relative; }
+  .header { border-bottom: 3px solid #6a1b9a; padding: 20px 28px; display: flex; justify-content: space-between; }
+  .lab-name { font-size: 20px; font-weight: 700; color: #6a1b9a; }
+  .lab-sub { font-size: 11px; color: #555; margin-top: 2px; }
+  .lab-contact { font-size: 11px; color: #777; text-align: right; }
+  .patient-section { background: #fafafa; border-bottom: 1px solid #eee; padding: 14px 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .pfield label { font-size: 9px; text-transform: uppercase; color: #888; letter-spacing: 0.08em; display: block; margin-bottom: 2px; }
+  .pfield span { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .report-title { padding: 14px 28px 8px; font-size: 14px; font-weight: 700; color: #333; border-bottom: 1px solid #eee; }
+  .report-subtitle { font-size: 11px; color: #888; font-weight: 400; margin-left: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #6a1b9a; color: #fff; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 16px; text-align: left; }
+  td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .test-name { font-weight: 500; color: #1a1a1a; }
+  .result.low { color: #1565c0; font-weight: 700; }
+  .flag.L { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; margin-left: 6px; background: #e3f2fd; color: #1565c0; }
+  .ref { font-size: 12px; color: #777; }
+  .unit { font-size: 11px; color: #999; }
+  .footer-bar { background: #fafafa; border-top: 2px solid #eee; padding: 14px 28px; display: flex; justify-content: space-between; font-size: 11px; color: #777; }
+  .remarks { padding: 14px 28px; background: #f3e5f5; border-top: 1px solid #ce93d8; font-size: 12px; color: #4a148c; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #6a1b9a; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .test-note { background: #f3e5f5; border-left: 4px solid #6a1b9a; padding: 10px 16px; margin: 0 28px 12px; font-size: 11px; color: #4a148c; border-radius: 0 6px 6px 0; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">L6 — QA TEST FILE</div>
+  <div class="header">
+    <div>
+      <div class="lab-name">Dr. Lal PathLabs — Express</div>
+      <div class="lab-sub">NABL Accredited &nbsp;|&nbsp; 24-Hour Reporting</div>
+      <div class="lab-sub">Santacruz West, Mumbai – 400054</div>
+    </div>
+    <div class="lab-contact">
+      <div>Report Date: <strong>13/02/2026</strong></div>
+      <div>Sample Date: <strong>12/02/2026</strong></div>
+      <div>Lab ID: <strong>LPL-2026-11031</strong></div>
+    </div>
+  </div>
+  <div class="patient-section">
+    <div class="pfield"><label>Patient Name</label><span>Priya Mehta</span></div>
+    <div class="pfield"><label>Age / Sex</label><span>28 Y / Female</span></div>
+    <div class="pfield"><label>Ref. Doctor</label><span>Dr. Archana Pathak</span></div>
+    <div class="pfield"><label>Sample Date</label><span>12/02/2026</span></div>
+  </div>
+  <div class="report-title">HB REPORT <span class="report-subtitle">— Repeat Sample Same Day</span></div>
+  <div class="test-note">⚠️ QA NOTE: Upload AFTER L1. SAME date as L1 (12/02/2026) but different HB value (10.5 vs 10.2). Tests deduplication behaviour — does the app create a second entry for the same test on the same date, or does it update the existing one? Observe carefully.</div>
+  <table>
+    <thead><tr><th>Test</th><th>Result</th><th>Reference Range</th><th>Units</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="test-name">Haemoglobin (Hb)</td>
+        <td class="result low">10.5 <span class="flag L">L</span></td>
+        <td class="ref">11.0 – 14.0</td>
+        <td class="unit">g/dL</td>
+        <td><span style="color:#1565c0;font-weight:600;font-size:12px;">LOW ↓</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="remarks">
+    <strong>Note:</strong> This is a repeat sample collected on the same day (12/02/2026). Minor variation from earlier sample (10.2 g/dL) within acceptable analytical range.
+  </div>
+  <div class="footer-bar">
+    <div>Verified by: <strong>Dr. P. Sharma (MD Pathology)</strong></div>
+    <div>Lal PathLabs Express</div>
+  </div>
+</div>
+</body>
+</html>

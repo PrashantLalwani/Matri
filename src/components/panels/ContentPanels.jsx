@@ -212,15 +212,17 @@ export function FearsPanel() {
   </>;
 }
 
-export function CheckPanel({ checked, toggle, userItems = [], onUserItemsChange }) {
+export function CheckPanel({ checked, toggle, userItems = [], onUserItemsChange, weeklyContent }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const inputRef = useRef(null);
 
-  const autoDone  = CHECKS.filter(c => checked[c.id]).length;
+  const weekChecks = weeklyContent?.checklist ?? CHECKS;
+
+  const autoDone  = weekChecks.filter(c => checked[c.id]).length;
   const userDone  = userItems.filter(u => checked[`u_${u.id}`]).length;
   const totalDone = autoDone + userDone;
-  const totalAll  = CHECKS.length + userItems.length;
+  const totalAll  = weekChecks.length + userItems.length;
 
   const addItem = () => {
     const text = draft.trim();
@@ -245,9 +247,9 @@ export function CheckPanel({ checked, toggle, userItems = [], onUserItemsChange 
     <div className="p-card pc-white" style={{padding:"4px 16px 12px",marginBottom:12}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 0 8px",borderBottom:"1px solid var(--cream2)",marginBottom:4}}>
         <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--amber)"}}>This week</span>
-        <span style={{fontSize:11,color:"var(--muted)"}}>{autoDone} of {CHECKS.length} done {autoDone===CHECKS.length?"🎉":""}</span>
+        <span style={{fontSize:11,color:"var(--muted)"}}>{autoDone} of {weekChecks.length} done {autoDone===weekChecks.length?"🎉":""}</span>
       </div>
-      {CHECKS.map(c=>(
+      {weekChecks.map(c=>(
         <div key={c.id} className="cl-item" onClick={()=>toggle(c.id)}>
           <div className={`cl-ring${checked[c.id]?" on":""}`}>{checked[c.id]&&<span style={{color:"#fff",fontSize:10,fontWeight:700}}>✓</span>}</div>
           <div style={{flex:1}}><div className={`cl-txt${checked[c.id]?" on":""}`}>{c.text}</div><div className="cl-tag" style={{color:c.col}}>{c.pri}</div></div>

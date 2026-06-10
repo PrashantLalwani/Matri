@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+
 // Uses service role key — server-side only, never exposed to client
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -15,6 +16,7 @@ async function getUser(req) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS,DELETE');res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');if(req.method==='OPTIONS'){res.status(200).end();return;}
   if (req.method !== "DELETE") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await getUser(req);
@@ -133,22 +135,24 @@ export default async function handler(req, res) {
       return true;
     });
 
-    // Re-derive next_appointment_date from remaining prescriptions.
-    // Always update so a deleted prescription's follow-up date is never left orphaned.
+    // Re-derive doctor info + next_appointment_date from remaining prescriptions.
+    // Always recalculate so deleted prescription data is never left orphaned on the profile.
     const { data: remainingRx } = await supabase
       .from("prescriptions")
-      .select("follow_up_date")
+      .select("follow_up_date, doctor_name, clinic_name, prescribed_date")
       .eq("user_id", user.id)
-      .not("follow_up_date", "is", null)
-      .order("follow_up_date", { ascending: false })
-      .limit(1);
-    const nextApptDate = remainingRx?.[0]?.follow_up_date || null;
+      .order("prescribed_date", { ascending: false });
+
+    const nextApptDate = remainingRx?.find(r => r.follow_up_date)?.follow_up_date || null;
+    const latestWithDoctor = remainingRx?.find(r => r.doctor_name) || null;
 
     await supabase.from("profiles")
       .update({
         prescriptions: updatedRxList,
         medications: updatedMedications,
         next_appointment_date: nextApptDate,
+        doctor_name: latestWithDoctor?.doctor_name || null,
+        clinic_name: latestWithDoctor?.clinic_name || null,
       })
       .eq("id", user.id);
 

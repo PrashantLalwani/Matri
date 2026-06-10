@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>P6 — Prescription No Doctor Name</title>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 680px; min-height: 860px; background: #fffdf5; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); padding: 0; position: relative; }
+  .lh { background: #4a4a4a; color: #fff; padding: 20px 28px 16px; border-bottom: 4px solid #aaa; }
+  .lh-clinic { font-size: 18px; font-weight: 700; }
+  .lh-addr { font-size: 12px; opacity: 0.75; margin-top: 4px; }
+  .lh-note { font-size: 11px; opacity: 0.55; margin-top: 2px; font-style: italic; }
+  .body { padding: 20px 28px; }
+  .patient-row { display: flex; border: 1px solid #bbb; border-radius: 4px; overflow: hidden; margin-bottom: 16px; }
+  .patient-cell { flex: 1; padding: 6px 10px; border-right: 1px solid #bbb; }
+  .patient-cell:last-child { border-right: none; }
+  .patient-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .patient-val { font-family: 'Kalam', cursive; font-size: 14px; color: #1a1a1a; }
+  .rx-marker { font-size: 42px; color: #4a4a4a; font-weight: 700; font-style: italic; line-height: 1; margin-bottom: 8px; font-family: 'Times New Roman', serif; }
+  .rx-line { font-family: 'Kalam', cursive; font-size: 16px; color: #1a1a1a; margin-bottom: 14px; line-height: 1.55; padding-left: 8px; border-left: 2px solid #aaa; }
+  .rx-line .num { font-weight: 700; color: #4a4a4a; margin-right: 4px; }
+  .rx-sub { font-size: 13px; color: #444; padding-left: 18px; display: block; }
+  .rx-note { font-size: 12px; color: #888; padding-left: 18px; display: block; font-style: italic; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #4a4a4a; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px dashed #ccc; }
+  .inv-line { font-family: 'Kalam', cursive; font-size: 15px; color: #222; margin-bottom: 6px; }
+  .inv-line::before { content: '• '; color: #aaa; }
+  .footer { margin-top: 28px; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 12px; border-top: 1px dashed #ccc; }
+  .followup-label { font-size: 10px; text-transform: uppercase; color: #888; }
+  .followup-date { font-family: 'Kalam', cursive; font-size: 17px; color: #c0392b; font-weight: 700; margin-top: 2px; }
+  .sig-scrawl { font-family: 'Kalam', cursive; font-size: 22px; color: #1a1a1a; transform: rotate(-3deg); display: inline-block; opacity: 0.5; }
+  .sig-label { font-size: 10px; color: #bbb; margin-top: 2px; font-style: italic; }
+  .date-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 14px; color: #555; }
+  .date-val { font-family: 'Kalam', cursive; font-size: 14px; color: #222; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #616161; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .test-note { background: #eceff1; border: 1px solid #b0bec5; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 11px; color: #37474f; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">P6 — QA TEST FILE</div>
+  <div class="lh">
+    <div class="lh-clinic">City Maternity &amp; Nursing Home</div>
+    <div class="lh-addr">14, Linking Road, Bandra West, Mumbai – 400050 &nbsp;|&nbsp; Ph: 022-26441200</div>
+    <div class="lh-note">(No individual doctor name on letterhead)</div>
+  </div>
+  <div class="body">
+    <div class="test-note">⚠️ QA NOTE: No doctor name anywhere on this prescription — not on letterhead, not as a signature. Tests: app should NOT clear an existing doctor name from the profile. Doctor's Area should remain unchanged.</div>
+    <div class="date-row">
+      <div><span style="font-size:10px;color:#888;display:block;">DATE</span><span class="date-val">18 / 03 / 2026</span></div>
+      <div><span style="font-size:10px;color:#888;display:block;">OPD NO.</span><span class="date-val">CMH-2291</span></div>
+    </div>
+    <div class="patient-row">
+      <div class="patient-cell"><div class="patient-label">Patient Name</div><div class="patient-val">Priya Mehta</div></div>
+      <div class="patient-cell"><div class="patient-label">Age</div><div class="patient-val">28 Y</div></div>
+      <div class="patient-cell"><div class="patient-label">GA (weeks)</div><div class="patient-val">16 wks</div></div>
+    </div>
+    <div class="rx-marker">℞</div>
+    <div class="rx-line">
+      <span class="num">1.</span> Tab. Iron Sucrose 200mg
+      <span class="rx-sub">1 – 0 – 1 &nbsp;×&nbsp; 30 days</span>
+    </div>
+    <div class="rx-line">
+      <span class="num">2.</span> Tab. Calcium + Vitamin D3 500mg/250IU
+      <span class="rx-sub">0 – 1 – 1 &nbsp;×&nbsp; 30 days</span>
+    </div>
+    <div class="rx-line">
+      <span class="num">3.</span> Tab. Folic Acid 5mg
+      <span class="rx-sub">1 – 0 – 0 &nbsp;×&nbsp; Continue</span>
+    </div>
+    <div class="section-title">Investigations</div>
+    <div class="inv-line">Hb after 4 weeks</div>
+    <div class="inv-line">Urine Culture &amp; Sensitivity</div>
+    <div class="footer">
+      <div>
+        <div class="followup-label">Follow-Up Date</div>
+        <div class="followup-date">18 / 04 / 2026</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="sig-scrawl">illegible</div>
+        <div class="sig-label">(signature — name not legible)</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

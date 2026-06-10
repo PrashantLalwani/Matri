@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>S2 — Anomaly Scan Report — 20+1 Weeks</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 720px; background: #fff; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); position: relative; }
+  .header { background: #1a237e; color: #fff; padding: 20px 28px; }
+  .center-name { font-size: 18px; font-weight: 700; color: #90caf9; }
+  .center-sub { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+  .center-contact { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 6px; }
+  .patient-section { background: #f0f4ff; border-bottom: 1px solid #c5d0f5; padding: 14px 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pfield label { font-size: 9px; text-transform: uppercase; color: #666; letter-spacing: 0.08em; display: block; margin-bottom: 2px; }
+  .pfield span { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #1a237e; background: #e8edff; padding: 8px 28px; border-top: 1px solid #c5d0f5; border-bottom: 1px solid #c5d0f5; margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #1a237e; color: #90caf9; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 14px; text-align: left; }
+  td { padding: 8px 14px; font-size: 12.5px; border-bottom: 1px solid #f0f0f0; }
+  tr:nth-child(even) td { background: #fafbff; }
+  .meas-name { font-weight: 500; color: #1a1a1a; }
+  .meas-val { font-weight: 700; color: #1a237e; }
+  .normal-badge { font-size: 10px; background: #e8f5e9; color: #2e7d32; padding: 2px 7px; border-radius: 3px; font-weight: 700; }
+  .findings { padding: 14px 28px; font-size: 12.5px; color: #333; line-height: 1.75; border-top: 1px solid #eee; }
+  .findings p { margin-bottom: 8px; }
+  .opinion { padding: 14px 28px; background: #e8f5e9; border-top: 1px solid #a5d6a7; font-size: 13px; color: #1b5e20; }
+  .footer-bar { background: #1a237e; color: rgba(255,255,255,0.6); padding: 12px 28px; display: flex; justify-content: space-between; font-size: 11px; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #1a237e; color: #90caf9; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; }
+  .test-note { background: #e8edff; border-left: 4px solid #1a237e; padding: 10px 16px; margin: 0 28px 0; font-size: 11px; color: #1a237e; border-radius: 0 6px 6px 0; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">S2 — QA TEST FILE</div>
+  <div class="header">
+    <div class="center-name">Kokilaben Dhirubhai Ambani Hospital — Radiology</div>
+    <div class="center-sub">Fetal Medicine &amp; Obstetric Ultrasound Unit &nbsp;|&nbsp; Sonologist: Dr. Priya Sharma (MBBS, MD Obs &amp; Gynae)</div>
+    <div class="center-contact">Andheri West, Mumbai – 400053 &nbsp;|&nbsp; Ph: 022-30999999 &nbsp;|&nbsp; PCPNDT Reg: MH/PCPNDT/2020/0892</div>
+  </div>
+  <div class="patient-section">
+    <div class="pfield"><label>Patient Name</label><span>Priya Mehta</span></div>
+    <div class="pfield"><label>Age</label><span>28 Years</span></div>
+    <div class="pfield"><label>Ref. Doctor</label><span>Dr. Priya Sharma</span></div>
+    <div class="pfield"><label>Scan Date</label><span>10/04/2026</span></div>
+    <div class="pfield"><label>Gestational Age by LMP</label><span>20 weeks 1 day</span></div>
+    <div class="pfield"><label>Indication</label><span>Level II Anomaly Scan</span></div>
+  </div>
+  <div class="test-note">⚠️ QA NOTE: Anomaly scan (Level II USG). Should create a scan entry of type "Anomaly" in the Scans section. Links to P2 scan advisement. All findings normal.</div>
+  <div class="section-title">Biometry</div>
+  <table>
+    <thead><tr><th>Parameter</th><th>Measured</th><th>Expected at 20w</th><th>GA Equivalent</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td class="meas-name">Biparietal Diameter (BPD)</td><td class="meas-val">48.2 mm</td><td>46–52 mm</td><td>20w 1d</td><td><span class="normal-badge">Normal</span></td></tr>
+      <tr><td class="meas-name">Head Circumference (HC)</td><td class="meas-val">176.4 mm</td><td>170–186 mm</td><td>20w 0d</td><td><span class="normal-badge">Normal</span></td></tr>
+      <tr><td class="meas-name">Abdominal Circumference (AC)</td><td class="meas-val">148.2 mm</td><td>144–158 mm</td><td>20w 2d</td><td><span class="normal-badge">Normal</span></td></tr>
+      <tr><td class="meas-name">Femur Length (FL)</td><td class="meas-val">33.1 mm</td><td>31–36 mm</td><td>19w 6d</td><td><span class="normal-badge">Normal</span></td></tr>
+      <tr><td class="meas-name">Fetal Heart Rate (FHR)</td><td class="meas-val">148 bpm</td><td>120–180 bpm</td><td>—</td><td><span class="normal-badge">Normal</span></td></tr>
+      <tr><td class="meas-name">Estimated Fetal Weight (EFW)</td><td class="meas-val">312 g</td><td>280–360 g</td><td>20w</td><td><span class="normal-badge">Normal</span></td></tr>
+      <tr><td class="meas-name">EDD by Scan</td><td class="meas-val">26/08/2026</td><td>—</td><td>—</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <div class="section-title" style="margin-top:0;">Detailed Anatomy Survey</div>
+  <div class="findings">
+    <p><strong>Head &amp; Brain:</strong> Normal skull shape. Choroid plexuses symmetric. Cerebellum, cisterna magna, and cavum septum pellucidum all visualised and normal. No ventriculomegaly.</p>
+    <p><strong>Face:</strong> Orbits symmetric. Nasal bone present. Lip and palate appear intact. No facial clefting identified.</p>
+    <p><strong>Spine:</strong> Cervical, thoracic, lumbar, and sacral spine intact. No neural tube defect identified. Skin covering normal.</p>
+    <p><strong>Heart (4-chamber view):</strong> Four chambers seen. Rhythm regular at 148 bpm. LVOT and RVOT views normal. No obvious structural cardiac anomaly identified.</p>
+    <p><strong>Abdomen:</strong> Abdominal wall intact. Stomach bubble visualised in correct position. Kidneys bilateral — normal size, corticomedullary differentiation present. Bladder visible and filling normally.</p>
+    <p><strong>Limbs:</strong> All four limbs visualised. Long bones appear normal in length and structure. No obvious skeletal anomaly.</p>
+    <p><strong>Placenta:</strong> Anterior, Grade 0, fundal. Lower edge clear of internal os by &gt;3 cm.</p>
+    <p><strong>Amniotic Fluid:</strong> AFI = 14.2 cm — normal range. No oligo/polyhydramnios.</p>
+    <p><strong>Umbilical Cord:</strong> Three-vessel cord. Normal insertion into fetal abdomen.</p>
+    <p><strong>Uterus:</strong> No fibroids or adnexal masses. Cervical length = 38 mm (normal).</p>
+  </div>
+  <div class="opinion">
+    <strong>Opinion:</strong> Single live intrauterine fetus at 20 weeks 1 day gestation. Level II anomaly scan — no gross structural anomaly identified on today's examination. Normal fetal anatomy and growth for gestational age. Next growth scan recommended at 28–30 weeks.
+  </div>
+  <div class="footer-bar">
+    <div>Dr. Priya Sharma — MBBS, MD (Obs &amp; Gynae) &nbsp;|&nbsp; Reg: MCI-2021-MH-39201</div>
+    <div>Kokilaben Hospital, Mumbai &nbsp;|&nbsp; 10/04/2026</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const supabase = createClient(
@@ -89,6 +90,7 @@ async function loadHealthContext(userId) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin','*');res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS,DELETE');res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');if(req.method==='OPTIONS'){res.status(200).end();return;}
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const user = await getUser(req);

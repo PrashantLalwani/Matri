@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>WRONG — Not a Medical Document</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif; }
+  .page {
+    width: 600px; height: 800px;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .circle { position: absolute; border-radius: 50%; opacity: 0.3; }
+  .title { font-size: 36px; font-weight: 900; color: #fff; text-align: center; text-shadow: 0 2px 8px rgba(0,0,0,0.3); margin-bottom: 16px; }
+  .sub { font-size: 18px; color: rgba(255,255,255,0.9); text-align: center; margin-bottom: 32px; text-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+  .recipe { background: rgba(255,255,255,0.85); border-radius: 16px; padding: 24px 32px; max-width: 420px; }
+  .recipe h3 { font-size: 16px; color: #333; margin-bottom: 12px; }
+  .recipe p { font-size: 13px; color: #555; line-height: 1.6; }
+  .qa-tag { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); color: #fff; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 4px; }
+  @media print { @page { margin: 0; size: A4; } body { min-height: 0; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">WRONG — QA TEST FILE</div>
+  <div class="circle" style="width:300px;height:300px;background:#fff;top:-100px;left:-100px;"></div>
+  <div class="circle" style="width:200px;height:200px;background:#fff;bottom:-60px;right:-60px;"></div>
+  <div class="title">🍋 Lemon Cake Recipe</div>
+  <div class="sub">This is NOT a medical document.</div>
+  <div class="recipe">
+    <h3>Ingredients:</h3>
+    <p>
+      • 2 cups all-purpose flour<br/>
+      • 1½ cups sugar<br/>
+      • ½ cup butter (softened)<br/>
+      • 2 eggs<br/>
+      • 1 cup milk<br/>
+      • 2 lemons (zest + juice)<br/>
+      • 2 tsp baking powder<br/>
+      • ½ tsp salt<br/><br/>
+      <strong>Method:</strong> Cream butter and sugar. Beat in eggs. Add flour and milk alternately. Fold in lemon zest. Bake at 180°C for 35 minutes.
+    </p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,5 +1,8 @@
 import "./styles/app.css";
+import matriLogo from "./assets/matri.png";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { App as CapApp } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { analytics } from "./analytics";
 import { supabase } from "./supabase";
 import OnboardingFlow from "./components/OnboardingFlow";
@@ -100,7 +103,7 @@ const PANELS = {
   journal:   { label:"Journal",          title:<>Your pregnancy <em>story</em></>,                headBg:"#0a2020",           lblCol:"#70c8b8",       titleCol:"#fff",        dark:true,  Panel:JournalPanel, noScroll:true },
   stories:   { label:"Stories",          title:<>Women who've been <em>right here</em></>,        headBg:"#241038",           lblCol:"#e8b8c8",       titleCol:"#fff",        dark:true,  Panel:StoriesPanel },
   symptom:      { label:"How are you feeling?", title:<>Is this <em>normal</em>?</>,               headBg:"var(--cream2)",     lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:null },
-  symptomDetail:{ label:"",                    title:<></>,                                         headBg:"var(--cream2)",     lblCol:"var(--rose)",   titleCol:"var(--ink)",  dark:false, Panel:null, noScroll:true },
+  symptomDetail:{ label:"",                    title:<></>,                                         headBg:"#200c18",           lblCol:"#e8b8a8",       titleCol:"#fff",        dark:true,  Panel:null, noScroll:true },
   myth:      { label:"Myth busting",         title:<>True, false, or <em>complicated</em></>,       headBg:"var(--amber-pale)", lblCol:"var(--amber)",  titleCol:"var(--ink)",  dark:false, Panel:MythPanel },
   planning:  { label:"Life planning",        title:<>Pregnancy and <em>your daily life</em></>,     headBg:"var(--navy-pale)",  lblCol:"var(--navy)",   titleCol:"var(--ink)",  dark:false, Panel:PlanningPanel },
   fears:     { label:"Real fears",           title:<>The things nobody <em>admits</em></>,          headBg:"var(--ink)",        lblCol:"rgba(255,200,180,0.7)", titleCol:"#fff", dark:true, Panel:FearsPanel },
@@ -151,6 +154,10 @@ function App({ profile: initialProfile }) {
   const [browseWeek, setBrowseWeek] = useState(null); // null = live (follow currentWeek)
   const effectiveWeek = browseWeek ?? currentWeek;
 
+  useEffect(() => {
+    if (effectiveWeek) setChecked(loadChecked(effectiveWeek));
+  }, [effectiveWeek]);
+
   const weeklyContent  = useWeeklyContent(effectiveWeek);
   const enrichedSymptoms = useMemo(
     () => mergeSymptomContexts(COMMON_SYMPTOMS, weeklyContent),
@@ -166,7 +173,7 @@ function App({ profile: initialProfile }) {
 
   const [active,  setActive]  = useState(null);
   const [visible, setVisible] = useState(false);
-  const [checked, setChecked] = useState(() => loadChecked());
+  const [checked, setChecked] = useState({});
   const [userChecklist, setUserChecklist] = useState(() => loadUserChecklist());
   const [journalEntries, setJournalEntries] = useState(() => loadJournalEntries());
   const [moodLog, setMoodLog] = useState(() => loadMoodLog());
@@ -439,13 +446,15 @@ function App({ profile: initialProfile }) {
     analytics.milestoneChecked(id);
     setChecked((p) => {
       const next = { ...p, [id]: !p[id] };
-      saveChecked(next);
+      saveChecked(next, effectiveWeek);
       return next;
     });
   };
 
-  const checksTotal = CHECKS.length + userChecklist.length;
-  const checksDone  = Object.values(checked).filter(Boolean).length;
+  const weekChecksItems = weeklyContent?.checklist ?? CHECKS;
+  const checksTotal = weekChecksItems.length + userChecklist.length;
+  const checksDone  = weekChecksItems.filter(c => checked[c.id]).length
+                    + userChecklist.filter(u => checked[`u_${u.id}`]).length;
 
   useEffect(()=>{
     document.body.style.overflow = active ? "hidden" : "";
@@ -469,10 +478,7 @@ function App({ profile: initialProfile }) {
 
             {/* Wordmark + profile chip */}
             <div style={{position:"relative",zIndex:2,padding:"18px 20px 0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:"#e8b8a8",flexShrink:0}}/>
-                <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.22em",textTransform:"uppercase",color:"rgba(255,255,255,0.45)"}}>matri</span>
-              </div>
+              <img src={matriLogo} alt="Matri" style={{width:72,display:"block"}}/>
               <div className="profile-chip" onClick={e=>{e.stopPropagation();openProfile();}}>
                 <div className="profile-chip-avatar" style={{fontSize:16}}>🤰</div>
                 {profileData?.name && <span className="profile-chip-name">{profileData.name.split(" ")[0]}</span>}
@@ -925,11 +931,15 @@ function App({ profile: initialProfile }) {
           <div className="panel-inner">
             <div className="panel-head" style={{background:pd.headBg}}>
               <div>
-                {active==="symptomDetail" && symptomKey && COMMON_SYMPTOMS[symptomKey] ? (
-                  <>
-                    <div className="panel-head-lbl" style={{color:"var(--rose)"}}>Week {effectiveWeek ?? 8} · {COMMON_SYMPTOMS[symptomKey].label}</div>
-                    <div className="panel-head-title" style={{color:"var(--ink)"}}>Ask me anything <em>about this</em></div>
-                  </>
+                {active==="symptomDetail" && symptomKey && enrichedSymptoms[symptomKey] ? (
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"nowrap",minWidth:0}}>
+                    <span style={{fontSize:20,lineHeight:1,flexShrink:0,display:"flex",alignItems:"center"}}>{enrichedSymptoms[symptomKey].emoji}</span>
+                    <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,fontWeight:400,color:"#fff",whiteSpace:"nowrap",lineHeight:1,display:"flex",alignItems:"center"}}>{enrichedSymptoms[symptomKey].label}</span>
+                    <span style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:100,padding:"3px 9px",whiteSpace:"nowrap",flexShrink:0,lineHeight:1,display:"flex",alignItems:"center"}}>
+                      {enrichedSymptoms[symptomKey].status}
+                    </span>
+                    <span style={{fontSize:10,color:"rgba(255,255,255,0.35)",whiteSpace:"nowrap",flexShrink:0,lineHeight:1,display:"flex",alignItems:"center"}}>· Wk {effectiveWeek ?? week}</span>
+                  </div>
                 ) : (
                   <>
                     <div className="panel-head-lbl" style={{color:pd.lblCol}}>{pd.label}</div>
@@ -938,6 +948,8 @@ function App({ profile: initialProfile }) {
                         ? <>You made it to <em>week {effectiveWeek ?? 8}</em></>
                         : active==="baby" && weeklyContent?.baby_size
                         ? <>{weeklyContent.baby_size.cm} · <em>{weeklyContent.baby_size.compare}</em></>
+                        : active==="checklist"
+                        ? <>{weekChecksItems.length} things. <em>That's it.</em></>
                         : pd.title}
                     </div>
                   </>
@@ -963,7 +975,7 @@ function App({ profile: initialProfile }) {
               </div>
             ) : (
               <div className="panel-scroll">
-                {active==="checklist" ? <CheckPanel checked={checked} toggle={toggleCheck} userItems={userChecklist} onUserItemsChange={(items)=>{ setUserChecklist(items); saveUserChecklist(items); }}/>
+                {active==="checklist" ? <CheckPanel checked={checked} toggle={toggleCheck} userItems={userChecklist} onUserItemsChange={(items)=>{ setUserChecklist(items); saveUserChecklist(items); }} weeklyContent={weeklyContent}/>
                   : active==="symptom" ? <SymptomPanel
                   initialQuery={symptomQuery}
                   analytics={analytics}
@@ -1231,6 +1243,28 @@ function AuthGate() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    // Handle Capacitor deep link callback after Google OAuth on Android
+    const listener = CapApp.addListener('appUrlOpen', async ({ url }) => {
+      if (url.includes('login-callback')) {
+        try {
+          await Browser.close();
+          // PKCE flow: extract code from URL and exchange for session
+          const urlObj = new URL(url);
+          const code = urlObj.searchParams.get('code');
+          if (code) {
+            const { error } = await supabase.auth.exchangeCodeForSession(code);
+            if (error) console.error('exchangeCodeForSession error:', error.message);
+            // onAuthStateChange fires automatically on success
+          }
+        } catch (e) {
+          console.error('Deep link handler error:', e);
+        }
+      }
+    });
+    return () => { listener.then(l => l.remove()); };
+  }, []);
+
   const loadProfile = async (user) => {
     const { data } = await supabase
       .from("profiles")
@@ -1256,10 +1290,7 @@ function AuthGate() {
   if (session === undefined) {
     return (
       <div style={{position:"fixed",inset:0,background:"linear-gradient(160deg,#200c18,#186068)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:8,height:8,borderRadius:"50%",background:"#e8b8a8"}}/>
-          <span style={{fontSize:13,fontWeight:700,letterSpacing:"0.28em",textTransform:"uppercase",color:"rgba(255,255,255,0.5)"}}>matri</span>
-        </div>
+        <img src={matriLogo} alt="Matri" style={{width:220}}/>
       </div>
     );
   }

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>P2 — Prescription Week 16 — Dr. Archana P. (abbreviated)</title>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ede6; display: flex; justify-content: center; padding: 40px 20px; font-family: 'Inter', sans-serif; }
+  .page { width: 680px; min-height: 960px; background: #fffdf5; border: 1px solid #ddd; box-shadow: 0 4px 24px rgba(0,0,0,0.12); padding: 0; position: relative; }
+  .lh { background: linear-gradient(135deg, #1a4a6b, #2e6e9e); color: #fff; padding: 20px 28px 16px; border-bottom: 4px solid #e8a020; }
+  .lh-name { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+  .lh-qual { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .lh-clinic { font-size: 12px; opacity: 0.75; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px; }
+  .lh-reg { font-size: 10px; opacity: 0.6; margin-top: 2px; }
+  .body { padding: 20px 28px; }
+  .patient-row { display: flex; gap: 0; border: 1px solid #bbb; border-radius: 4px; overflow: hidden; margin-bottom: 16px; font-size: 12px; }
+  .patient-cell { flex: 1; padding: 6px 10px; border-right: 1px solid #bbb; }
+  .patient-cell:last-child { border-right: none; }
+  .patient-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .patient-val { font-family: 'Kalam', cursive; font-size: 14px; color: #1a1a1a; }
+  .rx-marker { font-size: 42px; color: #1a4a6b; font-weight: 700; font-style: italic; line-height: 1; margin-bottom: 8px; font-family: 'Times New Roman', serif; }
+  .rx-line { font-family: 'Kalam', cursive; font-size: 16px; color: #1a1a1a; margin-bottom: 14px; line-height: 1.55; padding-left: 8px; border-left: 2px solid #e8a020; }
+  .rx-line .num { font-weight: 700; color: #1a4a6b; margin-right: 4px; }
+  .rx-sub { font-size: 13px; color: #444; padding-left: 18px; display: block; }
+  .rx-note { font-size: 12px; color: #888; padding-left: 18px; display: block; font-style: italic; }
+  .rx-new { font-size: 10px; background: #e8f5e9; color: #2e7d32; padding: 1px 6px; border-radius: 3px; margin-left: 6px; font-family: 'Inter', sans-serif; font-weight: 600; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #1a4a6b; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px dashed #ccc; }
+  .inv-line { font-family: 'Kalam', cursive; font-size: 15px; color: #222; margin-bottom: 6px; }
+  .inv-line::before { content: '• '; color: #e8a020; }
+  .advice-line { font-family: 'Kalam', cursive; font-size: 14px; color: #444; margin-bottom: 5px; }
+  .advice-line::before { content: '→ '; color: #888; }
+  .footer { margin-top: 28px; display: flex; justify-content: space-between; align-items: flex-end; padding-top: 12px; border-top: 1px dashed #ccc; }
+  .followup-label { font-size: 10px; text-transform: uppercase; color: #888; }
+  .followup-date { font-family: 'Kalam', cursive; font-size: 17px; color: #c0392b; font-weight: 700; margin-top: 2px; }
+  .sig-scrawl { font-family: 'Kalam', cursive; font-size: 22px; color: #1a1a1a; transform: rotate(-3deg) skewX(-5deg); display: inline-block; }
+  .sig-label { font-size: 10px; color: #888; margin-top: 2px; }
+  .date-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 14px; color: #555; }
+  .date-val { font-family: 'Kalam', cursive; font-size: 14px; color: #222; }
+  .qa-tag { position: absolute; top: 8px; right: 8px; background: #2e7d32; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em; }
+  .test-note { background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 11px; color: #5d4037; }
+  @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; border: none; width: 100%; } .qa-tag, .test-note { display: none; } @page { margin: 0.5in; size: A4; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="qa-tag">P2 — QA TEST FILE</div>
+
+  <div class="lh">
+    <div class="lh-name">Dr. Archana Pathak</div>
+    <div class="lh-qual">MBBS, MD (Obstetrics &amp; Gynaecology) &nbsp;|&nbsp; FICOG</div>
+    <div class="lh-clinic">Apollo Maternity Clinic, Juhu, Mumbai – 400049 &nbsp;|&nbsp; Mon–Sat: 10am–2pm, 5pm–8pm &nbsp;|&nbsp; Ph: 022-26205100</div>
+    <div class="lh-reg">MCI Reg. No: 2025-MH-47832</div>
+  </div>
+
+  <div class="body">
+    <div class="test-note">⚠️ QA NOTE: Doctor signs as "Archana P." below — tests semantic name matching against P1's "Dr. Archana Pathak". Should NOT trigger conflict prompt.</div>
+
+    <div class="date-row">
+      <div><span style="font-size:10px;color:#888;display:block;">DATE</span><span class="date-val">12 / 03 / 2026</span></div>
+      <div><span style="font-size:10px;color:#888;display:block;">OPD NO.</span><span class="date-val">4892</span></div>
+      <div><span style="font-size:10px;color:#888;display:block;">VISIT</span><span class="date-val">Follow-up</span></div>
+    </div>
+
+    <div class="patient-row">
+      <div class="patient-cell"><div class="patient-label">Patient Name</div><div class="patient-val">Priya Mehta</div></div>
+      <div class="patient-cell"><div class="patient-label">Age</div><div class="patient-val">28 Y</div></div>
+      <div class="patient-cell"><div class="patient-label">GA (weeks)</div><div class="patient-val">16 wks</div></div>
+      <div class="patient-cell"><div class="patient-label">Gravida / Para</div><div class="patient-val">G1 P0</div></div>
+    </div>
+
+    <div class="rx-marker">℞</div>
+
+    <div class="rx-line">
+      <span class="num">1.</span> Tab. Ferrous Sulfate + Folic Acid 200mg
+      <span class="rx-sub">1 – 0 – 1 &nbsp;×&nbsp; Continue</span>
+      <span class="rx-note">Same as before — continue.</span>
+    </div>
+
+    <div class="rx-line">
+      <span class="num">2.</span> Tab. Calcium Carbonate 500mg
+      <span class="rx-sub">0 – 1 – 1 &nbsp;×&nbsp; 30 days</span>
+    </div>
+
+    <div class="rx-line">
+      <span class="num">3.</span> Tab. Thyronorm 25 mcg <span class="rx-new">NEW</span>
+      <span class="rx-sub">1 – 0 – 0 &nbsp;×&nbsp; Continue (TSH was 4.8)</span>
+      <span class="rx-note">Empty stomach, 30 min before breakfast.</span>
+    </div>
+
+    <div class="rx-line">
+      <span class="num">4.</span> Cap. Vitamin D3 60000 IU <span class="rx-new">NEW</span>
+      <span class="rx-sub">Once weekly &nbsp;×&nbsp; 8 weeks</span>
+    </div>
+
+    <div class="section-title">Investigations</div>
+    <div class="inv-line">Repeat Hb</div>
+    <div class="inv-line">Vitamin D (25-OH)</div>
+    <div class="inv-line">Serum Ferritin</div>
+
+    <div class="section-title">Scan Advised</div>
+    <div class="inv-line">Anomaly Scan (Level II USG) — at 20 weeks</div>
+
+    <div class="section-title">Advice</div>
+    <div class="advice-line">Good protein intake — dals, paneer, eggs</div>
+    <div class="advice-line">10 min sun exposure daily</div>
+
+    <div class="footer">
+      <div>
+        <div class="followup-label">Follow-Up Date</div>
+        <div class="followup-date">12 / 04 / 2026</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="sig-scrawl">Archana P.</div>
+        <div class="sig-label">Dr. Archana Pathak</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
