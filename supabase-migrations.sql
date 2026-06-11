@@ -51,6 +51,11 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- AI consent flag (separate from prescription upload consent).
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS ai_consent_given boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS ai_consent_date  timestamptz;
+
 -- Add checklist and shopping columns to existing weekly_content tables.
 ALTER TABLE weekly_content
   ADD COLUMN IF NOT EXISTS checklist jsonb;

@@ -57,9 +57,10 @@ export default function TosPage() {
           <Callout>Matri is not liable for any health outcomes resulting from decisions made based on information provided within the app.</Callout>
         </Section>
 
-        <Section num="5" title="Data usage">
+        <Section num="5" title="Data and device access">
           <p>Your use of Matri is also governed by our <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>, which describes in detail what data we collect, how we use it, and your rights as a user.</p>
           <p>By using Matri, you consent to the collection and use of your data as described in our Privacy Policy.</p>
+          <p><strong>Camera and photo library:</strong> Matri requests access to your device camera and photo library solely to allow you to photograph and upload documents such as prescriptions, lab reports, and scans. Photos are stored securely and are only accessible to you. Matri does not access your camera or photos at any other time or for any other purpose.</p>
         </Section>
 
         <Section num="6" title="Account deletion">

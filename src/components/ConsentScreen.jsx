@@ -91,7 +91,7 @@ export default function ConsentScreen({ onConsent, onDismiss }) {
           </h1>
 
           <p style={{fontSize:13, lineHeight:1.7, color:"rgba(255,255,255,0.55)", marginBottom:22}}>
-            Matri stores your health records, prescriptions, and lab reports to give you personalised guidance through every week of your pregnancy.
+            Matri stores your health records, prescriptions, and lab reports to give you personalised guidance through every week of your pregnancy. When you upload a prescription, AI reads it to extract your medicines automatically.
           </p>
 
           <div style={{

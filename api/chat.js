@@ -85,7 +85,7 @@ async function loadHealthContext(userId) {
       p.doctor_name ? `Doctor: ${p.doctor_name}${p.clinic_name ? ", " + p.clinic_name : ""}` : null,
     ].filter(Boolean);
 
-    return { context_summary: parts.join("\n"), flags };
+    return { context_summary: parts.join("\n"), flags, ai_consent_given: p.ai_consent_given };
   } catch { return null; }
 }
 
@@ -101,7 +101,8 @@ export default async function handler(req, res) {
     let enrichedSystem = system || "";
     if (user) {
       const ctx = await loadHealthContext(user.id);
-      if (ctx?.context_summary && system) {
+      // Only enrich with personal health data if user has given AI consent.
+      if (ctx?.context_summary && system && ctx.ai_consent_given !== false) {
         enrichedSystem = `${system}
 
 Her personal health context (use this to personalise your response — do not mention these details unless directly relevant):

@@ -12,8 +12,40 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
   const [loading,        setLoading]        = useState(false);
   const [result,         setResult]         = useState(null);
   const [error,          setError]          = useState(null);
-  const [doctorConflict, setDoctorConflict] = useState(null); // { current, extracted }
+  const [doctorConflict,      setDoctorConflict]      = useState(null);
+  const [useExtractedDoctor, setUseExtractedDoctor] = useState(false);
+  const [inferFileUrl,       setInferFileUrl]        = useState(null);
+  const [inferUploadId,      setInferUploadId]       = useState(null);
+  const [saving,             setSaving]              = useState(false);
+  const [editingItem,        setEditingItem]         = useState(null); // {section, index}
+  const [editDraft,          setEditDraft]           = useState({});
   const fileRef = useRef();
+
+  const deleteItem = (section, index) =>
+    setResult(r => ({...r, [section]: r[section].filter((_,i) => i !== index)}));
+
+  const startEdit = (section, index, item) => {
+    setEditingItem({section, index});
+    setEditDraft(typeof item === "string" ? {text: item} : {...item});
+  };
+
+  const saveEditItem = () => {
+    const {section, index} = editingItem;
+    setResult(r => ({
+      ...r,
+      [section]: r[section].map((item, i) =>
+        i === index ? (typeof item === "string" ? editDraft.text : editDraft) : item
+      ),
+    }));
+    setEditingItem(null);
+    setEditDraft({});
+  };
+
+  const addRow = (section, blank) => {
+    setResult(r => ({...r, [section]: [...(r[section]||[]), blank]}));
+    setEditingItem({section, index: (result[section]||[]).length});
+    setEditDraft(typeof blank === "string" ? {text: blank} : {...blank});
+  };
 
   useEffect(() => { requestAnimationFrame(() => setVis(true)); }, []);
   const close = () => { setVis(false); setTimeout(onClose, 350); };
@@ -46,6 +78,8 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
       const data = await resp.json();
       setResult(data.parsed);
       setDoctorConflict(data.doctor_conflict || null);
+      setInferFileUrl(data.file_url || null);
+      setInferUploadId(data.upload_id || null);
       setStep("confirm");
     } catch(e) {
       setError("Couldn't read the prescription. Try a clearer photo.");
@@ -53,17 +87,26 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
     setLoading(false);
   };
 
-  const resolveDoctor = async (useExtracted) => {
-    if (useExtracted && doctorConflict) {
-      await supabase.from("profiles").update({
-        doctor_name: doctorConflict.extracted.doctor_name,
-        clinic_name: doctorConflict.extracted.clinic_name || null,
-      }).eq("id", (await supabase.auth.getUser()).data.user.id);
-    }
+  const resolveDoctor = (useExtracted) => {
+    setUseExtractedDoctor(!!useExtracted);
     setDoctorConflict(null);
   };
 
   const confirm = async () => {
+    setSaving(true);
+    try {
+      await authFetch("/api/prescription/save", {
+        method: "POST",
+        body: JSON.stringify({
+          parsed: result,
+          fileUrl: inferFileUrl,
+          uploadId: inferUploadId,
+          week: 8,
+          useExtractedDoctor,
+        }),
+      });
+    } catch {}
+    setSaving(false);
     onComplete(result);
     close();
   };
@@ -117,84 +160,185 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
 
         {step === "confirm" && result && <>
           <div className="pedit-title">Matri <em>found</em></div>
-          <div style={{fontSize:12,color:"var(--muted)",marginBottom:16,lineHeight:1.6}}>
-            {result.summary || "Review what Matri found and confirm to save."}
+
+          {/* Review prompt */}
+          <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:12,padding:"10px 14px",marginBottom:18,display:"flex",alignItems:"flex-start",gap:8}}>
+            <span style={{fontSize:15,flexShrink:0,marginTop:1}}>👀</span>
+            <div style={{fontSize:12,color:"var(--ink)",lineHeight:1.6}}>
+              Please review what Matri found. Remove or edit anything that looks off before saving.
+            </div>
           </div>
 
-          {/* Medicines */}
-          {(result.medicines || []).length > 0 && (
-            <div className="rx-confirm-section">
-              <div className="rx-confirm-title">💊 Medicines ({result.medicines.length})</div>
-              {result.medicines.map((m, i) => (
-                <div key={i} className="rx-confirm-item">
-                  <span className="rx-confirm-icon">💊</span>
-                  <div>
-                    <div className="rx-confirm-text">{m.name} {m.dosage && `· ${m.dosage}`}</div>
-                    <div className="rx-confirm-sub">{m.frequency}{m.duration?` · ${m.duration}`:""}</div>
+          {/* ── helper components ── */}
+          {(() => {
+            const EditBtn = ({onClick}) => (
+              <button onClick={onClick} style={{flexShrink:0,fontSize:10,fontWeight:600,color:"var(--muted)",background:"var(--cream2)",border:"1px solid var(--bdr)",borderRadius:100,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+            );
+            const DelBtn = ({onClick}) => (
+              <button onClick={onClick} style={{flexShrink:0,width:22,height:22,borderRadius:"50%",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",color:"var(--rose)",fontSize:11,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>✕</button>
+            );
+            const AddRowBtn = ({onClick, label}) => (
+              <button onClick={onClick} style={{width:"100%",padding:"7px",background:"transparent",border:"1.5px dashed var(--bdr)",borderRadius:10,fontSize:11,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",marginTop:2}}>+ {label}</button>
+            );
+            const isEditing = (section, i) => editingItem?.section===section && editingItem?.index===i;
+            const InlineInput = ({placeholder, value, onChange, multiline}) => multiline
+              ? <textarea className="pedit-input" placeholder={placeholder} value={value||""} onChange={onChange} rows={2} style={{resize:"none",fontSize:12,padding:"6px 10px",marginBottom:4,lineHeight:1.5}}/>
+              : <input className="pedit-input" placeholder={placeholder} value={value||""} onChange={onChange} style={{fontSize:12,padding:"6px 10px",marginBottom:4}}/>;
+            const EditActions = () => (
+              <div style={{display:"flex",gap:6,marginTop:4}}>
+                <button onClick={saveEditItem} style={{flex:1,padding:"6px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:11,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Done ✓</button>
+                <button onClick={()=>{setEditingItem(null);setEditDraft({});}} style={{padding:"6px 12px",background:"transparent",border:"1px solid var(--bdr)",borderRadius:100,fontSize:11,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+              </div>
+            );
+
+            return <>
+
+              {/* Medicines */}
+              {((result.medicines||[]).length > 0 || true) && (
+                <div className="rx-confirm-section">
+                  <div className="rx-confirm-title">💊 Medicines ({(result.medicines||[]).length})</div>
+                  {(result.medicines||[]).map((m, i) => (
+                    <div key={i} className="rx-confirm-item" style={{alignItems:"flex-start",gap:6}}>
+                      {isEditing("medicines", i) ? (
+                        <div style={{flex:1}}>
+                          <InlineInput placeholder="Medicine name" value={editDraft.name} onChange={e=>setEditDraft(d=>({...d,name:e.target.value}))}/>
+                          <InlineInput placeholder="Dosage (e.g. 500mg)" value={editDraft.dosage} onChange={e=>setEditDraft(d=>({...d,dosage:e.target.value}))}/>
+                          <InlineInput placeholder="Frequency (e.g. twice daily)" value={editDraft.frequency} onChange={e=>setEditDraft(d=>({...d,frequency:e.target.value}))}/>
+                          <InlineInput placeholder="Duration (e.g. 7 days)" value={editDraft.duration} onChange={e=>setEditDraft(d=>({...d,duration:e.target.value}))}/>
+                          <EditActions/>
+                        </div>
+                      ) : <>
+                        <span className="rx-confirm-icon">💊</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div className="rx-confirm-text">{m.name}{m.dosage?` · ${m.dosage}`:""}</div>
+                          <div className="rx-confirm-sub">{m.frequency}{m.duration?` · ${m.duration}`:""}</div>
+                        </div>
+                        <div style={{display:"flex",gap:4,flexShrink:0}}>
+                          <EditBtn onClick={()=>startEdit("medicines",i,m)}/>
+                          <DelBtn onClick={()=>deleteItem("medicines",i)}/>
+                        </div>
+                      </>}
+                    </div>
+                  ))}
+                  <AddRowBtn onClick={()=>addRow("medicines",{name:"",dosage:"",frequency:"",duration:""})} label="Add medicine"/>
+                </div>
+              )}
+
+              {/* Tests ordered */}
+              {((result.tests_ordered||[]).length > 0 || true) && (
+                <div className="rx-confirm-section">
+                  <div className="rx-confirm-title">🧪 Tests ordered ({(result.tests_ordered||[]).length})</div>
+                  {(result.tests_ordered||[]).map((t, i) => (
+                    <div key={i} className="rx-confirm-item" style={{alignItems:"flex-start",gap:6}}>
+                      {isEditing("tests_ordered", i) ? (
+                        <div style={{flex:1}}>
+                          <InlineInput placeholder="Test name" value={editDraft.name} onChange={e=>setEditDraft(d=>({...d,name:e.target.value}))}/>
+                          <InlineInput placeholder="Notes (optional)" value={editDraft.notes} onChange={e=>setEditDraft(d=>({...d,notes:e.target.value}))}/>
+                          <EditActions/>
+                        </div>
+                      ) : <>
+                        <span className="rx-confirm-icon">🧪</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div className="rx-confirm-text">{t.name}</div>
+                          {t.notes && <div className="rx-confirm-sub">{t.notes}</div>}
+                        </div>
+                        <div style={{display:"flex",gap:4,flexShrink:0}}>
+                          <EditBtn onClick={()=>startEdit("tests_ordered",i,t)}/>
+                          <DelBtn onClick={()=>deleteItem("tests_ordered",i)}/>
+                        </div>
+                      </>}
+                    </div>
+                  ))}
+                  <AddRowBtn onClick={()=>addRow("tests_ordered",{name:"",notes:""})} label="Add test"/>
+                </div>
+              )}
+
+              {/* Scans */}
+              {(() => {
+                const scanKey = result.scans_advised ? "scans_advised" : "scan_dates";
+                const scans = result.scans_advised || result.scan_dates || [];
+                return (scans.length > 0 || true) && (
+                  <div className="rx-confirm-section">
+                    <div className="rx-confirm-title">🔬 Scans ({scans.length})</div>
+                    {scans.map((s, i) => (
+                      <div key={i} className="rx-confirm-item" style={{alignItems:"flex-start",gap:6}}>
+                        {isEditing(scanKey, i) ? (
+                          <div style={{flex:1}}>
+                            <InlineInput placeholder="Scan type" value={editDraft.type} onChange={e=>setEditDraft(d=>({...d,type:e.target.value}))}/>
+                            <InlineInput placeholder="Date / week / notes" value={editDraft.date||editDraft.notes||""} onChange={e=>setEditDraft(d=>({...d,date:e.target.value,notes:e.target.value}))}/>
+                            <EditActions/>
+                          </div>
+                        ) : <>
+                          <span className="rx-confirm-icon">🔬</span>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div className="rx-confirm-text">{s.type}</div>
+                            <div className="rx-confirm-sub">{s.date||s.week||s.notes}</div>
+                            {s.low_confidence && <div style={{fontSize:9,color:"var(--amber)"}}>⚠️ Low confidence</div>}
+                          </div>
+                          <div style={{display:"flex",gap:4,flexShrink:0}}>
+                            <EditBtn onClick={()=>startEdit(scanKey,i,s)}/>
+                            <DelBtn onClick={()=>deleteItem(scanKey,i)}/>
+                          </div>
+                        </>}
+                      </div>
+                    ))}
+                    <AddRowBtn onClick={()=>addRow(scanKey,{type:"",date:"",notes:""})} label="Add scan"/>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                );
+              })()}
 
-          {/* Tests ordered */}
-          {(result.tests_ordered || []).length > 0 && (
-            <div className="rx-confirm-section">
-              <div className="rx-confirm-title">🧪 Tests ordered ({result.tests_ordered.length})</div>
-              {result.tests_ordered.map((t, i) => (
-                <div key={i} className="rx-confirm-item">
-                  <span className="rx-confirm-icon">🧪</span>
-                  <div>
-                    <div className="rx-confirm-text">{t.name}</div>
-                    {t.notes && <div className="rx-confirm-sub">{t.notes}</div>}
-                  </div>
+              {/* Diet instructions */}
+              {((result.diet_instructions||[]).length > 0 || true) && (
+                <div className="rx-confirm-section">
+                  <div className="rx-confirm-title">🥗 Diet instructions ({(result.diet_instructions||[]).length})</div>
+                  {(result.diet_instructions||[]).map((d, i) => (
+                    <div key={i} className="rx-confirm-item" style={{alignItems:"flex-start",gap:6}}>
+                      {isEditing("diet_instructions", i) ? (
+                        <div style={{flex:1}}>
+                          <InlineInput placeholder="Diet instruction" value={editDraft.text} onChange={e=>setEditDraft({text:e.target.value})} multiline/>
+                          <EditActions/>
+                        </div>
+                      ) : <>
+                        <span className="rx-confirm-icon">🥗</span>
+                        <div style={{flex:1,minWidth:0}}><div className="rx-confirm-text">{d}</div></div>
+                        <div style={{display:"flex",gap:4,flexShrink:0}}>
+                          <EditBtn onClick={()=>startEdit("diet_instructions",i,d)}/>
+                          <DelBtn onClick={()=>deleteItem("diet_instructions",i)}/>
+                        </div>
+                      </>}
+                    </div>
+                  ))}
+                  <AddRowBtn onClick={()=>addRow("diet_instructions","")} label="Add instruction"/>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* Scan dates */}
-          {(result.scans_advised || result.scan_dates || []).length > 0 && (
-            <div className="rx-confirm-section">
-              <div className="rx-confirm-title">🔬 Scans scheduled ({(result.scans_advised||result.scan_dates||[]).length})</div>
-              {(result.scans_advised||result.scan_dates||[]).map((s, i) => (
-                <div key={i} className="rx-confirm-item">
-                  <span className="rx-confirm-icon">🔬</span>
-                  <div>
-                    <div className="rx-confirm-text">{s.type}</div>
-                    <div className="rx-confirm-sub">{s.date || s.week || s.notes}</div>
-                    {s.low_confidence && <div style={{fontSize:9,color:"var(--amber)"}}>⚠️ Low confidence</div>}
-                  </div>
+              {/* Monitoring */}
+              {((result.monitoring_instructions||[]).length > 0 || true) && (
+                <div className="rx-confirm-section">
+                  <div className="rx-confirm-title">📊 Monitoring ({(result.monitoring_instructions||[]).length})</div>
+                  {(result.monitoring_instructions||[]).map((m, i) => (
+                    <div key={i} className="rx-confirm-item" style={{alignItems:"flex-start",gap:6}}>
+                      {isEditing("monitoring_instructions", i) ? (
+                        <div style={{flex:1}}>
+                          <InlineInput placeholder="Monitoring instruction" value={editDraft.text} onChange={e=>setEditDraft({text:e.target.value})} multiline/>
+                          <EditActions/>
+                        </div>
+                      ) : <>
+                        <span className="rx-confirm-icon">📊</span>
+                        <div style={{flex:1,minWidth:0}}><div className="rx-confirm-text">{m}</div></div>
+                        <div style={{display:"flex",gap:4,flexShrink:0}}>
+                          <EditBtn onClick={()=>startEdit("monitoring_instructions",i,m)}/>
+                          <DelBtn onClick={()=>deleteItem("monitoring_instructions",i)}/>
+                        </div>
+                      </>}
+                    </div>
+                  ))}
+                  <AddRowBtn onClick={()=>addRow("monitoring_instructions","")} label="Add instruction"/>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* Diet instructions */}
-          {(result.diet_instructions || []).length > 0 && (
-            <div className="rx-confirm-section">
-              <div className="rx-confirm-title">🥗 Diet instructions ({result.diet_instructions.length})</div>
-              {result.diet_instructions.map((d, i) => (
-                <div key={i} className="rx-confirm-item">
-                  <span className="rx-confirm-icon">🥗</span>
-                  <div className="rx-confirm-text">{d}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Monitoring instructions */}
-          {(result.monitoring_instructions || []).length > 0 && (
-            <div className="rx-confirm-section">
-              <div className="rx-confirm-title">📊 Monitoring ({result.monitoring_instructions.length})</div>
-              {result.monitoring_instructions.map((m, i) => (
-                <div key={i} className="rx-confirm-item">
-                  <span className="rx-confirm-icon">📊</span>
-                  <div className="rx-confirm-text">{m}</div>
-                </div>
-              ))}
-            </div>
-          )}
+            </>;
+          })()}
 
           {doctorConflict && (
             <div style={{background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
@@ -222,8 +366,8 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
             <button onClick={() => setStep("upload")} style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
               Re-upload
             </button>
-            <button onClick={confirm} style={{flex:2,padding:"13px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
-              Save all ✓
+            <button onClick={confirm} disabled={saving} style={{flex:2,padding:"13px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit",opacity:saving?0.7:1}}>
+              {saving ? "Saving…" : "Save all ✓"}
             </button>
           </div>
         </>}

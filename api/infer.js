@@ -261,236 +261,20 @@ export default async function handler(req, res) {
     // 5. Fan out based on type
     const debugInfo = {};
     let doctorMismatch = null;
+    let doctorConflictData = null;
     if (type === "prescription") {
-      // Normalise: support both old field names and new
-      const medicines     = parsed.medicines     || [];
-      const testsOrdered  = parsed.tests_ordered || [];
-      const scansAdvised  = parsed.scans_advised  || parsed.scan_dates || [];
-      const dietInstructions      = parsed.diet_instructions      || [];
-      const monitoringInstructions = parsed.monitoring_instructions || [];
-      const doctorAdvice  = parsed.doctor_advice  || (parsed.instructions ? [parsed.instructions] : []);
-
-      // Save prescription record
-      const { data: rx } = await supabase.from("prescriptions").insert({
-        user_id: user.id,
-        upload_id: upload?.id,
-        file_url: fileUrl,
-        doctor_name: parsed.doctor_name,
-        clinic_name: parsed.clinic_name,
-        prescribed_date: parsed.prescribed_date,
-        follow_up_date: parsed.follow_up_date,
-        week_number: week,
-        medicines,
-        scan_dates: scansAdvised,
-        tests_ordered: testsOrdered,
-        diet_instructions: dietInstructions,
-        monitoring_instructions: monitoringInstructions,
-        doctor_advice: doctorAdvice,
-        summary: parsed.summary,
-        medicine_count: medicines.length,
-        test_count: testsOrdered.length,
-        scan_count: scansAdvised.length,
-      }).select().single();
-
-      // Fetch existing records to deduplicate against (each query is isolated — a table error won't abort the whole upload)
-      const [medsRes, testsRes, scansRes] = await Promise.all([
-        supabase.from("medicines").select("id, name").eq("user_id", user.id),
-        supabase.from("test_orders").select("id, test_name").eq("user_id", user.id).eq("status", "ordered"),
-        supabase.from("scans").select("id, scan_type, scan_date").eq("user_id", user.id),
-      ]);
-      if (medsRes.error)   console.warn("medicines dedup fetch:", medsRes.error.message);
-      if (testsRes.error)  console.warn("test_orders dedup fetch:", testsRes.error.message);
-      if (scansRes.error)  console.warn("scans dedup fetch:", scansRes.error.message);
-      const existingMedRows  = medsRes.data  || [];
-      const existingTestRows = testsRes.data || [];
-      const existingScanRows = scansRes.data || [];
-
-      const existingMedMap = new Map(
-        (existingMedRows || []).map(m => [m.name?.toLowerCase().trim() || "", m.id])
-      );
-      const existingTestNames = new Set(
-        (existingTestRows || []).map(t => t.test_name?.toLowerCase().trim() || "")
-      );
-
-      // Split medicines into new inserts vs updates on existing rows
-      const medsToInsert = [];
-      const medsToUpdate = [];
-      const seenMedNames = new Set();
-
-      for (const m of medicines) {
-        const key = m.name?.toLowerCase().trim() || "";
-        if (!key || seenMedNames.has(key)) continue;
-        seenMedNames.add(key);
-        const existingId = existingMedMap.get(key);
-        if (existingId) {
-          medsToUpdate.push({ id: existingId, m });
-        } else {
-          medsToInsert.push(m);
-        }
-      }
-
-      if (medsToInsert.length && rx?.id) {
-        await supabase.from("medicines").insert(
-          medsToInsert.map(m => ({
-            user_id: user.id,
-            prescription_id: rx.id,
-            name: m.name,
-            dosage: m.dosage,
-            frequency: m.frequency,
-            duration: m.duration,
-            notes: m.notes,
-            active: true,
-            low_confidence: m.low_confidence || false,
-            start_date: parsed.prescribed_date || null,
-          }))
-        );
-      }
-
-      // Update existing medicine rows with latest prescription data (re-activates paused ones too)
-      for (const { id, m } of medsToUpdate) {
-        await supabase.from("medicines").update({
-          prescription_id: rx?.id,
-          dosage: m.dosage,
-          frequency: m.frequency,
-          duration: m.duration,
-          notes: m.notes,
-          active: true,
-          low_confidence: m.low_confidence || false,
-          start_date: parsed.prescribed_date || null,
-        }).eq("id", id);
-      }
-
-      // Insert only test orders that aren't already pending
-      const newTests = testsOrdered.filter(
-        t => !existingTestNames.has(t.name?.toLowerCase().trim() || "")
-      );
-      console.log(`[infer] prescription: AI extracted ${testsOrdered.length} tests, ${existingTestNames.size} already exist, inserting ${newTests.length}`);
-      if (testsOrdered.length === 0) {
-        console.log("[infer] AI returned no tests_ordered — raw parsed keys:", Object.keys(parsed));
-      }
-      debugInfo.tests_extracted = testsOrdered.length;
-      debugInfo.tests_names     = testsOrdered.map(t => t.name);
-      if (newTests.length && rx?.id) {
-        const { error: testInsertErr } = await supabase.from("test_orders").insert(
-          newTests.map(t => ({
-            user_id:         user.id,
-            prescription_id: rx.id,
-            test_name:       t.name,
-            due_date:        t.due_date || null,
-            week_number:     week,
-            status:          "ordered",
-            notes:           t.notes,
-          }))
-        );
-        if (testInsertErr) {
-          console.error("[infer] test_orders insert failed:", testInsertErr.message, testInsertErr.details);
-        } else {
-          debugInfo.tests_inserted = newTests.length;
-          console.log(`[infer] inserted ${newTests.length} test_orders rows`);
-        }
-      }
-
-      // Insert only scans that don't already exist (matched by type + date)
-      const normScanType = s => s.type?.toLowerCase().includes("nt") ? "nt"
-        : s.type?.toLowerCase().includes("anomaly") ? "anomaly"
-        : s.type?.toLowerCase().includes("dating") ? "dating"
-        : s.type?.toLowerCase().includes("growth") ? "growth"
-        : s.type?.toLowerCase().includes("tvs") ? "dating" : "other";
-
-      const newScans = scansAdvised.filter(s => {
-        const t = normScanType(s);
-        const d = s.date || null;
-        return !(existingScanRows || []).some(e => e.scan_type === t && e.scan_date === d);
-      });
-      if (newScans.length && rx?.id) {
-        await supabase.from("scans").insert(
-          newScans.map(s => ({
-            user_id: user.id,
-            prescription_id: rx.id,
-            scan_name: s.type || null,
-            scan_date: s.date || null,
-            scan_type: normScanType(s),
-            week_number: week,
-            findings: { notes: s.notes },
-            ai_summary: s.notes,
-            status: "scheduled",
-          }))
-        );
-      }
-
-      // Update profile prescriptions list AND medications jsonb
-      const { data: profile } = await supabase
-        .from("profiles").select("prescriptions, medications, doctor_name, clinic_name").eq("id", user.id).single();
-
-      const existingRxList = profile?.prescriptions || [];
-      const newRxEntry = {
-        id: rx?.id,
-        date: parsed.prescribed_date,
-        follow_up_date: parsed.follow_up_date,
-        doctor: parsed.doctor_name,
-        clinic: parsed.clinic_name,
-        file_url: fileUrl,
-        summary: parsed.summary,
-        medicine_count: medicines.length,
-        test_count: testsOrdered.length,
-        scan_count: scansAdvised.length,
-      };
-
-      // Merge medicines into profile.medications — update existing entries, add new ones
-      const existingProfileMeds = profile?.medications || [];
-      const profileMedIndexMap = new Map(
-        existingProfileMeds.map((m, i) => [
-          (typeof m === "object" ? m.name : m)?.toLowerCase?.().trim() || "", i
-        ])
-      );
-      const updatedMedications = [...existingProfileMeds];
-
-      for (const m of medicines) {
-        const key = m.name?.toLowerCase().trim() || "";
-        if (!key) continue;
-        const idx = profileMedIndexMap.get(key);
-        if (idx !== undefined) {
-          // Update existing entry with latest dosage/frequency from this prescription
-          updatedMedications[idx] = {
-            ...updatedMedications[idx],
-            dosage: m.dosage || updatedMedications[idx]?.dosage || "",
-            frequency: m.frequency || updatedMedications[idx]?.frequency || "",
-            duration: m.duration || updatedMedications[idx]?.duration || "",
-            notes: m.notes || updatedMedications[idx]?.notes || "",
-            prescription_id: rx?.id ?? updatedMedications[idx]?.prescription_id,
-            active: true,
-          };
-        } else {
-          updatedMedications.push({
-            name: m.name,
-            dosage: m.dosage || "",
-            frequency: m.frequency || "",
-            duration: m.duration || "",
-            notes: m.notes || "",
-            active: true,
-            paused: false,
-            pause_reason: null,
-            prescription_id: rx?.id || null,
-            low_confidence: m.low_confidence || false,
-          });
-          profileMedIndexMap.set(key, updatedMedications.length - 1);
-        }
-      }
-
-      const currentDoctor = profile?.doctor_name?.trim();
+      // OCR only — DB writes happen in /api/prescription/save after user confirms
+      const { data: profileSnap } = await supabase
+        .from("profiles").select("doctor_name, clinic_name").eq("id", user.id).single();
+      const currentDoctor   = profileSnap?.doctor_name?.trim();
       const extractedDoctor = parsed.doctor_name?.trim();
-      doctorMismatch = currentDoctor && extractedDoctor &&
-        !doctorNamesMatch(currentDoctor, extractedDoctor);
-
-      await supabase.from("profiles")
-        .update({
-          prescriptions: [...existingRxList, newRxEntry],
-          medications: updatedMedications,
-          ...(!doctorMismatch && extractedDoctor ? { doctor_name: extractedDoctor } : {}),
-          ...(!doctorMismatch && parsed.clinic_name ? { clinic_name: parsed.clinic_name } : {}),
-        })
-        .eq("id", user.id);
-
+      if (currentDoctor && extractedDoctor && !doctorNamesMatch(currentDoctor, extractedDoctor)) {
+        doctorMismatch = true;
+        doctorConflictData = {
+          current:   { doctor_name: profileSnap.doctor_name,  clinic_name: profileSnap.clinic_name },
+          extracted: { doctor_name: parsed.doctor_name, clinic_name: parsed.clinic_name },
+        };
+      }
     } else if (type === "lab_report") {
       // Merge into lab_data timeline
       const { data: profile } = await supabase
@@ -597,12 +381,9 @@ export default async function handler(req, res) {
       success: true,
       type,
       parsed,
+      file_url: fileUrl,
       upload_id: upload?.id,
-      prescription_id: type === "prescription" ? (await supabase.from("prescriptions").select("id").eq("upload_id", upload?.id).single())?.data?.id : null,
-      doctor_conflict: (type === "prescription" && doctorMismatch) ? {
-        current: { doctor_name: profile?.doctor_name, clinic_name: profile?.clinic_name },
-        extracted: { doctor_name: parsed.doctor_name, clinic_name: parsed.clinic_name },
-      } : undefined,
+      doctor_conflict: doctorConflictData || undefined,
       _debug: Object.keys(debugInfo).length ? debugInfo : undefined,
     });
 

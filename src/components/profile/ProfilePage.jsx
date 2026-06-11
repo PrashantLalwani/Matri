@@ -5,6 +5,9 @@ import { MedHealthWidget } from '../medical/MedicineComponents';
 import { PrescriptionsList, PrescriptionDetailSheet } from '../medical/PrescriptionComponents';
 import { LabsEditor, TestOrdersSection, TestReportSheet, TestSuggestionsStrip, DoctorInsight } from '../medical/LabComponents';
 import { parseMed } from '../../utils/medical';
+import TosPage from '../../TosPage';
+import PrivacyPage from '../../PrivacyPage';
+import AIConsentSheet from '../AIConsentSheet';
 
 function DeleteAccountButton({ userId }) {
   const [confirm, setConfirm] = useState(false);
@@ -66,8 +69,13 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
   const [detailRx,        setDetailRx]        = useState(null);
   const [testOrderDetail,   setTestOrderDetail]   = useState(null);
   const [testOrdersReload,  setTestOrdersReload]  = useState(0);
-  const [showAboutSheet,  setShowAboutSheet]  = useState(false);
-  const [aboutSheetVis,   setAboutSheetVis]   = useState(false);
+  const [showSettings,    setShowSettings]    = useState(false);
+  const [settingsVis,     setSettingsVis]     = useState(false);
+  const [showPrivacy,     setShowPrivacy]     = useState(false);
+  const [privacyVis,      setPrivacyVis]      = useState(false);
+  const [showTos,         setShowTos]         = useState(false);
+  const [tosVis,          setTosVis]          = useState(false);
+  const [showAIConsent,   setShowAIConsent]   = useState(false);
 
   const p = profile || {};
   const firstName = (p.name||"").split(" ")[0] || "Mama";
@@ -112,6 +120,33 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
     openEdit("doctor", baseData);
   };
   const closeEdit = () => { setEditVis(false); setTimeout(() => setEditSection(null), 350); };
+
+  const closeSettings = () => { setSettingsVis(false); setTimeout(() => setShowSettings(false), 350); };
+  const openPrivacy   = () => { setShowPrivacy(true);  requestAnimationFrame(() => setPrivacyVis(true)); };
+  const closePrivacy  = () => { setPrivacyVis(false);  setTimeout(() => setShowPrivacy(false),  350); };
+  const openTos       = () => { setShowTos(true);      requestAnimationFrame(() => setTosVis(true)); };
+  const closeTos      = () => { setTosVis(false);      setTimeout(() => setShowTos(false),      350); };
+
+  const handleAIConsentFromSettings = async (aiEnabled) => {
+    setShowAIConsent(false);
+    if (!aiEnabled) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const now = new Date().toISOString();
+      await supabase.from("profiles").update({ ai_consent_given: true, ai_consent_date: now }).eq("id", user.id);
+      onProfileUpdate && onProfileUpdate({ ...p, ai_consent_given: true });
+    } catch {}
+  };
+
+  const handleRevokeAIConsent = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.from("profiles").update({ ai_consent_given: false }).eq("id", user.id);
+      onProfileUpdate && onProfileUpdate({ ...p, ai_consent_given: false });
+    } catch {}
+  };
   const saveEdit = async (updates) => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -182,6 +217,10 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
           <div style={{position:"absolute",width:220,height:220,borderRadius:"50%",background:"#a040c0",top:-90,right:-60,opacity:0.25,filter:"blur(50px)",pointerEvents:"none"}}/>
           <div style={{position:"absolute",width:130,height:130,borderRadius:"50%",background:"#e080d0",bottom:10,left:-30,opacity:0.15,filter:"blur(40px)",pointerEvents:"none"}}/>
           <button className="profile-hero-close" onClick={onClose}>✕</button>
+          <button
+            onClick={() => { setShowSettings(true); requestAnimationFrame(() => setSettingsVis(true)); }}
+            style={{position:"absolute",top:16,right:58,width:34,height:34,borderRadius:"50%",background:"rgba(255,255,255,0.1)",border:"none",color:"rgba(255,255,255,0.6)",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontFamily:"inherit",WebkitTapHighlightColor:"transparent"}}
+          >⚙</button>
 
           {/* Avatar with ring */}
           <div className="profile-avatar-wrap">
@@ -226,26 +265,95 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
         <div className="profile-scroll">
           <div className="profile-grid">
 
-            {/* ── COMBINED: About you ── */}
-            <div className="w w-full wc-dark3" style={{minHeight:150,cursor:"pointer"}} onClick={()=>{setShowAboutSheet(true);requestAnimationFrame(()=>setAboutSheetVis(true));}}>
-              <span className="w-bg-e" style={{color:"#60cccc",fontSize:110}}>🤰</span>
-              <div className="win-lg">
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                  <div className="w-lbl" style={{color:"#60cccc",marginBottom:0}}><div className="w-lbl-dot" style={{background:"#60cccc"}}/>About you</div>
-                  <span style={{fontSize:10,color:"rgba(96,204,204,0.65)",fontWeight:600,letterSpacing:"0.05em"}}>View all →</span>
+            {/* ── ABOUT YOU — dark, app-matching ── */}
+            <div className="w w-full" style={{cursor:"default",background:"linear-gradient(145deg,#1a0828 0%,#2c1045 100%)",border:"1px solid rgba(255,255,255,0.07)"}}>
+              <span className="w-bg-e" style={{color:"rgba(255,255,255,0.03)",fontSize:130}}>🤰</span>
+              <div style={{padding:"20px 18px 22px",position:"relative",zIndex:1}}>
+
+                <div className="w-lbl" style={{color:"rgba(255,255,255,0.3)",marginBottom:22}}>
+                  <div className="w-lbl-dot" style={{background:"rgba(255,255,255,0.2)"}}/>About you
                 </div>
-                {(p.name||p.due_date) ? <>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,color:"#fff",lineHeight:1.25,marginBottom:8}}>
-                    {p.name ? p.name.split(" ")[0] : ""}
-                    {week ? <> · Week <em style={{color:"#60cccc",fontStyle:"italic"}}>{week}</em></> : null}
+
+                {/* ── MY PREGNANCY ── */}
+                <div style={{marginBottom:4}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"#5ecece"}}>My Pregnancy</span>
+                    <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})}
+                      style={{fontSize:10,fontWeight:600,color:"#5ecece",background:"rgba(94,206,206,0.1)",border:"1px solid rgba(94,206,206,0.2)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                      {p.due_date?"Edit":"+ Add"}
+                    </button>
                   </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {trimester && <span className="chip" style={{background:"rgba(96,204,204,0.15)",color:"#60cccc",fontSize:10}}>{trimester}</span>}
-                    {p.diet_type && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>{dietLabel[p.diet_type]}</span>}
-                    {p.baby_nickname && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>🍼 "{p.baby_nickname}"</span>}
-                    {p.partner_name && <span className="chip" style={{background:"rgba(255,255,255,0.08)",color:"rgba(255,255,255,0.5)",fontSize:10}}>🤝 {p.partner_name.split(" ")[0]}</span>}
+                  {p.due_date ? <>
+                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:400,color:"#fff",lineHeight:1,marginBottom:2}}>
+                      Week <em style={{color:"#5ecece",fontStyle:"italic"}}>{week}</em>
+                    </div>
+                    {trimester && <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"rgba(94,206,206,0.5)",marginBottom:12}}>{trimester}</div>}
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:100,padding:"4px 11px"}}>
+                        📅 {new Date(p.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}
+                      </span>
+                      {p.conception_type && <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:100,padding:"4px 11px"}}>{p.conception_type==="ivf"?"💉":"🌱"} {conceptionLabel[p.conception_type]}</span>}
+                      {p.is_first_pregnancy!=null && <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:100,padding:"4px 11px"}}>{p.is_first_pregnancy?"🌱 First time":"⭐ Experienced"}</span>}
+                    </div>
+                  </> : <div style={{fontSize:13,color:"rgba(255,255,255,0.2)",fontStyle:"italic"}}>Add your due date to get started</div>}
+                </div>
+
+                <div style={{height:1,background:"rgba(255,255,255,0.07)",margin:"18px 0"}}/>
+
+                {/* ── ABOUT ME + LIFESTYLE ── */}
+                <div style={{marginBottom:4}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"#e8b0b8"}}>About me</span>
+                    <button onClick={()=>openEdit("about",{name:p.name||"",age:p.age||"",city:p.city||"",diet_type:p.diet_type||"",work_type:p.work_type||""})}
+                      style={{fontSize:10,fontWeight:600,color:"#e8b0b8",background:"rgba(232,176,184,0.1)",border:"1px solid rgba(232,176,184,0.2)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                      {p.name?"Edit":"+ Add"}
+                    </button>
                   </div>
-                </> : <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,color:"rgba(255,255,255,0.4)",fontStyle:"italic",marginTop:4}}>Tell Matri about yourself →</div>}
+                  {p.name ? <>
+                    <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,fontWeight:400,color:"#fff",lineHeight:1.2,marginBottom:10}}>{p.name}</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {p.age && <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:100,padding:"4px 11px"}}>🎂 {p.age} yrs</span>}
+                      {p.city && <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:100,padding:"4px 11px"}}>📍 {p.city}</span>}
+                      {p.diet_type && <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:100,padding:"4px 11px"}}>{dietLabel[p.diet_type]}</span>}
+                      {p.work_type && <span style={{fontSize:11,color:"rgba(255,255,255,0.5)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:100,padding:"4px 11px"}}>💼 {workLabel[p.work_type]}</span>}
+                    </div>
+                  </> : <div style={{fontSize:13,color:"rgba(255,255,255,0.2)",fontStyle:"italic"}}>Tell Matri about yourself</div>}
+                </div>
+
+                <div style={{height:1,background:"rgba(255,255,255,0.07)",margin:"18px 0"}}/>
+
+                {/* ── FAMILY ── */}
+                <div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"#c0a0e0"}}>Family</span>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>openEdit("partner",{partner_name:p.partner_name||"",has_partner:p.has_partner})}
+                        style={{fontSize:10,fontWeight:600,color:"#c0a0e0",background:"rgba(192,160,224,0.1)",border:"1px solid rgba(192,160,224,0.2)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                        {p.partner_name?"Partner":"+ Partner"}
+                      </button>
+                      <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})}
+                        style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.3)",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                        {p.baby_nickname?"Nickname":"+ Nickname"}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:0}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"rgba(255,255,255,0.2)",marginBottom:4}}>Partner</div>
+                      {p.partner_name
+                        ? <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"rgba(255,255,255,0.8)",lineHeight:1.2}}>{p.partner_name}</div>
+                        : <div style={{fontSize:12,color:"rgba(255,255,255,0.18)",fontStyle:"italic"}}>Not added</div>}
+                    </div>
+                    <div style={{width:1,background:"rgba(255,255,255,0.07)",margin:"0 16px"}}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:8,fontWeight:700,letterSpacing:"0.14em",textTransform:"uppercase",color:"rgba(255,255,255,0.2)",marginBottom:4}}>Baby</div>
+                      {p.baby_nickname
+                        ? <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"#c0a0e0",lineHeight:1.2}}>"{p.baby_nickname}"</div>
+                        : <div style={{fontSize:12,color:"rgba(255,255,255,0.18)",fontStyle:"italic"}}>Not named yet</div>}
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -340,131 +448,6 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
         </div>
       </div>
 
-      {/* ── ABOUT YOU SHEET ── */}
-      {showAboutSheet && (
-        <>
-          <div
-            style={{position:"fixed",inset:0,zIndex:300,background:aboutSheetVis?"rgba(16,10,8,0.6)":"rgba(16,10,8,0)",transition:"background 0.3s",pointerEvents:aboutSheetVis?"all":"none"}}
-            onClick={()=>{setAboutSheetVis(false);setTimeout(()=>setShowAboutSheet(false),350);}}
-          />
-          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:301,background:"var(--cream)",borderRadius:"28px 28px 0 0",transform:`translateY(${aboutSheetVis?0:102}%)`,transition:"transform 0.36s cubic-bezier(0.3,0.72,0,1)",maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
-            {/* Handle + header */}
-            <div style={{padding:"14px 20px 16px",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
-              <div style={{width:36,height:4,borderRadius:100,background:"var(--bdr)",margin:"0 auto 16px"}}/>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",fontWeight:400}}>About <em style={{color:"var(--rose)"}}>you</em></div>
-                <button onClick={()=>{setAboutSheetVis(false);setTimeout(()=>setShowAboutSheet(false),350);}} style={{width:32,height:32,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
-              </div>
-            </div>
-
-            {/* Scrollable sections */}
-            <div style={{overflowY:"auto",padding:"16px 18px 48px",scrollbarWidth:"none",flex:1,display:"flex",flexDirection:"column",gap:12}}>
-
-              {/* ── My Pregnancy ── */}
-              <div style={{background:"linear-gradient(135deg,var(--teal-pale),#f0fafa)",border:"1px solid var(--teal-bdr)",borderRadius:20,padding:"16px 18px"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.due_date?14:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7}}>
-                    <span style={{fontSize:16}}>🤰</span>
-                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--teal)"}}>My Pregnancy</span>
-                  </div>
-                  <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})} style={{fontSize:10,fontWeight:600,color:"var(--teal)",background:"#fff",border:"1px solid var(--teal-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.due_date?"Edit":"+ Add"}</button>
-                </div>
-                {p.due_date ? <>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,color:"var(--teal)",lineHeight:1,marginBottom:4}}>Week <em style={{fontStyle:"italic"}}>{week}</em></div>
-                  {trimester && <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--teal)",opacity:0.6,marginBottom:12}}>{trimester}</div>}
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                    {[
-                      {icon:"📅",label:"Due date",value:new Date(p.due_date).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})},
-                      p.conception_type && {icon:p.conception_type==="ivf"?"💉":"🌱",label:"Conception",value:conceptionLabel[p.conception_type]},
-                      p.is_first_pregnancy!=null && {icon:p.is_first_pregnancy?"🌱":"⭐",label:"Pregnancy",value:p.is_first_pregnancy?"First time":"Been here before"},
-                    ].filter(Boolean).map((c,i)=>(
-                      <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
-                        <span style={{fontSize:16}}>{c.icon}</span>
-                        <div>
-                          <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>{c.label}</div>
-                          <div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{c.value}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </> : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
-              </div>
-
-              {/* ── About me ── */}
-              <div style={{background:"linear-gradient(135deg,var(--rose-pale),#fff9f8)",border:"1px solid var(--rose-bdr)",borderRadius:20,padding:"16px 18px"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.name?14:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7}}>
-                    <span style={{fontSize:16}}>👤</span>
-                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--rose)"}}>About me</span>
-                  </div>
-                  <button onClick={()=>openEdit("about",{name:p.name||"",age:p.age||"",city:p.city||""})} style={{fontSize:10,fontWeight:600,color:"var(--rose)",background:"#fff",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.name?"Edit":"+ Add"}</button>
-                </div>
-                {p.name ? <>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",lineHeight:1.2,marginBottom:10}}>{p.name}</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                    {p.age && <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
-                      <span style={{fontSize:16}}>🎂</span>
-                      <div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Age</div><div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{p.age} years</div></div>
-                    </div>}
-                    {p.city && <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
-                      <span style={{fontSize:16}}>📍</span>
-                      <div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>City</div><div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{p.city}</div></div>
-                    </div>}
-                  </div>
-                </> : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
-              </div>
-
-              {/* ── Lifestyle ── */}
-              <div style={{background:"linear-gradient(135deg,var(--forest-pale),#f8fdf8)",border:"1px solid var(--forest-bdr)",borderRadius:20,padding:"16px 18px"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:(p.diet_type||p.work_type)?14:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7}}>
-                    <span style={{fontSize:16}}>🥗</span>
-                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--forest)"}}>Lifestyle</span>
-                  </div>
-                  <button onClick={()=>openEdit("lifestyle",{diet_type:p.diet_type||"",work_type:p.work_type||""})} style={{fontSize:10,fontWeight:600,color:"var(--forest)",background:"#fff",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.diet_type?"Edit":"+ Add"}</button>
-                </div>
-                {(p.diet_type||p.work_type) ? <>
-                  {p.diet_type && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2,marginBottom:p.work_type?10:0}}>{dietLabel[p.diet_type]}</div>}
-                  {p.work_type && <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
-                    <span style={{fontSize:16}}>💼</span>
-                    <div><div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Work</div><div style={{fontSize:12,fontWeight:600,color:"var(--ink)"}}>{workLabel[p.work_type]}</div></div>
-                  </div>}
-                </> : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
-              </div>
-
-              {/* ── Partner ── */}
-              <div style={{background:"linear-gradient(135deg,var(--slate-pale),#f5f7fa)",border:"1px solid var(--slate-bdr)",borderRadius:20,padding:"16px 18px"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.partner_name?14:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7}}>
-                    <span style={{fontSize:16}}>🤝</span>
-                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--slate)"}}>Partner</span>
-                  </div>
-                  <button onClick={()=>openEdit("partner",{partner_name:p.partner_name||"",has_partner:p.has_partner})} style={{fontSize:10,fontWeight:600,color:"var(--slate)",background:"#fff",border:"1px solid var(--slate-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.partner_name?"Edit":"+ Add"}</button>
-                </div>
-                {p.partner_name
-                  ? <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:20,color:"var(--ink)",lineHeight:1.2}}>{p.partner_name}</div>
-                  : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>Not added yet</div>}
-              </div>
-
-              {/* ── Baby's nickname ── */}
-              <div style={{background:"linear-gradient(135deg,var(--plum-pale),#fdf5ff)",border:"1px solid var(--plum-bdr)",borderRadius:20,padding:"16px 18px"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:p.baby_nickname?14:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:7}}>
-                    <span style={{fontSize:16}}>🍼</span>
-                    <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--plum)"}}>Baby's nickname</span>
-                  </div>
-                  <button onClick={()=>openEdit("pregnancy",{due_date:p.due_date||"",is_first_pregnancy:p.is_first_pregnancy,conception_type:p.conception_type||"",baby_nickname:p.baby_nickname||""})} style={{fontSize:10,fontWeight:600,color:"var(--plum)",background:"#fff",border:"1px solid var(--plum-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>{p.baby_nickname?"Edit":"+ Add"}</button>
-                </div>
-                {p.baby_nickname
-                  ? <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:"var(--plum)",lineHeight:1.2}}>"{p.baby_nickname}"</div>
-                  : <div style={{fontSize:12,color:"var(--muted)",fontStyle:"italic",marginTop:6}}>What are you calling them?</div>}
-              </div>
-
-            </div>
-          </div>
-        </>
-      )}
-
       {/* ── EDIT SHEET ── */}
       <div className={`pedit-backdrop${editVis?" open":""}`} onClick={closeEdit}/>
       {editSection && (
@@ -473,51 +456,31 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
 
           {editSection === "about" && <>
             <div className="pedit-title">About <em>you</em></div>
-            {(editData.name || editData.age || editData.city) && !editData._editing ? (
-              <div style={{background:"linear-gradient(135deg,var(--rose-pale),#fff9f8)",border:"1px solid var(--rose-bdr)",borderRadius:20,padding:"20px 18px 16px",marginBottom:16,position:"relative"}}>
-                <button
-                  onClick={() => setEditData(d => ({...d, _editing:true}))}
-                  style={{position:"absolute",top:14,right:14,fontSize:10,fontWeight:600,color:"var(--rose)",background:"#fff",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
-                  Edit
-                </button>
-                {editData.name && <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:"var(--ink)",lineHeight:1.2,marginBottom:12,paddingRight:52}}>{editData.name}</div>}
-                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                  {editData.age && (
-                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
-                      <span style={{fontSize:18}}>🎂</span>
-                      <div>
-                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>Age</div>
-                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{editData.age} years</div>
-                      </div>
-                    </div>
-                  )}
-                  {editData.city && (
-                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff",borderRadius:12,padding:"8px 12px"}}>
-                      <span style={{fontSize:18}}>📍</span>
-                      <div>
-                        <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--muted)"}}>City</div>
-                        <div style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{editData.city}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            {[["Name","name","text","Priya"],["Age","age","number","28"],["City","city","text","Mumbai"]].map(([lbl,key,type,ph])=>(
+              <div className="pedit-field" key={key}>
+                <div className="pedit-label">{lbl}</div>
+                <input className="pedit-input" type={type} placeholder={ph} value={editData[key]||""} onChange={e=>setEditData(d=>({...d,[key]:e.target.value}))}/>
               </div>
-            ) : (
-              <>
-                {editData._editing && (
-                  <button onClick={() => setEditData(d => ({...d, _editing:false}))}
-                    style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",fontSize:11,fontWeight:600,color:"var(--muted)",cursor:"pointer",fontFamily:"inherit",marginBottom:12,padding:0}}>
-                    ← Back to summary
-                  </button>
-                )}
-                {[["Name","name","text","Priya"],["Age","age","number","28"],["City","city","text","Mumbai"]].map(([lbl,key,type,ph])=>(
-                  <div className="pedit-field" key={key}>
-                    <div className="pedit-label">{lbl}</div>
-                    <input className="pedit-input" type={type} placeholder={ph} value={editData[key]||""} onChange={e=>setEditData(d=>({...d,[key]:e.target.value}))}/>
-                  </div>
-                ))}
-              </>
-            )}
+            ))}
+            <div className="pedit-field">
+              <div className="pedit-label">Diet</div>
+              <select className="pedit-input" value={editData.diet_type||""} onChange={e=>setEditData(d=>({...d,diet_type:e.target.value}))}>
+                <option value="">Select…</option>
+                <option value="veg">Vegetarian 🥦</option>
+                <option value="nonveg">Non-veg 🍗</option>
+                <option value="vegan">Vegan 🌱</option>
+                <option value="eggetarian">Eggetarian 🥚</option>
+              </select>
+            </div>
+            <div className="pedit-field">
+              <div className="pedit-label">Work situation</div>
+              <select className="pedit-input" value={editData.work_type||""} onChange={e=>setEditData(d=>({...d,work_type:e.target.value}))}>
+                <option value="">Select…</option>
+                <option value="wfh">Work from home 💻</option>
+                <option value="office">Office 🏢</option>
+                <option value="not_working">Not working 🌿</option>
+              </select>
+            </div>
           </>}
 
           {editSection === "pregnancy" && <>
@@ -837,6 +800,100 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
               }
             } catch {}
           }}
+        />
+      )}
+
+      {/* ── SETTINGS SHEET ── */}
+      {showSettings && (
+        <>
+          <div
+            style={{position:"fixed",inset:0,zIndex:310,background:settingsVis?"rgba(16,10,8,0.6)":"rgba(16,10,8,0)",transition:"background 0.3s",pointerEvents:settingsVis?"all":"none"}}
+            onClick={closeSettings}
+          />
+          <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:311,background:"var(--cream)",borderRadius:"28px 28px 0 0",transform:`translateY(${settingsVis?0:102}%)`,transition:"transform 0.36s cubic-bezier(0.3,0.72,0,1)",maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+            <div style={{padding:"14px 20px 16px",borderBottom:"1px solid var(--bdr)",flexShrink:0}}>
+              <div style={{width:36,height:4,borderRadius:100,background:"var(--bdr)",margin:"0 auto 16px"}}/>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",fontWeight:400}}>Settings</div>
+                <button onClick={closeSettings} style={{width:32,height:32,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>✕</button>
+              </div>
+            </div>
+            <div style={{overflowY:"auto",padding:"20px 18px 48px",scrollbarWidth:"none",flex:1}}>
+
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--muted)",marginBottom:8,marginLeft:2}}>Legal</div>
+              <div style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:20,overflow:"hidden",marginBottom:20}}>
+                <button onClick={openPrivacy} style={{width:"100%",padding:"15px 18px",background:"none",border:"none",borderBottom:"1px solid var(--bdr)",display:"flex",alignItems:"center",gap:12,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                  <span style={{fontSize:18,flexShrink:0}}>🔏</span>
+                  <span style={{flex:1,fontSize:14,color:"var(--ink)",fontWeight:500}}>Privacy Policy</span>
+                  <span style={{fontSize:13,color:"var(--muted)"}}>→</span>
+                </button>
+                <button onClick={openTos} style={{width:"100%",padding:"15px 18px",background:"none",border:"none",display:"flex",alignItems:"center",gap:12,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                  <span style={{fontSize:18,flexShrink:0}}>📋</span>
+                  <span style={{flex:1,fontSize:14,color:"var(--ink)",fontWeight:500}}>Terms of Service</span>
+                  <span style={{fontSize:13,color:"var(--muted)"}}>→</span>
+                </button>
+              </div>
+
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--muted)",marginBottom:8,marginLeft:2}}>Personalisation</div>
+              <div style={{background:"#fff",border:"1px solid var(--bdr)",borderRadius:20,overflow:"hidden"}}>
+                <div style={{padding:"15px 18px",display:"flex",alignItems:"flex-start",gap:12}}>
+                  <span style={{fontSize:18,flexShrink:0,marginTop:1}}>✨</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,color:"var(--ink)",fontWeight:500,marginBottom:4}}>AI personalisation</div>
+                    <div style={{fontSize:12,color:"var(--muted)",lineHeight:1.55,marginBottom:p.ai_consent_given?8:0}}>
+                      {p.ai_consent_given
+                        ? "Your health profile informs AI answers for more relevant responses."
+                        : "Allow Matri to use your health profile for personalised AI answers."}
+                    </div>
+                    {p.ai_consent_given && (
+                      <button onClick={handleRevokeAIConsent} style={{fontSize:11,fontWeight:600,color:"var(--rose)",background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit"}}>
+                        Disable personalisation
+                      </button>
+                    )}
+                  </div>
+                  {p.ai_consent_given
+                    ? <span style={{fontSize:10,fontWeight:700,color:"var(--forest)",background:"var(--forest-pale)",border:"1px solid var(--forest-bdr)",borderRadius:100,padding:"4px 10px",flexShrink:0,alignSelf:"flex-start",whiteSpace:"nowrap"}}>Active</span>
+                    : <button onClick={() => setShowAIConsent(true)} style={{fontSize:11,fontWeight:600,color:"var(--rose)",background:"var(--rose-pale)",border:"1px solid var(--rose-bdr)",borderRadius:100,padding:"6px 12px",cursor:"pointer",fontFamily:"inherit",flexShrink:0,alignSelf:"center",whiteSpace:"nowrap"}}>Enable</button>
+                  }
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── PRIVACY POLICY OVERLAY ── */}
+      {showPrivacy && (
+        <div style={{position:"fixed",inset:0,zIndex:320,display:"flex",flexDirection:"column",overflow:"hidden",transform:`translateX(${privacyVis?0:100}%)`,transition:"transform 0.35s cubic-bezier(0.3,0.72,0,1)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid #e8e8e8",background:"#fff",flexShrink:0}}>
+            <button onClick={closePrivacy} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>←</button>
+            <span style={{fontSize:12,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--muted)"}}>Privacy Policy</span>
+          </div>
+          <div style={{flex:1,overflowY:"auto"}}>
+            <PrivacyPage />
+          </div>
+        </div>
+      )}
+
+      {/* ── TERMS OF SERVICE OVERLAY ── */}
+      {showTos && (
+        <div style={{position:"fixed",inset:0,zIndex:320,display:"flex",flexDirection:"column",overflow:"hidden",transform:`translateX(${tosVis?0:100}%)`,transition:"transform 0.35s cubic-bezier(0.3,0.72,0,1)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",borderBottom:"1px solid #e8e8e8",background:"#fff",flexShrink:0}}>
+            <button onClick={closeTos} style={{width:34,height:34,borderRadius:"50%",background:"var(--cream2)",border:"none",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--muted)",fontFamily:"inherit"}}>←</button>
+            <span style={{fontSize:12,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"var(--muted)"}}>Terms of Service</span>
+          </div>
+          <div style={{flex:1,overflowY:"auto"}}>
+            <TosPage />
+          </div>
+        </div>
+      )}
+
+      {/* ── AI CONSENT FROM SETTINGS ── */}
+      {showAIConsent && (
+        <AIConsentSheet
+          onAccept={() => handleAIConsentFromSettings(true)}
+          onDecline={() => handleAIConsentFromSettings(false)}
         />
       )}
 

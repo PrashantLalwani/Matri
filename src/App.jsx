@@ -54,6 +54,7 @@ import ProfilePage from "./components/profile/ProfilePage";
 import HealthTab from "./components/medical/HealthTab";
 import { PregnantIcon, AuthScreen } from "./components/auth/AuthGate";
 import ConsentScreen from "./components/ConsentScreen";
+import AIPhotoConsentScreen from "./components/AIPhotoConsentScreen";
 import { StorybookPreviewWidget, HeroMoodStrip, InsightFeedWidget, QuickAddEntry, FriendsCard, MoodSummary, MatriMomentWidget, MatriMomentPanel, ShareableStrip, LibraryView, JournalTab } from "./components/dashboard/Widgets";
 
 // Matri v2.1 — build 2026-05-24
@@ -191,6 +192,8 @@ function App({ profile: initialProfile }) {
   const [rxUploadOpen,   setRxUploadOpen]   = useState(false);
   const [labsOpen,       setLabsOpen]       = useState(false);
   const [consentOpen,    setConsentOpen]    = useState(false);
+  const [aiConsentOpen,  setAiConsentOpen]  = useState(initialProfile?.ai_consent_given == null);
+  useEffect(() => { if (initialProfile?.ai_consent_given != null) setAiConsentOpen(false); }, [initialProfile?.ai_consent_given]);
   const [pendingAction,  setPendingAction]  = useState(null);
   const [labsVis,        setLabsVis]        = useState(false);
   const [labsEditData,   setLabsEditData]   = useState({});
@@ -397,9 +400,21 @@ function App({ profile: initialProfile }) {
     setPendingAction(() => action);
     setConsentOpen(true);
   };
+
   const handleConsentDismiss = () => {
     setConsentOpen(false);
     setPendingAction(null);
+  };
+  const handleAIConsent = async (aiEnabled) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const now = new Date().toISOString();
+        await supabase.from("profiles").update({ ai_consent_given: aiEnabled, ai_consent_date: now }).eq("id", user.id);
+        setProfileData(p => ({ ...p, ai_consent_given: aiEnabled }));
+      }
+    } catch {}
+    setAiConsentOpen(false);
   };
   const handleConsent = async () => {
     try {
@@ -1113,6 +1128,7 @@ function App({ profile: initialProfile }) {
 
       {/* ── CONSENT SCREEN ── */}
       {consentOpen && <ConsentScreen onConsent={handleConsent} onDismiss={handleConsentDismiss}/>}
+      {aiConsentOpen && <AIPhotoConsentScreen onConsent={handleAIConsent}/>}
 
       {/* ── PRESCRIPTION UPLOAD FLOW ── */}
       {rxUploadOpen && (
