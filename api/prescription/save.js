@@ -23,6 +23,21 @@ function doctorNamesMatch(a, b) {
   return shorter.every(t => longer.some(lt => tokenMatches(t, lt)));
 }
 
+const GARBAGE_MED_PATTERNS = [
+  /previous\s+med/i,
+  /continue\s+(all|same|previous|prior)/i,
+  /all\s+(previous|prior|same|old)\s+med/i,
+  /same\s+(as\s+(before|previous|prior)|med)/i,
+  /as\s+per\s+(previous|prior|advice|advised)/i,
+  /\bcontinued\b/i,
+];
+const isGarbageMedicineName = name => {
+  if (!name || typeof name !== "string") return true;
+  if (name.trim().length < 2) return true;
+  if (name.trim().length > 80) return true;
+  return GARBAGE_MED_PATTERNS.some(re => re.test(name));
+};
+
 const normScanType = s => s.type?.toLowerCase().includes("nt") ? "nt"
   : s.type?.toLowerCase().includes("anomaly") ? "anomaly"
   : s.type?.toLowerCase().includes("dating") ? "dating"
@@ -45,7 +60,7 @@ export default async function handler(req, res) {
   if (!parsed) return res.status(400).json({ error: 'Missing parsed data' });
 
   try {
-    const medicines              = parsed.medicines              || [];
+    const medicines              = (parsed.medicines || []).filter(m => !isGarbageMedicineName(m.name));
     const testsOrdered           = parsed.tests_ordered          || [];
     const scansAdvised           = parsed.scans_advised          || parsed.scan_dates || [];
     const dietInstructions       = parsed.diet_instructions      || [];

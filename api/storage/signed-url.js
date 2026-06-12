@@ -41,8 +41,10 @@ export default async function handler(req, res) {
     .from(bucket)
     .createSignedUrl(filePath, 3600); // 1 hour
 
+  // Public buckets don't support signed URLs in all Supabase configurations —
+  // fall back to the original public URL which is directly accessible.
   if (error || !data?.signedUrl) {
-    return res.status(500).json({ error: error?.message || "Could not generate signed URL" });
+    return res.status(200).json({ signedUrl: file_url });
   }
 
   return res.status(200).json({ signedUrl: data.signedUrl });

@@ -190,6 +190,121 @@ export function TestOrderRow({ order, uploading, checking, onUpload, onMarkDone,
   );
 }
 
+// Returns true if the ordered test's expected value is present in the extracted report
+function primaryTestValueFound(testName, parsed) {
+  const n = (testName || "").toLowerCase();
+  if (/hb|haemoglobin|hemoglobin|cbc|blood count/.test(n)) return parsed.hemoglobin != null;
+  if (/tsh|thyroid/.test(n))                               return parsed.tsh != null;
+  if (/blood sugar|glucose|fbs|fasting|gdm|gtt/.test(n))  return parsed.blood_sugar_fasting != null || parsed.blood_sugar_pp != null;
+  if (/blood group|blood type|abo|rh factor/.test(n))      return parsed.blood_group != null;
+  // For anything else (urine, ferritin, vitamin, etc.) — check extras
+  const tokens = n.replace(/[^a-z0-9]/g, " ").trim().split(/\s+/).filter(t => t.length >= 4);
+  return (parsed.extras || []).some(ex => tokens.some(t => (ex.name || "").toLowerCase().includes(t)));
+}
+
+/* ─── VALUE WARNING SHEET ────────────────────────────────────────────────── */
+function ValueWarningSheet({ order, onKeep, onRemove }) {
+  const [removing, setRemoving] = useState(false);
+  const handleRemove = async () => {
+    setRemoving(true);
+    await onRemove();
+    setRemoving(false);
+  };
+  return (
+    <>
+      <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(16,10,8,0.65)"}} onClick={onKeep}/>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:801,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+        <div style={{fontSize:22,marginBottom:8,textAlign:"center"}}>⚠️</div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"var(--ink)",marginBottom:10,textAlign:"center"}}>
+          Wrong report?
+        </div>
+        <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:14,padding:"13px 16px",fontSize:13,color:"var(--ink)",lineHeight:1.7,marginBottom:20}}>
+          We couldn't find a <strong>{order.test_name}</strong> result in this report. This might be the wrong file.<br/>
+          <span style={{fontSize:12,color:"var(--muted)"}}>You can keep it attached or remove it and re-upload the correct report.</span>
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={onKeep}
+            style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+            Keep report
+          </button>
+          <button onClick={handleRemove} disabled={removing}
+            style={{flex:2,padding:"13px",background:"var(--rose)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:removing?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            {removing
+              ? <><div style={{width:14,height:14,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/> Removing…</>
+              : "Remove report"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─── SIBLING LINK SHEET ─────────────────────────────────────────────────── */
+export function SiblingLinkSheet({ matches, onConfirm, onDismiss }) {
+  const [selected, setSelected] = useState(() => new Set(matches.map(m => m.id)));
+  const [linking,  setLinking]  = useState(false);
+
+  const toggle = (id) => setSelected(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const confirm = async () => {
+    setLinking(true);
+    await onConfirm([...selected]);
+    setLinking(false);
+  };
+
+  return (
+    <>
+      <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(16,10,8,0.65)"}} onClick={onDismiss}/>
+      <div style={{position:"fixed",bottom:0,left:0,right:0,width:"100%",maxWidth:430,margin:"0 auto",zIndex:801,background:"#fff",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px"}}>
+        <div style={{fontSize:22,marginBottom:8,textAlign:"center"}}>🔗</div>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,color:"var(--ink)",marginBottom:6,textAlign:"center"}}>
+          Report covers <em>more tests</em>
+        </div>
+        <div style={{fontSize:12,color:"var(--muted)",marginBottom:16,textAlign:"center",lineHeight:1.5}}>
+          This report also has results for the tests below. Mark them done and attach the same report?
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+          {matches.map(m => (
+            <div key={m.id} onClick={() => toggle(m.id)}
+              style={{
+                display:"flex",alignItems:"center",gap:12,padding:"12px 14px",cursor:"pointer",transition:"all 0.15s",
+                background: selected.has(m.id) ? "var(--teal-pale)" : "var(--cream2)",
+                border: `1.5px solid ${selected.has(m.id) ? "var(--teal-bdr)" : "var(--bdr)"}`,
+                borderRadius:14,
+              }}>
+              <div style={{
+                width:20,height:20,borderRadius:6,flexShrink:0,transition:"all 0.15s",
+                background: selected.has(m.id) ? "var(--teal)" : "transparent",
+                border: `2px solid ${selected.has(m.id) ? "var(--teal)" : "var(--bdr)"}`,
+                display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:700,
+              }}>
+                {selected.has(m.id) ? "✓" : ""}
+              </div>
+              <span style={{fontSize:13,fontWeight:600,color:"var(--ink)"}}>{m.test_name}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={onDismiss}
+            style={{flex:1,padding:"13px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+            Skip
+          </button>
+          <button onClick={confirm} disabled={linking || selected.size === 0}
+            style={{flex:2,padding:"13px",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,cursor:selected.size===0?"not-allowed":"pointer",background:selected.size===0?"var(--bdr)":"var(--teal)"}}>
+            {linking
+              ? <><div style={{width:14,height:14,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/> Linking…</>
+              : `Mark ${selected.size} done`}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
   const [orders,         setOrders]         = useState([]);
   const [loading,        setLoading]        = useState(true);
@@ -197,6 +312,8 @@ export function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
   const [uploadingId,    setUploadingId]    = useState(null);
   const [checkingId,     setCheckingId]     = useState(null);
   const [mismatchPrompt, setMismatchPrompt] = useState(null);
+  const [siblingPrompt,  setSiblingPrompt]  = useState(null);
+  const [valueWarning,   setValueWarning]   = useState(null); // { order }
 
   const load = async () => {
     setLoadError(null);
@@ -247,7 +364,28 @@ export function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
         body: JSON.stringify({ type:"lab_report", fileBase64:base64, mimeType:file.type, fileName:file.name, test_order_id:order.id }),
       });
       if (!resp.ok) throw new Error("Failed");
+      const data = await resp.json();
       await load();
+      const p = data.parsed || {};
+      if (!primaryTestValueFound(order.test_name, p)) {
+        // Report doesn't contain the expected value — warn before doing anything else
+        setValueWarning({ order });
+      } else if (data.sibling_matches?.length) {
+        setSiblingPrompt({
+          matches: data.sibling_matches,
+          file_url: data.file_url,
+          report_summary: null, // each test gets its own summary; don't copy primary's
+          extracted_values: {
+            hemoglobin:          p.hemoglobin          ?? null,
+            tsh:                 p.tsh                 ?? null,
+            blood_sugar_fasting: p.blood_sugar_fasting ?? null,
+            blood_sugar_pp:      p.blood_sugar_pp      ?? null,
+            blood_group:         p.blood_group         ?? null,
+            extras:              p.extras              || [],
+            report_date:         p.report_date         || new Date().toISOString().split("T")[0],
+          },
+        });
+      }
     } catch {
       alert("Could not process report. Please try a clearer photo or PDF.");
     }
@@ -317,6 +455,54 @@ export function TestOrdersSection({ onViewDetail, reloadKey = 0 }) {
         ))}
       </div>
 
+      {/* ── Wrong report warning ── */}
+      {valueWarning && (
+        <ValueWarningSheet
+          order={valueWarning.order}
+          onKeep={() => setValueWarning(null)}
+          onRemove={async () => {
+            try {
+              const resp = await authFetch("/api/test-orders/delete-report", {
+                method: "DELETE",
+                body: JSON.stringify({ test_order_id: valueWarning.order.id }),
+              });
+              if (!resp.ok) throw new Error("Delete failed");
+            } catch {
+              alert("Could not remove report. Please try again.");
+            }
+            setValueWarning(null);
+            await load();
+          }}
+        />
+      )}
+
+      {/* ── Sibling report link sheet ── */}
+      {siblingPrompt && (
+        <SiblingLinkSheet
+          matches={siblingPrompt.matches}
+          onConfirm={async (selectedIds) => {
+            setSiblingPrompt(null);
+            if (!selectedIds.length) return;
+            try {
+              const resp = await authFetch("/api/test-orders/link-report", {
+                method: "POST",
+                body: JSON.stringify({
+                  order_ids: selectedIds,
+                  file_url: siblingPrompt.file_url,
+                  report_summary: siblingPrompt.report_summary,
+                  extracted_values: siblingPrompt.extracted_values,
+                }),
+              });
+              if (!resp.ok) throw new Error("Link failed");
+              await load();
+            } catch {
+              alert("Could not link report to other tests. Please try again.");
+            }
+          }}
+          onDismiss={() => setSiblingPrompt(null)}
+        />
+      )}
+
       {/* ── Mismatch confirmation sheet ── */}
       {mismatchPrompt && (
         <>
@@ -360,19 +546,22 @@ export function TestReportSheet({ order, onClose, onReportDeleted }) {
     requestAnimationFrame(() => setVis(true));
     if (order.file_url) {
       authFetch("/api/storage/signed-url", { method:"POST", body:JSON.stringify({ file_url: order.file_url }) })
-        .then(r => r.ok ? r.json() : null).then(d => { if (d?.signedUrl) setSignedUrl(d.signedUrl); }).catch(() => {});
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { setSignedUrl(d?.signedUrl || order.file_url); })
+        .catch(() => { setSignedUrl(order.file_url); });
     }
   }, [order.id]);
 
   const close = () => { setVis(false); setTimeout(onClose, 350); };
 
   const downloadFile = async () => {
-    if (!signedUrl) return;
+    const url = signedUrl || order.file_url;
+    if (!url) return;
     try {
-      const blob = await fetch(signedUrl).then(r => r.blob());
+      const blob = await fetch(url).then(r => r.blob());
       const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `lab-report-${order.test_name||"report"}` });
       a.click(); URL.revokeObjectURL(a.href);
-    } catch { window.open(signedUrl, "_blank"); }
+    } catch { window.open(url, "_blank"); }
   };
 
   const ev = order.extracted_values || {};
@@ -413,9 +602,9 @@ export function TestReportSheet({ order, onClose, onReportDeleted }) {
           )}
 
           {/* View / Download / Delete */}
-          {signedUrl && (
+          {order.file_url && (
             <div style={{display:"flex",gap:8,marginBottom:16}}>
-              <a href={signedUrl} target="_blank" rel="noopener noreferrer"
+              <a href={signedUrl || order.file_url} target="_blank" rel="noopener noreferrer"
                 style={{flex:1,padding:"11px",background:"var(--teal-pale)",border:"1px solid var(--teal-bdr)",borderRadius:14,fontSize:12,fontWeight:600,color:"var(--teal)",display:"flex",alignItems:"center",justifyContent:"center",gap:6,textDecoration:"none"}}>
                 👁 View
               </a>

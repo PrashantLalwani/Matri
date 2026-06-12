@@ -40,6 +40,47 @@ function isCoreAlias(extraName) {
   return Object.values(CORE_ALIASES).some(aliases => aliases.some(a => n.includes(a) || a.includes(n)));
 }
 
+// Normalize a test name for fuzzy matching: lowercase, remove noise words, collapse spaces
+function normalizeTest(s) {
+  return (s || "").toLowerCase()
+    .replace(/\b(test|report|level|profile|routine|examination|exam|serum|plasma)\b/g, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+// Given extracted lab results and a list of other ordered test rows, return rows covered by this report
+function findSiblingMatches(parsed, otherOrders) {
+  if (!otherOrders?.length) return [];
+
+  const covered = new Set();
+  const add = (...names) => names.forEach(n => covered.add(normalizeTest(n)));
+
+  if (parsed.hemoglobin != null)
+    add("hemoglobin", "haemoglobin", "hb", "hgb", "cbc", "complete blood count", "full blood count", "blood count");
+  if (parsed.tsh != null)
+    add("tsh", "thyroid stimulating hormone", "thyroid", "thyroid function", "thyroid panel");
+  if (parsed.blood_sugar_fasting != null || parsed.blood_sugar_pp != null)
+    add("blood sugar", "blood glucose", "glucose", "fbs", "ppbs", "blood sugar fasting", "blood sugar pp",
+        "fasting blood sugar", "postprandial blood sugar", "random blood sugar", "rbs",
+        "gdm", "gestational diabetes", "gtt", "ogtt", "glucose tolerance", "oral glucose tolerance");
+  if (parsed.blood_group != null)
+    add("blood group", "blood type", "abo", "rh factor", "rh", "abo rh");
+
+  (parsed.extras || []).forEach(ex => add(ex.name));
+
+  const coveredArr = [...covered].filter(Boolean);
+  const tokenSet = new Set(coveredArr.flatMap(s => s.split(" ").filter(t => t.length >= 4)));
+
+  return otherOrders.filter(order => {
+    const norm = normalizeTest(order.test_name);
+    if (!norm) return false;
+    if (coveredArr.some(c => c === norm || c.includes(norm) || norm.includes(c))) return true;
+    const tokens = norm.split(" ").filter(t => t.length >= 4);
+    return tokens.length > 0 && tokens.every(t => tokenSet.has(t));
+  }).map(o => ({ id: o.id, test_name: o.test_name }));
+}
+
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const supabase = createClient(
@@ -58,6 +99,7 @@ IMPORTANT INSTRUCTIONS:
 - Handwriting is expected and common — include your best interpretation even if unclear
 - Never omit something because you are uncertain — include it with low_confidence: true instead
 - Indian prescription conventions: medicines often written as generic names, frequency as 1-0-1 notation, tests abbreviated
+- Do NOT include continuation notes as medicine entries — phrases like "all previous medicines continued", "continue same", "same medicines", "as per previous" are notes, not drug names. Skip them entirely.
 
 Extract EVERY piece of information across these 7 categories:
 
@@ -110,7 +152,9 @@ Return ONLY a JSON object with these exact fields:
     "e.g. rest for 2 days", "avoid intercourse", "come immediately if bleeding", "take folic acid daily"
   ],
 
-  "summary": "2-3 warm plain-language sentences summarising this prescription for a pregnant woman. Focus on what she needs to do. Mention the most important medicine and any tests or scans due. Do not use medical jargon."
+  "summary": "2-3 warm plain-language sentences summarising this prescription for a pregnant woman. Focus on what she needs to do. Mention the most important medicine and any tests or scans due. Do not use medical jargon.",
+
+  "document_type": "Classify this document: 'prescription' for doctor-written prescriptions, medication notes, or clinical letters with medicine orders; 'lab_report' for blood test results, pathology reports, or any document showing measured lab values (HB, TSH, glucose, etc.); 'scan' for ultrasound or radiology reports; 'other' for anything else. Return only the single word."
 }
 
 No markdown, pure JSON only. If a category has no entries, return an empty array [].`,
@@ -263,6 +307,7 @@ export default async function handler(req, res) {
     const debugInfo = {};
     let doctorMismatch = null;
     let doctorConflictData = null;
+    let sibling_matches = [];
     if (type === "prescription") {
       // OCR only — DB writes happen in /api/prescription/save after user confirms
       const { data: profileSnap } = await supabase
@@ -345,13 +390,37 @@ export default async function handler(req, res) {
           .eq("id", test_order_id)
           .eq("user_id", user.id);
         if (reportErr) console.warn("test_order report fields update failed (run supabase-migrations.sql):", reportErr.message);
+
+        // Find other ordered tests covered by this same report
+        try {
+          const { data: otherOrders } = await supabase
+            .from("test_orders")
+            .select("id, test_name")
+            .eq("user_id", user.id)
+            .eq("status", "ordered")
+            .neq("id", test_order_id);
+          sibling_matches = findSiblingMatches(parsed, otherOrders || []);
+        } catch (e) {
+          console.warn("Sibling match detection failed:", e.message);
+        }
+      } else {
+        // Global upload (no specific test): match against ALL ordered tests
+        try {
+          const { data: allOrders } = await supabase
+            .from("test_orders")
+            .select("id, test_name")
+            .eq("user_id", user.id)
+            .eq("status", "ordered");
+          sibling_matches = findSiblingMatches(parsed, allOrders || []);
+        } catch (e) {
+          console.warn("Global sibling match detection failed:", e.message);
+        }
       }
 
     } else if (type === "scan") {
       const { scan_id } = req.body;
       if (scan_id) {
-        await supabase.from("scans").update({
-          upload_id: upload?.id,
+        const { error: scanErr } = await supabase.from("scans").update({
           scan_date: parsed.scan_date || null,
           scan_type: parsed.scan_type || "other",
           week_number: parsed.week_number || week || null,
@@ -360,6 +429,7 @@ export default async function handler(req, res) {
           ai_summary: parsed.summary,
           status: "completed",
         }).eq("id", scan_id).eq("user_id", user.id);
+        if (scanErr) throw new Error(`Scan update failed: ${scanErr.message}`);
       } else {
         await supabase.from("scans").insert({
           user_id: user.id,
@@ -385,6 +455,7 @@ export default async function handler(req, res) {
       file_url: fileUrl,
       upload_id: upload?.id,
       doctor_conflict: doctorConflictData || undefined,
+      sibling_matches: sibling_matches.length ? sibling_matches : undefined,
       _debug: Object.keys(debugInfo).length ? debugInfo : undefined,
     });
 

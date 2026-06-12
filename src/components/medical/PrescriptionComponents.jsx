@@ -5,7 +5,7 @@ import { compressImageFile } from '../../utils/albumUtils';
 
 /* ─── PRESCRIPTION UPLOAD FLOW ───────────────────────────────────────────── */
 // The full fan-out upload — prescription → medicines + tests + scans + summary
-export function PrescriptionUploadFlow({ onComplete, onClose }) {
+export function PrescriptionUploadFlow({ onComplete, onLabProcessed, onClose }) {
   const [vis,            setVis]            = useState(false);
   const [file,           setFile]           = useState(null);
   const [step,           setStep]           = useState("upload"); // upload → confirm → done
@@ -19,6 +19,9 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
   const [saving,             setSaving]              = useState(false);
   const [editingItem,        setEditingItem]         = useState(null); // {section, index}
   const [editDraft,          setEditDraft]           = useState({});
+  const [inferBase64,        setInferBase64]         = useState(null);
+  const [detectedDocType,    setDetectedDocType]     = useState(null);
+  const [labProcessing,      setLabProcessing]       = useState(false);
   const fileRef = useRef();
 
   const deleteItem = (section, index) =>
@@ -65,18 +68,30 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
 
       const resp = await authFetch("/api/infer", {
         method: "POST",
-        body: JSON.stringify({
-          type: "prescription",
-          fileBase64: base64,
-          mimeType: file.type,
-          fileName: file.name,
-          week: 8,
-        })
+        body: JSON.stringify({ type: "prescription", fileBase64: base64, mimeType: file.type, fileName: file.name, week: 8 })
       });
 
       if (!resp.ok) throw new Error("Server error");
       const data = await resp.json();
       const p = data.parsed || {};
+
+      // Store file URL / upload ID regardless of path taken
+      setInferFileUrl(data.file_url || null);
+      setInferUploadId(data.upload_id || null);
+
+      // Check document type before the hasContent guard — a lab report or scan
+      // has no medicines, so hasContent would be false and it would look like a
+      // read failure rather than a wrong document type.
+      const docType = (p.document_type || "prescription").toLowerCase().trim();
+      if (docType !== "prescription") {
+        setResult(p);
+        setInferBase64(base64);
+        setDetectedDocType(docType);
+        setStep("wrong_doc");
+        setLoading(false);
+        return;
+      }
+
       const hasContent = (p.medicines?.length || 0) + (p.tests_ordered?.length || 0)
         + (p.scans_advised?.length || p.scan_dates?.length || 0)
         + (p.diet_instructions?.length || 0) + (p.monitoring_instructions?.length || 0)
@@ -88,13 +103,29 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
       }
       setResult(p);
       setDoctorConflict(data.doctor_conflict || null);
-      setInferFileUrl(data.file_url || null);
-      setInferUploadId(data.upload_id || null);
       setStep("confirm");
     } catch(e) {
       setError("Couldn't read the prescription. Try a clearer photo.");
     }
     setLoading(false);
+  };
+
+  const processAsLabReport = async () => {
+    setLabProcessing(true);
+    try {
+      const resp = await authFetch("/api/infer", {
+        method: "POST",
+        body: JSON.stringify({ type: "lab_report", fileBase64: inferBase64, mimeType: file.type, fileName: file.name }),
+      });
+      if (!resp.ok) throw new Error("Failed");
+      const data = await resp.json();
+      // Pass response back to parent so it can show the sibling confirmation sheet
+      onLabProcessed?.(data);
+      setStep("lab_done");
+    } catch {
+      setError("Couldn't process as lab report. Please try again.");
+    }
+    setLabProcessing(false);
   };
 
   const resolveDoctor = (useExtracted) => {
@@ -166,6 +197,48 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
               ✦ Read prescription
             </button>
           )}
+        </>}
+
+        {step === "wrong_doc" && <>
+          <div className="pedit-title">Wrong <em>document?</em></div>
+          <div style={{background:"var(--amber-pale)",border:"1px solid var(--amber-bdr)",borderRadius:14,padding:"14px 16px",fontSize:13,color:"var(--ink)",lineHeight:1.7,marginBottom:20}}>
+            {detectedDocType === "lab_report" && <>This looks like a <strong>lab report</strong>, not a prescription. Lab results should go in the Tests section — want Matri to process it there instead?</>}
+            {detectedDocType === "scan"       && <>This looks like a <strong>scan report</strong>, not a prescription. Please close and use the Scans section to upload it there.</>}
+            {detectedDocType !== "lab_report" && detectedDocType !== "scan" && <>This doesn't look like a doctor's prescription. You can upload it anyway or cancel and try a different file.</>}
+          </div>
+          {error && <div style={{fontSize:12,color:"var(--rose)",marginBottom:12,textAlign:"center"}}>{error}</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {detectedDocType === "lab_report" && (
+              <button onClick={processAsLabReport} disabled={labProcessing}
+                style={{width:"100%",padding:"14px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:14,fontWeight:600,color:"#fff",cursor:labProcessing?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:labProcessing?0.75:1}}>
+                {labProcessing
+                  ? <><div style={{width:16,height:16,border:"2px solid rgba(255,255,255,0.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/> Processing…</>
+                  : "🧪 Process as lab report"}
+              </button>
+            )}
+            <button onClick={() => setStep("confirm")} disabled={labProcessing}
+              style={{width:"100%",padding:"14px",background:"transparent",border:"1.5px solid var(--bdr)",borderRadius:100,fontSize:14,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)"}}>
+              Upload as prescription anyway
+            </button>
+            <button onClick={close} disabled={labProcessing}
+              style={{width:"100%",padding:"14px",background:"transparent",border:"none",borderRadius:100,fontSize:13,cursor:"pointer",fontFamily:"inherit",color:"var(--muted)",opacity:0.6}}>
+              Cancel
+            </button>
+          </div>
+        </>}
+
+        {step === "lab_done" && <>
+          <div style={{textAlign:"center",padding:"10px 0 24px"}}>
+            <div style={{width:56,height:56,borderRadius:"50%",background:"var(--teal-pale)",border:"1.5px solid var(--teal-bdr)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,margin:"0 auto 16px"}}>✓</div>
+            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,color:"var(--ink)",marginBottom:8}}>Lab report <em>processed</em></div>
+            <div style={{fontSize:13,color:"var(--muted)",lineHeight:1.7,marginBottom:28}}>
+              Values from this report have been added to your health history. Check the Tests section to see any matched results.
+            </div>
+            <button onClick={close}
+              style={{width:"100%",padding:"14px",background:"var(--teal)",border:"none",borderRadius:100,fontSize:15,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+              Done
+            </button>
+          </div>
         </>}
 
         {step === "confirm" && result && <>

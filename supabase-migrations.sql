@@ -9,6 +9,7 @@ ALTER TABLE scans
   ADD COLUMN IF NOT EXISTS findings        jsonb,
   ADD COLUMN IF NOT EXISTS ai_summary      text,
   ADD COLUMN IF NOT EXISTS image_url       text,
+  ADD COLUMN IF NOT EXISTS upload_id       uuid REFERENCES uploads(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS prescription_id uuid REFERENCES prescriptions(id) ON DELETE CASCADE,
   ADD COLUMN IF NOT EXISTS scan_name       text,
   ADD COLUMN IF NOT EXISTS status          text DEFAULT 'scheduled',

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../supabase';
 import { authFetch } from '../../utils/auth';
 import { PrescriptionUploadFlow, PrescriptionDetailSheet } from './PrescriptionComponents';
-import { TestOrdersSection, TestReportSheet, LabTimelineRow } from './LabComponents';
+import { TestOrdersSection, TestReportSheet, LabTimelineRow, SiblingLinkSheet } from './LabComponents';
 
 /* ─── SUMMARY PARSER ─────────────────────────────────────────────────────── */
 function parseSummaryPoints(text) {
@@ -1172,7 +1172,46 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
   const [activeScanUpload,  setActiveScanUpload]  = useState(null);
   const [activeReportView,  setActiveReportView]  = useState(null);
   const [showScanInsights,  setShowScanInsights]  = useState(false);
-  const [showLabInsights,   setShowLabInsights]   = useState(false);
+  const [showLabInsights,      setShowLabInsights]      = useState(false);
+  const [globalLabUploading,   setGlobalLabUploading]   = useState(false);
+  const [globalLabSiblingPrompt, setGlobalLabSiblingPrompt] = useState(null);
+  const globalLabFileRef = useRef();
+
+  const handleGlobalLabUpload = async (file) => {
+    setGlobalLabUploading(true);
+    try {
+      const base64 = await new Promise((res, rej) => {
+        const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file);
+      });
+      const resp = await authFetch("/api/infer", {
+        method: "POST",
+        body: JSON.stringify({ type: "lab_report", fileBase64: base64, mimeType: file.type, fileName: file.name }),
+      });
+      if (!resp.ok) throw new Error("Failed");
+      const data = await resp.json();
+      onDataChange?.();
+      if (data.sibling_matches?.length) {
+        const p = data.parsed || {};
+        setGlobalLabSiblingPrompt({
+          matches: data.sibling_matches,
+          file_url: data.file_url,
+          report_summary: null, // each test gets its own summary; don't copy the global summary
+          extracted_values: {
+            hemoglobin:          p.hemoglobin          ?? null,
+            tsh:                 p.tsh                 ?? null,
+            blood_sugar_fasting: p.blood_sugar_fasting ?? null,
+            blood_sugar_pp:      p.blood_sugar_pp      ?? null,
+            blood_group:         p.blood_group         ?? null,
+            extras:              p.extras              || [],
+            report_date:         p.report_date         || new Date().toISOString().split("T")[0],
+          },
+        });
+      }
+    } catch {
+      alert("Could not process report. Please try a clearer photo or PDF.");
+    }
+    setGlobalLabUploading(false);
+  };
 
   const fetchData = async () => {
     try {
@@ -1243,9 +1282,21 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
 
       // Legacy fallback: prescription scan_dates with no scans table row yet
       const tableScanKeys = new Set((scansRes.data || []).map(s => `${s.scan_type}_${s.scan_date || ""}`));
+      // Secondary dedup: if a prescription already has a table row of the same type, suppress the
+      // legacy entry regardless of date — scan_date changes after upload would otherwise break the
+      // primary key match and cause a duplicate "Scheduled" ghost card to appear.
+      const prescriptionTypePairs = new Set(
+        (scansRes.data || [])
+          .filter(s => s.prescription_id)
+          .map(s => `${s.prescription_id}_${normScanKey(s.scan_name || s.scan_type || "")}`)
+      );
       const legacyScans = rxList.flatMap(rx =>
         (rx.scan_dates || [])
-          .filter(s => !tableScanKeys.has(`${normScanKey(s.type)}_${s.date || ""}`))
+          .filter(s => {
+            if (tableScanKeys.has(`${normScanKey(s.type)}_${s.date || ""}`)) return false;
+            if (rx.id && prescriptionTypePairs.has(`${rx.id}_${normScanKey(s.type)}`)) return false;
+            return true;
+          })
           .map(s => ({
             type: s.type,
             scan_type: normScanKey(s.type),
@@ -1551,16 +1602,34 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
               expanded={expanded === "tests"}
               onTap={() => toggle("tests")}
             >
-              {/* Lab insights */}
-              <button onClick={() => setShowLabInsights(true)}
-                style={{width:"100%",padding:"12px 16px",background:"rgba(96,144,200,0.08)",border:"1px solid rgba(96,144,200,0.18)",borderRadius:16,fontSize:13,fontWeight:600,color:"rgba(96,144,200,0.85)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-                <span style={{fontSize:17}}>📊</span>
-                <div style={{flex:1,textAlign:"left"}}>
-                  <div>View lab insights</div>
-                  <div style={{fontSize:11,fontWeight:400,color:"rgba(96,144,200,0.6)",marginTop:1}}>trends &amp; values across all tests</div>
-                </div>
-                <span style={{opacity:0.5,fontSize:14}}>→</span>
-              </button>
+              {/* Lab insights + global upload */}
+              <input ref={globalLabFileRef} type="file" accept="image/*,application/pdf" style={{display:"none"}}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleGlobalLabUpload(f); e.target.value = ""; }}/>
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                <button onClick={() => setShowLabInsights(true)}
+                  style={{flex:2,padding:"12px 14px",background:"rgba(96,144,200,0.08)",border:"1px solid rgba(96,144,200,0.18)",borderRadius:16,fontSize:13,fontWeight:600,color:"rgba(96,144,200,0.85)",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:17}}>📊</span>
+                  <div style={{flex:1,textAlign:"left"}}>
+                    <div>View lab insights</div>
+                    <div style={{fontSize:11,fontWeight:400,color:"rgba(96,144,200,0.6)",marginTop:1}}>trends &amp; values</div>
+                  </div>
+                  <span style={{opacity:0.5,fontSize:14}}>→</span>
+                </button>
+                <button onClick={() => globalLabFileRef.current?.click()} disabled={globalLabUploading}
+                  style={{flex:1,padding:"12px 8px",background:"rgba(96,144,200,0.06)",border:"1px solid rgba(96,144,200,0.18)",borderRadius:16,cursor:globalLabUploading?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4}}>
+                  {globalLabUploading ? (
+                    <>
+                      <div style={{width:16,height:16,border:"2px solid rgba(96,144,200,0.2)",borderTopColor:"rgba(96,144,200,0.7)",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+                      <span style={{fontSize:9,color:"rgba(96,144,200,0.6)",fontWeight:500}}>Reading…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{fontSize:20}}>📎</span>
+                      <span style={{fontSize:10,fontWeight:600,color:"rgba(96,144,200,0.75)",textAlign:"center",lineHeight:1.3}}>Upload{"\n"}report</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
               <div style={{fontSize:9,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--muted)",marginBottom:10}}>Tests ordered by your doctor</div>
               <TestOrdersSection
@@ -1582,6 +1651,27 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
             fetchData();
             setTestReloadKey(k => k + 1);
             onUploadComplete?.(result);
+          }}
+          onLabProcessed={(data) => {
+            setShowUpload(false);
+            onDataChange?.();
+            const p = data.parsed || {};
+            if (data.sibling_matches?.length) {
+              setGlobalLabSiblingPrompt({
+                matches: data.sibling_matches,
+                file_url: data.file_url,
+                report_summary: null,
+                extracted_values: {
+                  hemoglobin:          p.hemoglobin          ?? null,
+                  tsh:                 p.tsh                 ?? null,
+                  blood_sugar_fasting: p.blood_sugar_fasting ?? null,
+                  blood_sugar_pp:      p.blood_sugar_pp      ?? null,
+                  blood_group:         p.blood_group         ?? null,
+                  extras:              p.extras              || [],
+                  report_date:         p.report_date         || new Date().toISOString().split("T")[0],
+                },
+              });
+            }
           }}
           onClose={() => setShowUpload(false)}
         />
@@ -1624,7 +1714,10 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
         <ScanInsightsSheet
           scans={scans}
           onClose={() => setShowScanInsights(false)}
-          onUpload={() => setActiveScanUpload(scans.find(s => s.status !== "completed" && s.id) || null)}
+          onUpload={() => {
+            const pending = scans.find(s => s.status !== "completed");
+            if (pending) handleScanAction(pending, "upload");
+          }}
         />
       )}
       {showLabInsights && (
@@ -1633,6 +1726,31 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
           labExtras={profileData?.lab_extras_v2 || {}}
           onClose={() => setShowLabInsights(false)}
           onDataChange={onDataChange}
+        />
+      )}
+      {globalLabSiblingPrompt && (
+        <SiblingLinkSheet
+          matches={globalLabSiblingPrompt.matches}
+          onConfirm={async (selectedIds) => {
+            setGlobalLabSiblingPrompt(null);
+            if (!selectedIds.length) return;
+            try {
+              const resp = await authFetch("/api/test-orders/link-report", {
+                method: "POST",
+                body: JSON.stringify({
+                  order_ids: selectedIds,
+                  file_url: globalLabSiblingPrompt.file_url,
+                  report_summary: globalLabSiblingPrompt.report_summary,
+                  extracted_values: globalLabSiblingPrompt.extracted_values,
+                }),
+              });
+              if (!resp.ok) throw new Error("Link failed");
+              setTestReloadKey(k => k + 1);
+            } catch {
+              alert("Could not link report to tests. Please try again.");
+            }
+          }}
+          onDismiss={() => setGlobalLabSiblingPrompt(null)}
         />
       )}
     </div>

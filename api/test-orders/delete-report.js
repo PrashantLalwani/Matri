@@ -85,7 +85,7 @@ export default async function handler(req, res) {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("lab_data, lab_extras_v2")
+    .select("lab_data, lab_extras_v2, blood_group")
     .eq("id", user.id)
     .single();
 
@@ -106,9 +106,18 @@ export default async function handler(req, res) {
       // Key dropped entirely when empty — no ghost rows
     }
 
+    const profileUpdates = { lab_data: updatedLd, lab_extras_v2: updatedLe };
+
+    // Roll back blood_group if this report was the one that set it.
+    // infer.js only writes blood_group when the profile had none, so if the current
+    // value still matches what this report extracted, it's safe to clear it.
+    if (ev.blood_group && profile.blood_group === ev.blood_group) {
+      profileUpdates.blood_group = null;
+    }
+
     await supabase
       .from("profiles")
-      .update({ lab_data: updatedLd, lab_extras_v2: updatedLe })
+      .update(profileUpdates)
       .eq("id", user.id);
   }
 
