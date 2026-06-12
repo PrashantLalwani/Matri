@@ -76,7 +76,17 @@ export function PrescriptionUploadFlow({ onComplete, onClose }) {
 
       if (!resp.ok) throw new Error("Server error");
       const data = await resp.json();
-      setResult(data.parsed);
+      const p = data.parsed || {};
+      const hasContent = (p.medicines?.length || 0) + (p.tests_ordered?.length || 0)
+        + (p.scans_advised?.length || p.scan_dates?.length || 0)
+        + (p.diet_instructions?.length || 0) + (p.monitoring_instructions?.length || 0)
+        + (p.doctor_advice?.length || 0) > 0;
+      if (!hasContent) {
+        setError("Matri couldn't read anything from this file. Make sure the image is clear and contains a prescription, then try again.");
+        setLoading(false);
+        return;
+      }
+      setResult(p);
       setDoctorConflict(data.doctor_conflict || null);
       setInferFileUrl(data.file_url || null);
       setInferUploadId(data.upload_id || null);

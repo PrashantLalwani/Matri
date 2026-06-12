@@ -175,7 +175,8 @@ async function uploadFile(userId, type, fileBase64, mimeType, fileName) {
   const ext = mimeType === "application/pdf" ? "pdf"
     : mimeType.includes("png") ? "png" : "jpg";
 
-  const path = `${userId}/${Date.now()}_${fileName || `upload.${ext}`}`;
+  const safeName = (fileName || `upload.${ext}`).replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `${userId}/${Date.now()}_${safeName}`;
   const buffer = Buffer.from(fileBase64, "base64");
 
   const { data, error } = await supabase.storage

@@ -97,7 +97,8 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
 
   // Special handler for doctor section — syncs next_appointment_date from latest prescription follow_up_date
   const openDoctorEdit = async () => {
-    const baseData = {doctor_name:p.doctor_name||"",clinic_name:p.clinic_name||"",clinic_city:p.clinic_city||"",next_appointment_date:p.next_appointment_date||"",visit_notes:p.visit_notes||"",prescriptions:p.prescriptions||[]};
+    const hasExisting = !!(p.doctor_name || p.clinic_name);
+    const baseData = {doctor_name:p.doctor_name||"",clinic_name:p.clinic_name||"",clinic_city:p.clinic_city||"",next_appointment_date:p.next_appointment_date||"",visit_notes:p.visit_notes||"",prescriptions:p.prescriptions||[],_editingDetails:!hasExisting};
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {

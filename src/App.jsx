@@ -192,8 +192,13 @@ function App({ profile: initialProfile }) {
   const [rxUploadOpen,   setRxUploadOpen]   = useState(false);
   const [labsOpen,       setLabsOpen]       = useState(false);
   const [consentOpen,    setConsentOpen]    = useState(false);
-  const [aiConsentOpen,  setAiConsentOpen]  = useState(initialProfile?.ai_consent_given == null);
-  useEffect(() => { if (initialProfile?.ai_consent_given != null) setAiConsentOpen(false); }, [initialProfile?.ai_consent_given]);
+  const [aiConsentOpen,  setAiConsentOpen]  = useState(
+    initialProfile != null && initialProfile.ai_consent_given == null
+  );
+  useEffect(() => {
+    if (initialProfile == null) return;
+    setAiConsentOpen(initialProfile.ai_consent_given == null);
+  }, [initialProfile]);
   const [pendingAction,  setPendingAction]  = useState(null);
   const [labsVis,        setLabsVis]        = useState(false);
   const [labsEditData,   setLabsEditData]   = useState({});
