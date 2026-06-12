@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { normalizeMedicineName, medicineNamesMatch } from "../lib/medicineMatch.js";
 
 
 // Uses service role key — server-side only, never exposed to client
@@ -39,19 +40,58 @@ export default async function handler(req, res) {
     }
     const rx = rx_full; // alias for file_url access below
 
-    // 2. Delete from medicines table (prescription_id FK)
-    await supabase.from("medicines")
-      .delete()
-      .eq("prescription_id", prescription_id)
-      .eq("user_id", user.id);
+    // 2. Fetch remaining prescriptions (with their medicines) BEFORE any deletion
+    //    Used for cross-prescription survival checks below.
+    const { data: remainingRxFull } = await supabase
+      .from("prescriptions")
+      .select("id, prescribed_date, follow_up_date, doctor_name, clinic_name, medicines")
+      .eq("user_id", user.id)
+      .neq("id", prescription_id)
+      .order("prescribed_date", { ascending: false });
 
-    // 3. Delete from test_orders table
+    // Helper: find the most recent surviving Rx that contains a name-matched medicine
+    const findSurvivingRx = (medName) =>
+      (remainingRxFull || []).find(rx =>
+        (rx.medicines || []).some(m => medicineNamesMatch(m.name, medName))
+      );
+
+    // Helper: find the matching medicine entry in a surviving Rx
+    const findSurvivingMed = (survivingRx, medName) =>
+      (survivingRx?.medicines || []).find(m => medicineNamesMatch(m.name, medName));
+
+    // 3. Handle medicines table — survival check instead of blind delete
+    const { data: existingMedRows } = await supabase
+      .from("medicines")
+      .select("id, name, prescription_id")
+      .eq("user_id", user.id)
+      .eq("prescription_id", prescription_id);
+
+    for (const row of (existingMedRows || [])) {
+      const survivingRx  = findSurvivingRx(row.name);
+      const survivingMed = findSurvivingMed(survivingRx, row.name);
+      if (survivingRx && survivingMed) {
+        // Medicine lives on in another prescription — update to surviving Rx's data
+        await supabase.from("medicines").update({
+          prescription_id: survivingRx.id,
+          dosage:          survivingMed.dosage    || null,
+          frequency:       survivingMed.frequency || null,
+          duration:        survivingMed.duration  || null,
+          notes:           survivingMed.notes     || null,
+          start_date:      survivingRx.prescribed_date || null,
+        }).eq("id", row.id);
+      } else {
+        // No surviving prescription — remove it
+        await supabase.from("medicines").delete().eq("id", row.id);
+      }
+    }
+
+    // 4. Delete from test_orders table
     await supabase.from("test_orders")
       .delete()
       .eq("prescription_id", prescription_id)
       .eq("user_id", user.id);
 
-    // 4. Delete from scans table — FK path for new rows, type+date fallback for pre-migration rows
+    // 5. Delete from scans table — FK path for new rows, type+date fallback for pre-migration rows
     await supabase.from("scans")
       .delete()
       .eq("prescription_id", prescription_id)
@@ -74,13 +114,13 @@ export default async function handler(req, res) {
       await (s.date ? q.eq("scan_date", s.date) : q.is("scan_date", null));
     }
 
-    // 5. Delete the prescription row itself
+    // 6. Delete the prescription row itself
     await supabase.from("prescriptions")
       .delete()
       .eq("id", prescription_id)
       .eq("user_id", user.id);
 
-    // 6. Remove from profile.prescriptions jsonb AND profile.medications jsonb
+    // 7. Update profile.prescriptions jsonb AND profile.medications jsonb
     const { data: profile } = await supabase
       .from("profiles")
       .select("prescriptions, medications, next_appointment_date")
@@ -90,73 +130,60 @@ export default async function handler(req, res) {
     const updatedRxList = (profile?.prescriptions || [])
       .filter(entry => entry.id !== prescription_id);
 
-    // Get medicine names from the prescription row itself (fallback for when prescription_id wasn't stored)
-    const rxMedicineNames = (rx_full?.medicines || [])
-      .map(m => m.name?.toLowerCase?.()?.trim())
-      .filter(Boolean);
+    // Survival check for profiles.medications:
+    // For each entry owned by (or backward-compat matched to) the deleted prescription,
+    // check if a remaining prescription also has that medicine.
+    // If yes → keep and update to surviving Rx's data.
+    // If no  → remove.
+    // Manually added entries (prescription_id null, no name match) are always kept.
+    const rxMedicineNames = (rx_full?.medicines || []).map(m => m.name).filter(Boolean);
 
-    // Remove medicines that either:
-    // (a) have a matching prescription_id, OR
-    // (b) have prescription_id null AND name matches one from this prescription (old entries)
-    const updatedMedications = (profile?.medications || []).filter(m => {
-      // Handle stringified JSON meds
-      let med = m;
-    
-      try {
-        if (typeof med === "string") {
-          med = JSON.parse(med);
-        }
-      } catch {
-        med = {};
+    const updatedMedications = [];
+    for (const entry of (profile?.medications || [])) {
+      let med = entry;
+      try { if (typeof med === "string") med = JSON.parse(med); } catch { med = {}; }
+
+      const ownedByDeleted =
+        (med?.prescription_id && String(med.prescription_id) === String(prescription_id)) ||
+        (!med?.prescription_id && rxMedicineNames.some(n => medicineNamesMatch(n, med?.name)));
+
+      if (!ownedByDeleted) {
+        updatedMedications.push(med);
+        continue;
       }
-    
-      const medName =
-        med?.name?.toLowerCase?.().trim() || "";
-    
-      // Primary delete path
-      if (
-        med?.prescription_id &&
-        String(med.prescription_id) === String(prescription_id)
-      ) {
-        return false;
+
+      const survivingRx  = findSurvivingRx(med?.name);
+      const survivingMed = findSurvivingMed(survivingRx, med?.name);
+
+      if (survivingRx && survivingMed) {
+        // Keep — update prescription_id + clinical data from surviving Rx
+        updatedMedications.push({
+          ...med,
+          prescription_id: survivingRx.id,
+          dosage:          survivingMed.dosage    || med.dosage    || "",
+          frequency:       survivingMed.frequency || med.frequency || "",
+          duration:        survivingMed.duration  || med.duration  || "",
+          notes:           survivingMed.notes     || med.notes     || "",
+        });
       }
-    
-      // Backward compatibility for older meds
-      if (
-        !med?.prescription_id &&
-        rxMedicineNames.some(
-          rxName =>
-            rxName?.toLowerCase?.().trim() === medName
-        )
-      ) {
-        return false;
-      }
-    
-      return true;
-    });
+      // else: no surviving Rx — omit (delete)
+    }
 
     // Re-derive doctor info + next_appointment_date from remaining prescriptions.
-    // Always recalculate so deleted prescription data is never left orphaned on the profile.
-    const { data: remainingRx } = await supabase
-      .from("prescriptions")
-      .select("follow_up_date, doctor_name, clinic_name, prescribed_date")
-      .eq("user_id", user.id)
-      .order("prescribed_date", { ascending: false });
-
-    const nextApptDate = remainingRx?.find(r => r.follow_up_date)?.follow_up_date || null;
-    const latestWithDoctor = remainingRx?.find(r => r.doctor_name) || null;
+    const nextApptDate     = remainingRxFull?.find(r => r.follow_up_date)?.follow_up_date || null;
+    const latestWithDoctor = remainingRxFull?.find(r => r.doctor_name) || null;
 
     await supabase.from("profiles")
       .update({
-        prescriptions: updatedRxList,
-        medications: updatedMedications,
+        prescriptions:         updatedRxList,
+        medications:           updatedMedications,
         next_appointment_date: nextApptDate,
-        doctor_name: latestWithDoctor?.doctor_name || null,
-        clinic_name: latestWithDoctor?.clinic_name || null,
+        doctor_name:           latestWithDoctor?.doctor_name || null,
+        clinic_name:           latestWithDoctor?.clinic_name || null,
       })
       .eq("id", user.id);
 
-    // 7. Delete the file from storage if we have a URL
+    // 8. Delete the file from storage if we have a URL
     if (rx.file_url) {
       try {
         // Extract bucket + path from the public URL
@@ -169,7 +196,7 @@ export default async function handler(req, res) {
       } catch { /* Storage deletion best-effort */ }
     }
 
-    // 8. Bust the health_insights cache — the next GET to /api/health-context
+    // 9. Bust the health_insights cache — the next GET to /api/health-context
     //    will call buildFreshContext and read the already-updated profile.
     await supabase.from("health_insights")
       .update({ updated_at: new Date(0).toISOString() })

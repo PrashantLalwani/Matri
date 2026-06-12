@@ -907,17 +907,6 @@ function App({ profile: initialProfile }) {
             }}
             onUploadComplete={async (result) => {
               forceRefresh();
-              if (result?.follow_up_date) {
-                try {
-                  const { data: { user } } = await supabase.auth.getUser();
-                  if (user) {
-                    await supabase.from("profiles")
-                      .update({ next_appointment_date: result.follow_up_date })
-                      .eq("id", user.id);
-                    setProfileData(p => ({...p, next_appointment_date: result.follow_up_date}));
-                  }
-                } catch {}
-              }
               try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
@@ -1141,19 +1130,6 @@ function App({ profile: initialProfile }) {
           onComplete={async (result) => {
             forceRefresh();
             setRxUploadOpen(false);
-            // If prescription has a follow-up date, save it as next appointment
-            if (result?.follow_up_date) {
-              try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                  await supabase.from("profiles")
-                    .update({ next_appointment_date: result.follow_up_date })
-                    .eq("id", user.id);
-                  setProfileData(p => ({...p, next_appointment_date: result.follow_up_date}));
-                }
-              } catch {}
-            }
-            // Re-fetch profile to pick up new prescriptions list saved by infer.js
             try {
               const { data: { user } } = await supabase.auth.getUser();
               if (user) {

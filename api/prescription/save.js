@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { normalizeMedicineName, medicineNamesMatch } from "../lib/medicineMatch.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -75,7 +76,7 @@ export default async function handler(req, res) {
 
     // Fetch existing records for deduplication
     const [medsRes, testsRes, scansRes] = await Promise.all([
-      supabase.from("medicines").select("id, name").eq("user_id", user.id),
+      supabase.from("medicines").select("id, name, active, ran_out").eq("user_id", user.id),
       supabase.from("test_orders").select("id, test_name").eq("user_id", user.id).eq("status", "ordered"),
       supabase.from("scans").select("id, scan_type, scan_date").eq("user_id", user.id),
     ]);
@@ -83,7 +84,8 @@ export default async function handler(req, res) {
     const existingTestRows = testsRes.data || [];
     const existingScanRows = scansRes.data || [];
 
-    const existingMedMap   = new Map(existingMedRows.map(m => [m.name?.toLowerCase().trim() || "", m.id]));
+    // Keyed by normalized name for precise matching
+    const existingMedMap   = new Map(existingMedRows.map(m => [normalizeMedicineName(m.name), m]));
     const existingTestNames = new Set(existingTestRows.map(t => t.test_name?.toLowerCase().trim() || ""));
 
     // Medicines: insert new, update existing
@@ -91,11 +93,11 @@ export default async function handler(req, res) {
     const medsToUpdate = [];
     const seenMedNames = new Set();
     for (const m of medicines) {
-      const key = m.name?.toLowerCase().trim() || "";
+      const key = normalizeMedicineName(m.name);
       if (!key || seenMedNames.has(key)) continue;
       seenMedNames.add(key);
-      const existingId = existingMedMap.get(key);
-      if (existingId) medsToUpdate.push({ id: existingId, m });
+      const existing = existingMedMap.get(key);
+      if (existing) medsToUpdate.push({ existing, m });
       else medsToInsert.push(m);
     }
     if (medsToInsert.length && rx?.id) {
@@ -114,17 +116,18 @@ export default async function handler(req, res) {
         }))
       );
     }
-    for (const { id, m } of medsToUpdate) {
+    for (const { existing, m } of medsToUpdate) {
       await supabase.from("medicines").update({
         prescription_id: rx?.id,
-        dosage:         m.dosage,
-        frequency:      m.frequency,
-        duration:       m.duration,
-        notes:          m.notes,
-        active:         true,
-        low_confidence: m.low_confidence || false,
-        start_date:     parsed.prescribed_date || null,
-      }).eq("id", id);
+        dosage:          m.dosage,
+        frequency:       m.frequency,
+        duration:        m.duration,
+        notes:           m.notes,
+        low_confidence:  m.low_confidence || false,
+        start_date:      parsed.prescribed_date || null,
+        // U6: only reactivate if medicine wasn't already inactive — preserves paused/ran_out state
+        ...(existing.active === false ? {} : { active: true }),
+      }).eq("id", existing.id);
     }
 
     // Test orders: insert only new ones
@@ -185,22 +188,25 @@ export default async function handler(req, res) {
 
     const existingProfileMeds = profile?.medications || [];
     const profileMedIndexMap  = new Map(
-      existingProfileMeds.map((m, i) => [(typeof m === "object" ? m.name : m)?.toLowerCase?.().trim() || "", i])
+      existingProfileMeds.map((m, i) => [normalizeMedicineName(typeof m === "object" ? m.name : m), i])
     );
     const updatedMedications = [...existingProfileMeds];
     for (const m of medicines) {
-      const key = m.name?.toLowerCase().trim() || "";
+      const key = normalizeMedicineName(m.name);
       if (!key) continue;
       const idx = profileMedIndexMap.get(key);
       if (idx !== undefined) {
+        const existing = updatedMedications[idx];
         updatedMedications[idx] = {
-          ...updatedMedications[idx],
-          dosage:          m.dosage          || updatedMedications[idx]?.dosage          || "",
-          frequency:       m.frequency       || updatedMedications[idx]?.frequency       || "",
-          duration:        m.duration        || updatedMedications[idx]?.duration        || "",
-          notes:           m.notes           || updatedMedications[idx]?.notes           || "",
-          prescription_id: rx?.id            ?? updatedMedications[idx]?.prescription_id,
-          active:          true,
+          ...existing,
+          dosage:          m.dosage          || existing?.dosage          || "",
+          frequency:       m.frequency       || existing?.frequency       || "",
+          duration:        m.duration        || existing?.duration        || "",
+          notes:           m.notes           || existing?.notes           || "",
+          prescription_id: rx?.id            ?? existing?.prescription_id,
+          low_confidence:  m.low_confidence  || false,
+          // U6: preserve paused state — don't reactivate a medicine the user deliberately paused
+          ...(existing?.paused ? {} : { active: true }),
         };
       } else {
         updatedMedications.push({
@@ -221,8 +227,9 @@ export default async function handler(req, res) {
     await supabase.from("profiles").update({
       prescriptions: [...existingRxList, newRxEntry],
       medications:   updatedMedications,
-      ...(shouldUpdateDoctor && extractedDoctor  ? { doctor_name: extractedDoctor }    : {}),
-      ...(shouldUpdateDoctor && parsed.clinic_name ? { clinic_name: parsed.clinic_name } : {}),
+      ...(shouldUpdateDoctor && extractedDoctor    ? { doctor_name: extractedDoctor }              : {}),
+      ...(shouldUpdateDoctor && parsed.clinic_name ? { clinic_name: parsed.clinic_name }           : {}),
+      ...(shouldUpdateDoctor && parsed.follow_up_date ? { next_appointment_date: parsed.follow_up_date } : {}),
     }).eq("id", user.id);
 
     return res.status(200).json({ success: true, prescription_id: rx?.id });

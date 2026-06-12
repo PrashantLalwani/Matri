@@ -1314,11 +1314,17 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
   const handleMedRestock = async (med) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    if (med.id) await supabase.from("medicines").update({ ran_out: false, active: true }).eq("id", med.id).eq("user_id", user.id);
+    // Restock clears ran_out but does not override a deliberate pause
+    const wasPaused = med.paused === true;
+    if (med.id) await supabase.from("medicines").update({
+      ran_out: false,
+      ...(wasPaused ? {} : { active: true }),
+    }).eq("id", med.id).eq("user_id", user.id);
     const { data: prof } = await supabase.from("profiles").select("medications").eq("id", user.id).single();
     const updated = (prof?.medications || []).map(m => {
       const pm = typeof m === "object" ? m : {};
-      return pm.name?.toLowerCase() === med.name?.toLowerCase() ? { ...pm, ran_out: false, active: true } : m;
+      if (pm.name?.toLowerCase() !== med.name?.toLowerCase()) return m;
+      return { ...pm, ran_out: false, ...(pm.paused ? {} : { active: true }) };
     });
     await supabase.from("profiles").update({ medications: updated }).eq("id", user.id);
     onUploadComplete?.();

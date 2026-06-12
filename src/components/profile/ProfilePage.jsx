@@ -95,29 +95,9 @@ export default function ProfilePage({ profile, onClose, onProfileUpdate, weekPro
 
   const openEdit = (section, data) => { setEditData(data); setEditSection(section); requestAnimationFrame(() => setEditVis(true)); };
 
-  // Special handler for doctor section — syncs next_appointment_date from latest prescription follow_up_date
-  const openDoctorEdit = async () => {
+  const openDoctorEdit = () => {
     const hasExisting = !!(p.doctor_name || p.clinic_name);
     const baseData = {doctor_name:p.doctor_name||"",clinic_name:p.clinic_name||"",clinic_city:p.clinic_city||"",next_appointment_date:p.next_appointment_date||"",visit_notes:p.visit_notes||"",prescriptions:p.prescriptions||[],_editingDetails:!hasExisting};
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: rxRows } = await supabase
-          .from("prescriptions")
-          .select("follow_up_date")
-          .eq("user_id", user.id)
-          .not("follow_up_date", "is", null)
-          .order("follow_up_date", { ascending: false })
-          .limit(1);
-        if (rxRows?.[0]?.follow_up_date) {
-          const latestFollowUp = rxRows[0].follow_up_date;
-          // Always prefer prescription follow_up_date — authoritative source
-          baseData.next_appointment_date = latestFollowUp;
-          await supabase.from("profiles").update({ next_appointment_date: latestFollowUp }).eq("id", user.id);
-          onProfileUpdate && onProfileUpdate({...p, next_appointment_date: latestFollowUp});
-        }
-      }
-    } catch {}
     openEdit("doctor", baseData);
   };
   const closeEdit = () => { setEditVis(false); setTimeout(() => setEditSection(null), 350); };
