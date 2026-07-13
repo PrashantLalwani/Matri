@@ -1716,7 +1716,12 @@ export default function HealthTab({ profileData, healthContext, onOpenProfile, o
           onClose={() => setShowScanInsights(false)}
           onUpload={() => {
             const pending = scans.find(s => s.status !== "completed");
-            if (pending) handleScanAction(pending, "upload");
+            if (pending) {
+              handleScanAction(pending, "upload");
+            } else {
+              // All scans done — open in new-scan mode (infer.js will insert)
+              setActiveScanUpload({ type: "Scan", scan_type: "other" });
+            }
           }}
         />
       )}

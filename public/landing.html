@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matri — Your Pregnancy Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0c0810;
+      --surface:   #18101f;
+      --card:      #1e1528;
+      --border:    rgba(180,140,210,0.12);
+      --plum-deep: #321e3c;
+      --accent:    #c89ab8;
+      --accent-soft: rgba(200,154,184,0.15);
+      --text:      #f0eaf5;
+      --muted:     #9b80b0;
+      --faint:     #5a4568;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      background: rgba(12,8,16,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'Lora', serif;
+      font-style: italic;
+      font-size: 22px;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: -0.3px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: var(--accent-soft);
+      color: var(--accent) !important;
+      border: 1px solid rgba(200,154,184,0.3);
+      border-radius: 20px;
+      padding: 7px 18px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 60px;
+      background: radial-gradient(ellipse 70% 60% at 50% 0%, #321e3c 0%, var(--bg) 70%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle 400px at 30% 60%, rgba(200,154,184,0.04) 0%, transparent 70%),
+                  radial-gradient(circle 300px at 75% 30%, rgba(150,100,200,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(200,154,184,0.1);
+      border: 1px solid rgba(200,154,184,0.25);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      color: var(--accent);
+      margin-bottom: 36px;
+      letter-spacing: 0.3px;
+    }
+
+    .hero-badge span { font-size: 15px; }
+
+    .hero h1 {
+      font-family: 'Lora', serif;
+      font-style: italic;
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      max-width: 700px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    .hero-sub {
+      font-size: clamp(15px, 2vw, 18px);
+      color: var(--muted);
+      max-width: 480px;
+      line-height: 1.7;
+      margin-bottom: 44px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--accent);
+      color: #1a0d24;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 14px 28px;
+      border-radius: 14px;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      text-decoration: none;
+      padding: 14px 20px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(180,140,210,0.25); }
+
+    .hero-note {
+      margin-top: 22px;
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    /* ── SECTION SHARED ── */
+    section {
+      padding: 80px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: 'Lora', serif;
+      font-style: italic;
+      font-size: clamp(26px, 4vw, 38px);
+      font-weight: 400;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 500px;
+      line-height: 1.7;
+    }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 48px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(200,154,184,0.25);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--accent-soft);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 18px;
+    }
+
+    .feature-card h3 {
+      font-family: 'Lora', serif;
+      font-style: italic;
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ── CLOSING ── */
+    .closing {
+      text-align: center;
+      padding: 80px 24px 60px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .closing .section-title { margin-bottom: 20px; }
+    .closing .section-sub { margin: 0 auto 40px; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: gap;
+      gap: 16px;
+    }
+
+    .footer-logo {
+      font-family: 'Lora', serif;
+      font-style: italic;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--faint);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: var(--muted); }
+
+    .footer-copy {
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      .nav-links { gap: 16px; }
+      footer { flex-direction: column; align-items: flex-start; }
+      .features-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="#" class="nav-logo">matri</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/tos">Terms</a>
+      <a href="https://matriapp.in" class="nav-cta">Open app</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+
+    <h1>Your pregnancy,<br /><em>understood.</em></h1>
+    <p class="hero-sub">
+      Matri keeps everything in one place — your documents, your memories, your questions — so you can focus on the journey, not the paperwork.
+    </p>
+    <div class="hero-actions">
+      <a href="https://matriapp.in" class="btn-primary">
+        Open Matri →
+      </a>
+      <a href="#features" class="btn-ghost">
+        See what's inside
+      </a>
+    </div>
+    <p class="hero-note">Free to use &nbsp;·&nbsp; Built for India</p>
+  </div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <p class="section-label">What Matri does</p>
+    <h2 class="section-title">A companion that keeps up with you.</h2>
+    <p class="section-sub">Not a checklist app. Not a calendar. Matri remembers your context so every conversation picks up right where you left off.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📄</div>
+        <h3>All your documents, organised</h3>
+        <p>Upload a photo of any document and Matri files it away neatly. Your notes, appointments, and papers — always findable, never lost in a WhatsApp thread.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✨</div>
+        <h3>A companion that knows your story</h3>
+        <p>Matri uses your context to personalise every response — your week, your situation, your concerns. Like talking to someone who actually knows you.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📖</div>
+        <h3>Builds your baby book</h3>
+        <p>Log how you're feeling, add photos, capture little moments. Matri quietly weaves them into a beautiful memory book you'll want to keep forever.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- CLOSING CTA -->
+  <div class="closing">
+    <p class="section-label">Ready?</p>
+    <h2 class="section-title">The companion you deserve, right from week one.</h2>
+    <p class="section-sub">Download Matri and let it handle the details — so you can just be present.</p>
+    <a href="https://matriapp.in" class="btn-primary">
+      Open Matri →
+    </a>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-logo">matri</span>
+    <div class="footer-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/tos">Terms of Service</a>
+      <a href="mailto:prashantlalwani100@gmail.com">Contact</a>
+    </div>
+    <span class="footer-copy">© 2025 Matri. All rights reserved.</span>
+  </footer>
+
+</body>
+</html>

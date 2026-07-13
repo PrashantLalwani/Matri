@@ -9,49 +9,66 @@ const DIET_OPTIONS = [
 ];
 
 const STEP_META = [
-  { kicker:"Welcome to Matri",    em:"call you?" },
   { kicker:"Your pregnancy",      em:"due date?" },
+  { kicker:"Welcome to Matri",    em:"call you?" },
   { kicker:"One last thing",      em:"preference?" },
 ];
 
 export default function OnboardingFlow({ user, onComplete }) {
   const [step,    setStep]    = useState(0);
-  const [name,    setName]    = useState("");
+  const [name,    setName]    = useState(user.user_metadata?.full_name || user.user_metadata?.name || "");
   const [dueDate, setDueDate] = useState("");
   const [weekNum, setWeekNum] = useState("");
   const [diet,    setDiet]    = useState(null);
   const [saving,  setSaving]  = useState(false);
 
+  const today = new Date().toISOString().split("T")[0];
+  const dueDateInPast = dueDate && dueDate < today;
+
   const canNext = [
-    name.trim().length > 0,
-    !!(dueDate || weekNum),
+    !!(dueDate || weekNum) && !dueDateInPast,
+    true,
     diet !== null,
   ][step];
+
+  const computeDue = () => {
+    if (dueDate) return dueDate;
+    if (weekNum) {
+      const d = new Date();
+      d.setDate(d.getDate() + (40 - parseInt(weekNum)) * 7);
+      return d.toISOString().split("T")[0];
+    }
+    return null;
+  };
+
+  const resolvedName = () => name.trim() || user.user_metadata?.full_name || user.user_metadata?.name || "there";
 
   const next = async () => {
     if (step < 2) { setStep(s => s + 1); return; }
     setSaving(true);
-    let due = dueDate || null;
-    if (!due && weekNum) {
-      const d = new Date();
-      d.setDate(d.getDate() + (40 - parseInt(weekNum)) * 7);
-      due = d.toISOString().split("T")[0];
-    }
+    const due = computeDue();
+    const finalName = resolvedName();
     await supabase.from("profiles").upsert({
-      id: user.id, name: name.trim(), due_date: due,
+      id: user.id, name: finalName, due_date: due,
       diet_type: diet, onboarding_complete: true,
     });
     setSaving(false);
-    onComplete({ name: name.trim(), due_date: due, diet_type: diet });
+    onComplete({ name: finalName, due_date: due, diet_type: diet });
   };
 
   const skip = async () => {
+    setSaving(true);
+    const due = computeDue();
+    const finalName = resolvedName();
     await supabase.from("profiles").upsert({
       id: user.id,
-      name: name.trim() || user.user_metadata?.full_name || "there",
+      name: finalName,
+      due_date: due,
+      diet_type: diet,
       onboarding_complete: true,
     });
-    onComplete({ name: name.trim() || user.user_metadata?.full_name || "there" });
+    setSaving(false);
+    onComplete({ name: finalName, due_date: due, diet_type: diet });
   };
 
   const inp = {
@@ -89,14 +106,14 @@ export default function OnboardingFlow({ user, onComplete }) {
         {/* Question */}
         {step === 0 && (
           <div className="ob-q" style={{color:"#fff",fontSize:36,marginBottom:8}}>
-            What should we<br/>
-            <em style={{color:"#e8b8a8"}}>call you?</em>
+            When is your<br/>
+            <em style={{color:"#e8b8a8"}}>due date?</em>
           </div>
         )}
         {step === 1 && (
           <div className="ob-q" style={{color:"#fff",fontSize:36,marginBottom:8}}>
-            When is your<br/>
-            <em style={{color:"#e8b8a8"}}>due date?</em>
+            What should we<br/>
+            <em style={{color:"#e8b8a8"}}>call you?</em>
           </div>
         )}
         {step === 2 && (
@@ -109,14 +126,46 @@ export default function OnboardingFlow({ user, onComplete }) {
         {/* Hint */}
         <div className="ob-hint" style={{color:"rgba(255,255,255,0.42)",marginBottom:40}}>
           {[
-            "Pregnancy feels more personal when it feels like yours.",
             "Or tell us your current week — we'll work out the rest.",
+            "Pregnancy feels more personal when it feels like yours.",
             "Helps us personalise meals and nutrition tips.",
           ][step]}
         </div>
 
-        {/* Step 0 — Name */}
+        {/* Step 0 — Due date */}
         {step === 0 && (
+          <>
+            <div className="ob-date-row">
+              <input
+                type="date"
+                className="ob-date-input"
+                value={dueDate}
+                min={today}
+                autoFocus
+                onChange={e => { setDueDate(e.target.value); if (e.target.value) setWeekNum(""); }}
+                style={{...inp, padding:"13px 14px", flex:1, fontSize:15, ...(dueDateInPast ? {borderColor:"rgba(232,120,120,0.6)"} : {})}}
+              />
+              <span className="ob-or" style={{color:"rgba(255,255,255,0.3)"}}>or</span>
+              <input
+                type="number"
+                min={4} max={42}
+                className="ob-week-input"
+                placeholder="Week"
+                value={weekNum}
+                onChange={e => { setWeekNum(e.target.value); if (e.target.value) setDueDate(""); }}
+                style={{...inp, padding:"13px 12px", width:78, textAlign:"center", fontSize:15}}
+              />
+            </div>
+            {dueDateInPast && (
+              <div style={{color:"rgba(232,120,120,0.9)", fontSize:13, marginTop:10}}>
+                That date's in the past — pick your actual due date.
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Step 1 — Name */}
+        {step === 1 && (
           <input
             className="ob-input"
             placeholder="Your name…"
@@ -126,29 +175,6 @@ export default function OnboardingFlow({ user, onComplete }) {
             onKeyDown={e => e.key === "Enter" && canNext && next()}
             style={{...inp, padding:"14px 16px", fontSize:22, fontFamily:"'Cormorant Garamond',serif"}}
           />
-        )}
-
-        {/* Step 1 — Due date */}
-        {step === 1 && (
-          <div className="ob-date-row">
-            <input
-              type="date"
-              className="ob-date-input"
-              value={dueDate}
-              onChange={e => { setDueDate(e.target.value); if (e.target.value) setWeekNum(""); }}
-              style={{...inp, padding:"13px 14px", flex:1, fontSize:15}}
-            />
-            <span className="ob-or" style={{color:"rgba(255,255,255,0.3)"}}>or</span>
-            <input
-              type="number"
-              min={4} max={42}
-              className="ob-week-input"
-              placeholder="Week"
-              value={weekNum}
-              onChange={e => { setWeekNum(e.target.value); if (e.target.value) setDueDate(""); }}
-              style={{...inp, padding:"13px 12px", width:78, textAlign:"center", fontSize:15}}
-            />
-          </div>
         )}
 
         {/* Step 2 — Diet */}
@@ -183,13 +209,15 @@ export default function OnboardingFlow({ user, onComplete }) {
         >
           {saving ? "Saving…" : step === 2 ? "Let's go →" : "Next →"}
         </button>
-        <div
-          className="ob-skip"
-          onClick={skip}
-          style={{color:"rgba(255,255,255,0.3)", marginTop:14}}
-        >
-          Skip for now
-        </div>
+        {step > 0 && (
+          <div
+            className="ob-skip"
+            onClick={skip}
+            style={{color:"rgba(255,255,255,0.3)", marginTop:14}}
+          >
+            Skip for now
+          </div>
+        )}
       </div>
 
     </div>
