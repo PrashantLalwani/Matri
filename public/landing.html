@@ -1,10 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>document.documentElement.classList.add('js');</script>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Matri — Your Pregnancy Companion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Matri — The Pregnancy AI That Remembers You</title>
+  <meta name="description" content="Matri remembers your pregnancy week, prescriptions, scans and history — so you never explain yourself twice. Free, private, and built only for pregnancy." />
+  <link rel="canonical" href="https://matriapp.in/landing" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Matri" />
+  <meta property="og:title" content="Matri — The Pregnancy AI That Remembers You" />
+  <meta property="og:description" content="Your week. Your prescriptions. Your scans. Your last conversation. Matri remembers all of it." />
+  <meta property="og:image" content="https://matriapp.in/images/hero-chat-mockup.jpeg" />
+  <meta property="og:url" content="https://matriapp.in/landing" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Matri — The Pregnancy AI That Remembers You" />
+  <meta name="twitter:description" content="Your week. Your prescriptions. Your scans. Your last conversation. Matri remembers all of it." />
+  <meta name="twitter:image" content="https://matriapp.in/images/hero-chat-mockup.jpeg" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,16 +30,19 @@
       --bg:        #0c0810;
       --surface:   #18101f;
       --card:      #1e1528;
-      --border:    rgba(180,140,210,0.12);
-      --plum-deep: #321e3c;
+      --border:    rgba(180,140,210,0.14);
+      --plum-deep: #2c1a35;
       --accent:    #c89ab8;
-      --accent-soft: rgba(200,154,184,0.15);
+      --accent-soft: rgba(200,154,184,0.12);
       --text:      #f0eaf5;
       --muted:     #9b80b0;
       --faint:     #5a4568;
     }
 
     html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
 
     body {
       background: var(--bg);
@@ -33,6 +53,31 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      background: var(--accent);
+      color: #1a0d24;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 10px 18px;
+      border-radius: 0 0 10px 0;
+      z-index: 1000;
+      text-decoration: none;
+    }
+    .skip-link:focus { left: 0; }
+
+    /* Lora italic is the one display treatment used for every headline,
+       brand mark and card label on the page. */
+    .nav-logo, .footer-logo, .hero h1, .stage h2 {
+      font-family: 'Lora', serif;
+      font-style: italic;
+      font-weight: 400;
+    }
+
     /* ── NAV ── */
     nav {
       position: sticky;
@@ -41,250 +86,337 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 18px 32px;
-      background: rgba(12,8,16,0.85);
-      backdrop-filter: blur(12px);
+      padding: 20px 32px;
+      background: var(--bg);
       border-bottom: 1px solid var(--border);
     }
 
     .nav-logo {
-      font-family: 'Lora', serif;
-      font-style: italic;
-      font-size: 22px;
+      font-size: 21px;
       color: var(--accent);
       text-decoration: none;
       letter-spacing: -0.3px;
     }
 
-    .nav-links {
-      display: flex;
-      gap: 28px;
-      align-items: center;
-    }
-
-    .nav-links a {
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: var(--text); }
-
     .nav-cta {
+      display: inline-flex;
+      align-items: center;
       background: var(--accent-soft);
-      color: var(--accent) !important;
+      color: var(--accent);
       border: 1px solid rgba(200,154,184,0.3);
       border-radius: 20px;
-      padding: 7px 18px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .nav-cta:hover { background: rgba(200,154,184,0.2); }
+
+    /* ── LAYOUT / SHARED ── */
+    main { display: block; }
+
+    section { scroll-margin-top: 80px; }
+
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* Centred headline + one-line copy block used to open every section.
+       The visual that follows is the section's one dominant idea. */
+    .stage {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 130px 24px 0;
+      text-align: center;
+    }
+
+    .stage-eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+
+    .stage h2 {
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1.2;
+      color: var(--text);
+      text-wrap: balance;
+      margin-bottom: 18px;
+    }
+
+    .stage p {
+      font-size: clamp(16px, 2vw, 19px);
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 46ch;
+      margin: 0 auto;
+    }
+
+    .stage-visual {
+      display: flex;
+      justify-content: center;
+      padding: 64px 24px 130px;
     }
 
     /* ── HERO ── */
     .hero {
-      min-height: 92vh;
+      min-height: 96vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 80px 24px 60px;
-      background: radial-gradient(ellipse 70% 60% at 50% 0%, #321e3c 0%, var(--bg) 70%);
-      position: relative;
-      overflow: hidden;
+      padding: 64px 24px;
+      background: linear-gradient(180deg, var(--plum-deep) 0%, var(--bg) 60%);
     }
-
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle 400px at 30% 60%, rgba(200,154,184,0.04) 0%, transparent 70%),
-                  radial-gradient(circle 300px at 75% 30%, rgba(150,100,200,0.05) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(200,154,184,0.1);
-      border: 1px solid rgba(200,154,184,0.25);
-      border-radius: 20px;
-      padding: 6px 16px;
-      font-size: 13px;
-      color: var(--accent);
-      margin-bottom: 36px;
-      letter-spacing: 0.3px;
-    }
-
-    .hero-badge span { font-size: 15px; }
 
     .hero h1 {
-      font-family: 'Lora', serif;
-      font-style: italic;
-      font-size: clamp(36px, 6vw, 64px);
-      font-weight: 400;
-      line-height: 1.15;
+      font-size: clamp(38px, 7vw, 76px);
+      line-height: 1.12;
       letter-spacing: -0.5px;
       color: var(--text);
-      max-width: 700px;
+      max-width: 760px;
+      text-wrap: balance;
       margin-bottom: 20px;
     }
 
-    .hero h1 em {
-      color: var(--accent);
-      font-style: italic;
-    }
+    .hero h1 em { font-style: italic; color: var(--accent); }
 
     .hero-sub {
-      font-size: clamp(15px, 2vw, 18px);
+      font-size: clamp(17px, 2.2vw, 21px);
       color: var(--muted);
-      max-width: 480px;
-      line-height: 1.7;
-      margin-bottom: 44px;
-    }
-
-    .hero-actions {
-      display: flex;
-      gap: 14px;
-      align-items: center;
-      flex-wrap: wrap;
-      justify-content: center;
+      max-width: 440px;
+      line-height: 1.6;
+      margin-bottom: 36px;
     }
 
     .btn-primary {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       background: var(--accent);
       color: #1a0d24;
       font-weight: 600;
-      font-size: 15px;
-      padding: 14px 28px;
+      font-size: 16px;
+      padding: 15px 30px;
       border-radius: 14px;
       text-decoration: none;
       transition: opacity 0.2s, transform 0.15s;
     }
     .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
 
-    .btn-ghost {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 14px;
-      text-decoration: none;
-      padding: 14px 20px;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      transition: color 0.2s, border-color 0.2s;
-    }
-    .btn-ghost:hover { color: var(--text); border-color: rgba(180,140,210,0.25); }
+    .hero-mockup { margin-top: 56px; display: flex; justify-content: center; }
 
-    .hero-note {
-      margin-top: 22px;
-      font-size: 12px;
-      color: var(--faint);
+    /* ── DEVICE MOCKUP ── */
+    .phone-frame {
+      width: 300px;
+      max-width: 78vw;
+      aspect-ratio: 9 / 18.5;
+      border: 7px solid var(--card);
+      border-radius: 40px;
+      background: var(--surface);
+      box-shadow: 0 30px 60px -24px rgba(0,0,0,0.55), 0 0 0 1px var(--border);
+      overflow: hidden;
+      display: flex;
     }
 
-    /* ── SECTION SHARED ── */
-    section {
-      padding: 80px 24px;
-      max-width: 1100px;
-      margin: 0 auto;
+    .device-screen {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+      padding: 22px 18px;
     }
 
-    .section-label {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 12px;
+    /* Chat moment (hero + "Ask naturally") */
+    .chat-bubble {
+      max-width: 86%;
+      padding: 11px 15px;
+      border-radius: 16px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      text-align: left;
     }
-
-    .section-title {
-      font-family: 'Lora', serif;
-      font-style: italic;
-      font-size: clamp(26px, 4vw, 38px);
-      font-weight: 400;
-      line-height: 1.2;
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--accent-soft);
       color: var(--text);
-      margin-bottom: 16px;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-bubble.ai {
+      align-self: flex-start;
+      background: var(--card);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
+      opacity: 1;
     }
 
-    .section-sub {
-      font-size: 16px;
-      color: var(--muted);
-      max-width: 500px;
-      line-height: 1.7;
+    .chat-typing {
+      display: none;
+      align-self: flex-start;
+      align-items: center;
+      gap: 4px;
+      background: var(--card);
+      padding: 12px 14px;
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+    }
+    .chat-typing span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--muted);
     }
 
-    /* ── FEATURES ── */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 16px;
-      margin-top: 48px;
+    /* Prescription-scan moment */
+    .scan-mock { gap: 12px; }
+    .scan-photo {
+      position: relative;
+      height: 108px;
+      border-radius: 12px;
+      overflow: hidden;
+      background:
+        repeating-linear-gradient(var(--border) 0 2px, transparent 2px 18px),
+        var(--card);
+      border: 1px solid var(--border);
     }
-
-    .feature-card {
+    .scan-line {
+      position: absolute;
+      left: 0; right: 0; top: 0;
+      height: 2px;
+      background: var(--accent);
+      box-shadow: 0 0 10px 2px var(--accent-soft);
+    }
+    .med-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 28px;
-      transition: border-color 0.2s, transform 0.2s;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text);
     }
-    .feature-card:hover {
-      border-color: rgba(200,154,184,0.25);
-      transform: translateY(-2px);
+    .med-card span { color: var(--muted); font-size: 12px; }
+
+    /* ── DOCUMENT MOMENT (no phone frame — a wider tabletop of cards) ── */
+    .doc-mock {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+      max-width: 720px;
+    }
+    .doc-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 160px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 22px;
+    }
+    .doc-card-label { font-size: 14.5px; color: var(--text); font-weight: 500; }
+    .doc-card-date { font-size: 12.5px; color: var(--muted); }
+
+    /* ── BABY BOOK MOMENT (soft photo collage) ── */
+    .photo-collage {
+      position: relative;
+      width: 100%;
+      max-width: 360px;
+      height: 220px;
+    }
+    .photo-card {
+      position: absolute;
+      width: 150px;
+      height: 190px;
+      border-radius: 18px;
+      box-shadow: 0 20px 40px -18px rgba(0,0,0,0.5);
+    }
+    .photo-card.p1 {
+      left: 10px; top: 8px;
+      background: linear-gradient(150deg, var(--card), var(--plum-deep));
+      transform: rotate(-7deg);
+    }
+    .photo-card.p2 {
+      left: 105px; top: 20px;
+      background: linear-gradient(150deg, var(--accent-soft), var(--card));
+      transform: rotate(4deg);
+      z-index: 1;
+    }
+    .photo-card.p3 {
+      left: 60px; top: 0;
+      background: linear-gradient(150deg, var(--plum-deep), var(--surface));
+      transform: rotate(-2deg);
+      z-index: 2;
     }
 
-    .feature-icon {
-      width: 48px;
-      height: 48px;
-      background: var(--accent-soft);
-      border-radius: 14px;
+    /* ── WHY MATRI (comparison) ── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      max-width: 560px;
+      margin: 0 auto;
+      gap: 40px;
+    }
+    .compare-col:first-child { border-right: 1px solid var(--border); padding-right: 40px; }
+    .compare-head {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      margin-bottom: 20px;
+      color: var(--faint);
+    }
+    .compare-col.matri .compare-head { color: var(--accent); }
+    .compare-list { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+    .compare-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: var(--muted);
+      text-align: left;
+    }
+    .compare-col.matri .compare-list li { color: var(--text); }
+    .compare-list .x, .compare-list .check { flex-shrink: 0; font-size: 13px; line-height: 1.6; }
+    .compare-list .x { color: var(--faint); }
+    .compare-list .check { color: var(--accent); }
+
+    /* ── TRUST ── */
+    .trust-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      max-width: 720px;
+    }
+    .trust-chip {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      margin-bottom: 18px;
-    }
-
-    .feature-card h3 {
-      font-family: 'Lora', serif;
-      font-style: italic;
-      font-size: 20px;
-      font-weight: 400;
-      color: var(--text);
-      margin-bottom: 10px;
-    }
-
-    .feature-card p {
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 40px;
+      padding: 12px 20px;
       font-size: 14px;
-      color: var(--muted);
-      line-height: 1.7;
+      color: var(--text);
     }
-
-    /* ── DIVIDER ── */
-    .divider {
-      width: 100%;
-      height: 1px;
-      background: var(--border);
-      max-width: 1100px;
-      margin: 0 auto;
-    }
+    .trust-chip-icon { font-size: 16px; }
 
     /* ── CLOSING ── */
-    .closing {
-      text-align: center;
-      padding: 80px 24px 60px;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .closing .section-title { margin-bottom: 20px; }
-    .closing .section-sub { margin: 0 auto 40px; }
+    .closing { padding-bottom: 140px; }
+    .closing .closing-cta { padding-top: 40px; padding-bottom: 0; }
 
     /* ── FOOTER ── */
     footer {
@@ -293,112 +425,274 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: gap;
+      flex-wrap: wrap;
       gap: 16px;
     }
-
-    .footer-logo {
-      font-family: 'Lora', serif;
-      font-style: italic;
-      font-size: 18px;
-      color: var(--accent);
-    }
-
-    .footer-links {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: var(--faint);
-      text-decoration: none;
-      transition: color 0.2s;
-    }
+    .footer-logo { font-size: 18px; color: var(--accent); }
+    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
+    .footer-links a { font-size: 13px; color: var(--faint); text-decoration: none; transition: color 0.2s; }
     .footer-links a:hover { color: var(--muted); }
+    .footer-copy { font-size: 12px; color: var(--faint); }
 
-    .footer-copy {
-      font-size: 12px;
-      color: var(--faint);
+    /* ── STICKY MOBILE CTA ── */
+    .sticky-cta { display: none; }
+
+    /* ── SCROLL-REVEAL + AMBIENT MOTION ──
+       Baseline (no JS, or motion reduced): everything is simply visible.
+       Only when JS confirms *and* the visitor hasn't asked for reduced
+       motion do we add the hidden pre-state and the reveal/typing/stagger
+       choreography below. This keeps the page fully correct with
+       JavaScript disabled and fully still for prefers-reduced-motion. */
+    @media (prefers-reduced-motion: no-preference) {
+      .js .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s ease; }
+      .js .reveal.in-view { opacity: 1; transform: none; }
+
+      .js .chat-mock .chat-typing { display: flex; }
+      .js .chat-mock .chat-bubble.ai { opacity: 0; transform: translateY(6px); }
+      .js .reveal.in-view .chat-typing { animation: fadeOutStep 0.4s ease forwards; animation-delay: 1.5s; }
+      .js .reveal.in-view .chat-bubble.ai { animation: fadeInStep 0.5s ease forwards; animation-delay: 1.8s; }
+
+      .chat-typing span { animation: dotPulse 1.2s infinite ease-in-out; }
+      .chat-typing span:nth-child(2) { animation-delay: 0.15s; }
+      .chat-typing span:nth-child(3) { animation-delay: 0.3s; }
+
+      .js .scan-mock .med-card { opacity: 0; transform: translateY(8px); }
+      .js .reveal.in-view .scan-line { animation: scanSweep 1.3s ease-in-out 2; }
+      .js .reveal.in-view .med-card:nth-child(2) { animation: fadeInStep 0.5s ease forwards; animation-delay: 1.5s; }
+      .js .reveal.in-view .med-card:nth-child(3) { animation: fadeInStep 0.5s ease forwards; animation-delay: 1.9s; }
+      .js .reveal.in-view .med-card:nth-child(4) { animation: fadeInStep 0.5s ease forwards; animation-delay: 2.3s; }
+
+      .js .doc-mock .doc-card { opacity: 0; transform: translateY(8px); }
+      .js .reveal.in-view .doc-card:nth-child(1) { animation: fadeInStep 0.5s ease forwards; animation-delay: 0.1s; }
+      .js .reveal.in-view .doc-card:nth-child(2) { animation: fadeInStep 0.5s ease forwards; animation-delay: 0.35s; }
+      .js .reveal.in-view .doc-card:nth-child(3) { animation: fadeInStep 0.5s ease forwards; animation-delay: 0.6s; }
     }
+
+    @keyframes dotPulse { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+    @keyframes fadeOutStep { to { opacity: 0; } }
+    @keyframes fadeInStep { to { opacity: 1; transform: none; } }
+    @keyframes scanSweep { 0% { top: 0; } 100% { top: 100%; } }
 
     /* ── RESPONSIVE ── */
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       nav { padding: 16px 20px; }
-      .nav-links { gap: 16px; }
-      footer { flex-direction: column; align-items: flex-start; }
-      .features-grid { grid-template-columns: 1fr; }
+      .hero { padding: 48px 20px; min-height: 92vh; }
+      .hero-sub { margin-bottom: 28px; }
+      .phone-frame { width: 220px; }
+
+      .stage { padding: 88px 20px 0; }
+      .stage-visual { padding: 44px 20px 88px; }
+      .closing { padding-bottom: 96px; }
+
+      .compare-grid { grid-template-columns: 1fr; gap: 32px; max-width: 320px; }
+      .compare-col:first-child { border-right: none; padding-right: 0; border-bottom: 1px solid var(--border); padding-bottom: 28px; }
+
+      .doc-mock { gap: 12px; }
+      .doc-card { min-width: 130px; padding: 16px 18px; }
+
+      body { padding-bottom: 74px; }
+
+      .sticky-cta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: fixed;
+        left: 14px;
+        right: 14px;
+        bottom: calc(14px + env(safe-area-inset-bottom));
+        z-index: 200;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 10px 10px 10px 16px;
+        box-shadow: 0 16px 36px -16px rgba(0,0,0,0.6);
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .sticky-cta { transform: translateY(140%); transition: transform 0.25s ease; }
+        .sticky-cta.visible { transform: translateY(0); }
+      }
+      .sticky-cta-icon { width: 22px; height: 22px; flex-shrink: 0; border-radius: 6px; }
+      .sticky-cta .btn-primary { flex-shrink: 0; padding: 9px 16px; font-size: 13px; border-radius: 12px; margin-left: auto; }
     }
   </style>
 </head>
 <body>
 
+  <a href="#main" class="skip-link">Skip to content</a>
+
   <!-- NAV -->
   <nav>
     <a href="#" class="nav-logo">matri</a>
-    <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="/privacy">Privacy</a>
-      <a href="/tos">Terms</a>
-      <a href="https://matriapp.in" class="nav-cta">Open app</a>
-    </div>
+    <a href="https://matriapp.in" class="nav-cta">Get Matri</a>
   </nav>
 
-  <!-- HERO -->
-  <div class="hero">
+  <main id="main" tabindex="-1">
 
-    <h1>Your pregnancy,<br /><em>understood.</em></h1>
-    <p class="hero-sub">
-      Matri keeps everything in one place — your documents, your memories, your questions — so you can focus on the journey, not the paperwork.
-    </p>
-    <div class="hero-actions">
-      <a href="https://matriapp.in" class="btn-primary">
-        Open Matri →
-      </a>
-      <a href="#features" class="btn-ghost">
-        See what's inside
-      </a>
-    </div>
-    <p class="hero-note">Free to use &nbsp;·&nbsp; Built for India</p>
-  </div>
+    <!-- HERO -->
+    <header class="hero">
+      <h1>The pregnancy AI that <em>remembers you.</em></h1>
+      <p class="hero-sub">Ask anything. It already knows where you are.</p>
+      <a href="https://matriapp.in" class="btn-primary">Get Matri free →</a>
 
-  <!-- FEATURES -->
-  <section id="features">
-    <p class="section-label">What Matri does</p>
-    <h2 class="section-title">A companion that keeps up with you.</h2>
-    <p class="section-sub">Not a checklist app. Not a calendar. Matri remembers your context so every conversation picks up right where you left off.</p>
-
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">📄</div>
-        <h3>All your documents, organised</h3>
-        <p>Upload a photo of any document and Matri files it away neatly. Your notes, appointments, and papers — always findable, never lost in a WhatsApp thread.</p>
+      <div class="hero-mockup">
+        <div class="phone-frame">
+          <div
+            class="device-screen chat-mock reveal"
+            role="img"
+            aria-label="Matri chat: the user says her baby hasn't moved much at 23 weeks. Matri reassures her, recalling that she felt the same at week 19 and it passed by evening."
+          >
+            <div class="chat-bubble user" aria-hidden="true">I'm 23 weeks pregnant.<br />Baby hasn't moved much today.</div>
+            <div class="chat-typing" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="chat-bubble ai" aria-hidden="true">Totally normal at 23 weeks — babies often go quiet before a growth spurt. You felt this at week 19 too, and it passed by evening.</div>
+          </div>
+        </div>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon">✨</div>
-        <h3>A companion that knows your story</h3>
-        <p>Matri uses your context to personalise every response — your week, your situation, your concerns. Like talking to someone who actually knows you.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">📖</div>
-        <h3>Builds your baby book</h3>
-        <p>Log how you're feeling, add photos, capture little moments. Matri quietly weaves them into a beautiful memory book you'll want to keep forever.</p>
-      </div>
-    </div>
-  </section>
+    </header>
 
-  <div class="divider"></div>
+    <!-- WHY MATRI -->
+    <section id="compare">
+      <div class="stage">
+        <p class="stage-eyebrow">Why Matri</p>
+        <h2>Not another AI.<br />An AI that remembers your pregnancy.</h2>
+      </div>
+      <div class="stage-visual">
+        <div class="compare-grid">
+          <div class="compare-col">
+            <p class="compare-head">Generic AI</p>
+            <ul class="compare-list">
+              <li><span class="x" aria-hidden="true">✕</span> Doesn't know your reports</li>
+              <li><span class="x" aria-hidden="true">✕</span> Doesn't remember yesterday</li>
+              <li><span class="x" aria-hidden="true">✕</span> Starts over every conversation</li>
+            </ul>
+          </div>
+          <div class="compare-col matri">
+            <p class="compare-head">Matri</p>
+            <ul class="compare-list">
+              <li><span class="check" aria-hidden="true">✓</span> Knows your pregnancy week</li>
+              <li><span class="check" aria-hidden="true">✓</span> Remembers previous conversations</li>
+              <li><span class="check" aria-hidden="true">✓</span> Understands your reports</li>
+              <li><span class="check" aria-hidden="true">✓</span> Tracks medicines</li>
+              <li><span class="check" aria-hidden="true">✓</span> Gets smarter over time</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <!-- CLOSING CTA -->
-  <div class="closing">
-    <p class="section-label">Ready?</p>
-    <h2 class="section-title">The companion you deserve, right from week one.</h2>
-    <p class="section-sub">Download Matri and let it handle the details — so you can just be present.</p>
-    <a href="https://matriapp.in" class="btn-primary">
-      Open Matri →
-    </a>
-  </div>
+    <div class="divider"></div>
+
+    <!-- MOMENT 1 — ASK NATURALLY -->
+    <section id="ask">
+      <div class="stage">
+        <h2>Ask naturally.</h2>
+        <p>Talk to Matri like you would a friend who remembers everything.</p>
+      </div>
+      <div class="stage-visual">
+        <div class="phone-frame">
+          <div
+            class="device-screen chat-mock reveal"
+            role="img"
+            aria-label="Matri chat: the user asks if she can eat papaya. Matri says ripe papaya is fine after week 20, and confirms she's 23 weeks along."
+          >
+            <div class="chat-bubble user" aria-hidden="true">Can I eat papaya?</div>
+            <div class="chat-typing" aria-hidden="true"><span></span><span></span><span></span></div>
+            <div class="chat-bubble ai" aria-hidden="true">Ripe papaya is fine after week 20 — you're 23 weeks, so you're good. Just skip it unripe.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- MOMENT 2 — PRESCRIPTIONS -->
+    <section id="prescriptions">
+      <div class="stage">
+        <h2>Just take a photo.</h2>
+        <p>Matri reads it and keeps track, automatically.</p>
+      </div>
+      <div class="stage-visual">
+        <div class="phone-frame">
+          <div
+            class="device-screen scan-mock reveal"
+            role="img"
+            aria-label="A prescription photo being scanned, with Folic Acid, Iron, and Calcium medicine cards appearing automatically."
+          >
+            <div class="scan-photo" aria-hidden="true"><div class="scan-line"></div></div>
+            <div class="med-card" aria-hidden="true">Folic Acid <span>5mg · Daily</span></div>
+            <div class="med-card" aria-hidden="true">Iron <span>Once daily</span></div>
+            <div class="med-card" aria-hidden="true">Calcium <span>Twice daily</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- MOMENT 3 — DOCUMENTS -->
+    <section id="documents">
+      <div class="stage">
+        <h2>Everything.<br />Exactly where you need it.</h2>
+        <p>Every report, scan, and note — organised the moment you upload it.</p>
+      </div>
+      <div class="stage-visual">
+        <div class="doc-mock reveal" role="img" aria-label="Lab report, ultrasound scan, and prescription documents, neatly organised into cards.">
+          <div class="doc-card" aria-hidden="true"><span class="doc-card-label">Lab Report</span><span class="doc-card-date">Jul 12</span></div>
+          <div class="doc-card" aria-hidden="true"><span class="doc-card-label">Ultrasound Scan</span><span class="doc-card-date">Jul 20</span></div>
+          <div class="doc-card" aria-hidden="true"><span class="doc-card-label">Prescription</span><span class="doc-card-date">Jul 22</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- BABY BOOK -->
+    <section id="baby-book">
+      <div class="stage">
+        <h2>Every moment, kept safe.</h2>
+        <p>The feelings, the photos, the milestones — quietly saved for the day you'll want them most.</p>
+      </div>
+      <div class="stage-visual">
+        <div class="photo-collage reveal" role="img" aria-label="A soft collage of saved photo memories in the baby book.">
+          <div class="photo-card p1" aria-hidden="true"></div>
+          <div class="photo-card p3" aria-hidden="true"></div>
+          <div class="photo-card p2" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- TRUST -->
+    <section id="trust">
+      <div class="stage">
+        <p class="stage-eyebrow">Trust</p>
+        <h2>Built to be trusted.</h2>
+      </div>
+      <div class="stage-visual">
+        <div class="trust-grid reveal">
+          <span class="trust-chip"><span class="trust-chip-icon" aria-hidden="true">🤰</span> Built for pregnancy</span>
+          <span class="trust-chip"><span class="trust-chip-icon" aria-hidden="true">🔒</span> Privacy first</span>
+          <span class="trust-chip"><span class="trust-chip-icon" aria-hidden="true">🩺</span> Medical guidance</span>
+          <span class="trust-chip"><span class="trust-chip-icon" aria-hidden="true">🧑‍⚕️</span> Never replaces your doctor</span>
+          <span class="trust-chip"><span class="trust-chip-icon" aria-hidden="true">🪔</span> Designed for Indian mothers</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- CLOSING CTA -->
+    <section class="closing">
+      <div class="stage">
+        <h2>Start remembering, from week one.</h2>
+        <p>Free, private, and ready when you are.</p>
+      </div>
+      <div class="stage-visual closing-cta">
+        <a href="https://matriapp.in" class="btn-primary">Get Matri free →</a>
+      </div>
+    </section>
+
+  </main>
 
   <!-- FOOTER -->
   <footer>
@@ -408,8 +702,52 @@
       <a href="/tos">Terms of Service</a>
       <a href="mailto:prashantlalwani100@gmail.com">Contact</a>
     </div>
-    <span class="footer-copy">© 2025 Matri. All rights reserved.</span>
+    <span class="footer-copy">© <span id="year">2026</span> Matri. All rights reserved.</span>
   </footer>
+
+  <!-- STICKY MOBILE CTA -->
+  <div class="sticky-cta" id="stickyCta">
+    <img src="/favicon.svg" alt="" class="sticky-cta-icon" />
+    <a href="https://matriapp.in" class="btn-primary" aria-label="Get Matri, free">Get free</a>
+  </div>
+
+  <script>
+    (function () {
+      var yearEl = document.getElementById('year');
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
+    })();
+
+    (function () {
+      var bar = document.getElementById('stickyCta');
+      var hero = document.querySelector('.hero');
+      if (!bar || !hero || !('IntersectionObserver' in window)) return;
+
+      var stickyObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          bar.classList.toggle('visible', !entry.isIntersecting);
+        });
+      }, { rootMargin: '-10% 0px 0px 0px' });
+
+      stickyObserver.observe(hero);
+    })();
+
+    (function () {
+      if (!('IntersectionObserver' in window)) return;
+      var els = document.querySelectorAll('.reveal');
+      if (!els.length) return;
+
+      var revealObserver = new IntersectionObserver(function (entries, obs) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+            obs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.25 });
+
+      els.forEach(function (el) { revealObserver.observe(el); });
+    })();
+  </script>
 
 </body>
 </html>
